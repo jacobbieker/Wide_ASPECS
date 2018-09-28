@@ -40,30 +40,34 @@ ags2 = SkyCoord(ra, dec, frame='J2000')
 
 ags3 = SkyCoord(53.148839*u.deg, -27.821192*u.deg, frame='J2000')
 
-ags4 = SkyCoord(53.142778-27.827888)
-ags5 = SkyCoord(53.158392-27.733607)
-ags6 = SkyCoord(53.183458-27.776654)
-ags7 = SkyCoord(53.082738-27.866577)
-ags8 = SkyCoord(53.020356-27.779905)
-ags9 = SkyCoord(53.092844-27.801330)
-ags10 = SkyCoord(53.082118-27.767299)
-ags11 = SkyCoord(53.108818-27.869055)
-ags12 = SkyCoord(53.160634-27.776273)
-ags13 = SkyCoord(53.131122-27.773194)
-ags14 = SkyCoord(53.223156-27.826771)
-ags15 = SkyCoord(53.074847-27.875880)
-ags16 = SkyCoord(53.039724-27.784557)
-ags17 = SkyCoord(53.079374-27.870770)
-ags18 = SkyCoord(53.181355-27.777544)
-ags19 = SkyCoord(53.108041-27.813610)
-ags20 = SkyCoord(53.092365-27.826829)
+ags4 = SkyCoord(53.142778*u.deg, -27.827888*u.deg, frame='J2000')
+ags5 = SkyCoord(53.158392*u.deg, -27.733607*u.deg, frame='J2000')
+ags6 = SkyCoord(53.183458*u.deg, -27.776654*u.deg, frame='J2000')
+ags7 = SkyCoord(53.082738*u.deg, -27.866577*u.deg, frame='J2000')
+ags8 = SkyCoord(53.020356*u.deg, -27.779905*u.deg, frame='J2000')
+ags9 = SkyCoord(53.092844*u.deg, -27.801330*u.deg, frame='J2000')
+ags10 = SkyCoord(53.082118*u.deg, -27.767299*u.deg, frame='J2000')
+ags11 = SkyCoord(53.108818*u.deg, -27.869055*u.deg, frame='J2000')
+ags12 = SkyCoord(53.160634*u.deg, -27.776273*u.deg, frame='J2000')
+ags13 = SkyCoord(53.131122*u.deg, -27.773194*u.deg, frame='J2000')
+ags14 = SkyCoord(53.223156*u.deg, -27.826771*u.deg, frame='J2000')
+ags15 = SkyCoord(53.074847*u.deg, -27.875880*u.deg, frame='J2000')
+ags16 = SkyCoord(53.039724*u.deg, -27.784557*u.deg, frame='J2000')
+ags17 = SkyCoord(53.079374*u.deg, -27.870770*u.deg, frame='J2000')
+ags18 = SkyCoord(53.181355*u.deg, -27.777544*u.deg, frame='J2000')
+ags19 = SkyCoord(53.108041*u.deg, -27.813610*u.deg, frame='J2000')
+ags20 = SkyCoord(53.092365*u.deg, -27.826829*u.deg, frame='J2000')
 
-ags21 = SkyCoord(53.070274-27.845586)
-ags22 = SkyCoord(53.108695-27.848332)
-ags23 = SkyCoord(53.086623-27.810272)
+ags21 = SkyCoord(53.070274*u.deg, -27.845586*u.deg, frame='J2000')
+ags22 = SkyCoord(53.108695*u.deg, -27.848332*u.deg, frame='J2000')
+ags23 = SkyCoord(53.086623*u.deg, -27.810272*u.deg, frame='J2000')
 
 
 # TODO Convert to degress the ra and dec ones, then Skycoordinate
+
+franco_1mm = [ags1, ags2, ags3, ags4, ags5, ags6, ags7, ags8, ags9, ags10, ags11, ags12, ags13, ags14, ags15, ags16, ags17, ags18, ags19, ags20, ags21, ags22, ags23]
+
+
 
 # TODO Make graphs of the redshift clustering, star mass, etc. using mean flux values as the cutoff
 
