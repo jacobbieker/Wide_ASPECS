@@ -1,6 +1,6 @@
 import astropy.io.ascii as ascii
 import astropy.table
-from astropy.coordinates import SkyCoord, Angle
+from astropy.coordinates import SkyCoord, Angle, SkyOffsetFrame, ICRS
 from astropy import units as u
 import astropy.io.fits as fits
 import numpy as np
@@ -27,6 +27,7 @@ for catalog_file in photometry_files:
         continue
 
 ra_dec = full_catalog['ra', 'dc']
+ra_dec = SkyCoord(ra_dec['ra'] * u.deg, ra_dec * u.deg, frame='J2000')
 
 # The Franco dataset
 
@@ -39,7 +40,6 @@ dec = -27.843792 * u.deg
 ags2 = SkyCoord(ra, dec, frame='J2000')
 
 ags3 = SkyCoord(53.148839*u.deg, -27.821192*u.deg, frame='J2000')
-
 ags4 = SkyCoord(53.142778*u.deg, -27.827888*u.deg, frame='J2000')
 ags5 = SkyCoord(53.158392*u.deg, -27.733607*u.deg, frame='J2000')
 ags6 = SkyCoord(53.183458*u.deg, -27.776654*u.deg, frame='J2000')
@@ -65,9 +65,9 @@ ags23 = SkyCoord(53.086623*u.deg, -27.810272*u.deg, frame='J2000')
 
 # TODO Convert to degress the ra and dec ones, then Skycoordinate
 
-franco_1mm = [ags1, ags2, ags3, ags4, ags5, ags6, ags7, ags8, ags9, ags10, ags11, ags12, ags13, ags14, ags15, ags16, ags17, ags18, ags19, ags20, ags21, ags22, ags23]
+franco_1mm = SkyCoord([ags1, ags2, ags3, ags4, ags5, ags6, ags7, ags8, ags9, ags10, ags11, ags12, ags13, ags14, ags15, ags16, ags17, ags18, ags19, ags20, ags21, ags22, ags23])
 
-
+idx, d2d, d3d = franco_1mm.match_to_catalog_sky(ra_dec)
 
 # TODO Make graphs of the redshift clustering, star mass, etc. using mean flux values as the cutoff
 
