@@ -16,18 +16,16 @@ photometry_files = glob(os.path.join("data", "matched_jun18", "*.cat"))
 
 full_catalog = None
 tmp_catalog = None
+tmp_catalog_2 = None
 
 for catalog_file in photometry_files:
-    try:
-        if tmp_catalog is None:
-            tmp_catalog = ascii.read(catalog_file)
-        else:
-            full_catalog = astropy.table.join(tmp_catalog, ascii.read(catalog_file))
-    except:
-        print("Could not add: ")
-        print(catalog_file)
-        continue
+    tmp_catalog = ascii.read(catalog_file)
+    if full_catalog is None:
+        full_catalog = tmp_catalog
+    else:
+        full_catalog = astropy.table.join(full_catalog, tmp_catalog, keys=['ra', 'dc', 'raS', 'dcS'])
 
+print(full_catalog.colnames)
 ra_dec = full_catalog['ra', 'dc']
 ra_dec = SkyCoord(ra_dec['ra'] * u.deg, ra_dec['dc'] * u.deg, frame='icrs')
 
@@ -64,18 +62,12 @@ ags21 = SkyCoord(53.070274*u.deg, -27.845586*u.deg, frame='icrs')
 ags22 = SkyCoord(53.108695*u.deg, -27.848332*u.deg, frame='icrs')
 ags23 = SkyCoord(53.086623*u.deg, -27.810272*u.deg, frame='icrs')
 
-
-# TODO Convert to degress the ra and dec ones, then Skycoordinate
-
 franco_1mm = SkyCoord([ags1, ags2, ags3, ags4, ags5, ags6, ags7, ags8, ags9, ags10, ags11, ags12, ags13, ags14, ags15, ags16, ags17, ags18, ags19, ags20, ags21, ags22, ags23])
 One_One_mm = [1.90, 1.99, 1.84, 1.72, 1.56, 1.27, 1.15, 1.43, 1.25, 0.88, 1.34, 0.93, 0.78, 0.86, 0.80, 0.82, 0.93, 0.85, 0.69, 1.11, 0.64, 1.05, 0.98]
 One_one_err = [0.20, 0.22, 0.21, 0.20, 0.19, 0.18, 0.17, 0.22, 0.21, 0.15, 0.25, 0.18, 0.15, 0.17, 0.16, 0.17, 0.19, 0.18, 0.15, 0.24, 0.11, 0.22, 0.21]
 
-print(len(ra_dec))
-print(len(full_catalog))
 idx, d2d, d3d = franco_1mm.match_to_catalog_sky(ra_dec)
 missing_data = np.zeros((len(full_catalog)))
-print(len(missing_data))
 # put it all together at once?
 full_catalog['1.1mm'] = missing_data
 full_catalog['1.1mm_err'] = missing_data
@@ -84,10 +76,6 @@ full_catalog['1.1mm_err'][idx] = One_one_err
 
 only_one_one = full_catalog['raS', 'dcS', 'ra', 'dc', '1.1mm', '1.1mm_err']
 ascii.write(only_one_one, 'matched_sep18_p8.cat', format='fixed_width', delimiter=None, bookend=False, overwrite=True)
-exit()
-print(idx)
-print("----------------------------------------------------------------------------------------------------------------")
-print(d2d)
 
 # Get the stuff now
 
@@ -99,11 +87,25 @@ data = Table([full_catalog['raS'], full_catalog['dcS'], full_catalog['ra'], full
 for galaxy in idx:
     data[galaxy]['1.1mm'] = One_One_mm[i]
     data[galaxy]['1.1mm_err'] = One_one_err[i]
-    print(full_catalog[galaxy])
-    print(ra_dec[galaxy].ra.hms)
-    print(d2d[i])
     i += 1
 
 ascii.write(data, 'matched_sep18_p8.cat', format='fixed_width', delimiter=None, bookend=False, overwrite=True)
+
 # TODO Make graphs of the redshift clustering, star mass, etc. using mean flux values as the cutoff
 
+# First plot the skymap of the data
+
+plt.scatter(full_catalog['ra'], full_catalog['dc'])
+plt.ylabel("Dec")
+plt.xlabel("RA")
+
+# Get the ones with spectroscopic redshift
+
+spec_redshift_cols = ["z_spec_3dh", "zm_vds", "zm_coeS", "zs_mor", "zm_ina", "zm_her"]
+
+# Mask if any of these have a redshift larger than 0.001
+print(full_catalog.colnames)
+spec_z_mask = full_catalog["z_spec_3dh"] > 0.001
+
+plt.scatter(full_catalog[spec_z_mask]['ra'], full_catalog[spec_z_mask]['dc'])
+plt.show()
