@@ -21,10 +21,20 @@ def build_catalog():
 
     for catalog_file in photometry_files:
         tmp_catalog = ascii.read(catalog_file)
+        # Add units here, because easier based on part
+        if "2" in catalog_file or "3" in catalog_file or "4" in catalog_file or "5" in catalog_file or "6" in catalog_file:
+            tmp_catalog.units = u.uJy
+            tmp_catalog['ra'].units = None
+            tmp_catalog['dc'].units = None
+            tmp_catalog['raS'].units = None
+            tmp_catalog['dcS'].units = None
+
         if full_catalog is None:
             full_catalog = tmp_catalog
         else:
             full_catalog = astropy.table.join(full_catalog, tmp_catalog, keys=['ra', 'dc', 'raS', 'dcS'])
+
+    # Add units for the full catalog
 
     ra_dec = full_catalog['ra', 'dc']
     ra_dec = SkyCoord(ra_dec['ra'] * u.deg, ra_dec['dc'] * u.deg, frame='icrs')
@@ -84,9 +94,11 @@ def build_catalog():
     missing_data = np.zeros((len(full_catalog['ra'])))
     missing_error = np.zeros(len(full_catalog['dc']))
     data = Table([full_catalog['raS'], full_catalog['dcS'], full_catalog['ra'], full_catalog['dc'], missing_data, missing_error], names=['raS', 'dcS', 'ra', 'dc', '1.1mm', '1.1mm_err'])
+    full_catalog['1.1mm'] = np.zeros(len(full_catalog['ra']))
+    full_catalog['1.1mm_err'] = np.zeros(len(full_catalog['ra']))
     for galaxy in idx:
-        data[galaxy]['1.1mm'] = One_One_mm[i]
-        data[galaxy]['1.1mm_err'] = One_one_err[i]
+        full_catalog[galaxy]['1.1mm'] = One_One_mm[i]
+        full_catalog[galaxy]['1.1mm_err'] = One_one_err[i]
         i += 1
 
     return full_catalog
