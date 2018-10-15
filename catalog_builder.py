@@ -16,8 +16,6 @@ def build_catalog():
     photometry_files = glob(os.path.join("data", "matched_jun18", "*.cat"))
 
     full_catalog = None
-    tmp_catalog = None
-    tmp_catalog_2 = None
 
     for catalog_file in photometry_files:
         tmp_catalog = ascii.read(catalog_file)
