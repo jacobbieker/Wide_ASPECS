@@ -21,7 +21,7 @@ full_catalog = build_catalog()
 #print(len(data_field[0]))
 
 #print(hdu_list[1].columns.names)
-#print(full_catalog.columns)
+print(full_catalog.columns)
 print("In full catalog but not in FITS ---------------------")
 for name in full_catalog.columns:
     if name not in hdu_list[1].columns.names:
@@ -31,3 +31,5 @@ print("In FITS but not in Full Catalog ---------------------")
 for name in hdu_list[1].columns.names:
     if name not in full_catalog.columns:
         print(name)
+
+
