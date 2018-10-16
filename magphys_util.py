@@ -16,12 +16,6 @@ for element in data_field:
     list_of_used_ones.append(element[0])
 
 full_catalog = build_catalog()
-for column in full_catalog.columns:
-    if "id" not in column and "ra" not in column and "dc" not in column and "z" not in column and "flag" not in column:
-        # Convert to Jansky
-        full_catalog[column] *= 0.000001
-        continue
-    # Now need to convert to Jy from uJy units and write out to FITS file for MAGPHYS
 
 #print(len(full_catalog.columns))
 #print(len(data_field[0]))

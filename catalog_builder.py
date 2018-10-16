@@ -19,14 +19,6 @@ def build_catalog():
 
     for catalog_file in photometry_files:
         tmp_catalog = ascii.read(catalog_file)
-        # Add units here, because easier based on part
-        if "2" in catalog_file or "3" in catalog_file or "4" in catalog_file or "5" in catalog_file or "6" in catalog_file:
-            tmp_catalog.units = u.uJy
-            tmp_catalog['ra'].units = None
-            tmp_catalog['dc'].units = None
-            tmp_catalog['raS'].units = None
-            tmp_catalog['dcS'].units = None
-
         if full_catalog is None:
             full_catalog = tmp_catalog
         else:
