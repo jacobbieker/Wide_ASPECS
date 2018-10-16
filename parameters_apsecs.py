@@ -9,7 +9,7 @@ omega_lambda = 0.7
 
 #catalog stuff
 redshift = 'z' #columnname for column containing source redshifts
-rows_to_fit = range(0,65000) #iterable containing the row numbers of the sources to fit (e.g. range(0,99999999))
+rows_to_fit = range(0,63499) #iterable containing the row numbers of the sources to fit (e.g. range(0,99999999))
 
 #catalog photometry
 flux_conversion = 1.0e-6 #all fluxes are multiplied by this number (e.g. to convert from uJy in the catalog to Jy used in the fitting by multiplying with 1.0e-6)

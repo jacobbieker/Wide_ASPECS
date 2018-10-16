@@ -33,3 +33,6 @@ for name in hdu_list[1].columns.names:
         print(name)
 
 
+# Now build the FITS file for use everywhere
+
+fits.writeto("full_catalog_two.fits", np.array(full_catalog))
