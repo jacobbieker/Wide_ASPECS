@@ -50,18 +50,11 @@ filter_bandwidths.append(0.0)
 
 # TODO Add wavelengths for these filters
 #filter
-filter_fluxes.append('f125w')
-filter_errors.append('ef125w')
-filter_refnrs.append(328)
-filter_wavelengths.append(2.2109)
-filter_bandwidths.append(0.0)
-
-#filter
-filter_fluxes.append('fKs')
-filter_errors.append('efKs')
-filter_refnrs.append(102)
-filter_wavelengths.append(2.2109)
-filter_bandwidths.append(0.0)
+#filter_fluxes.append('f125w')
+#filter_errors.append('ef125w')
+#filter_refnrs.append(328)
+#filter_wavelengths.append(2.2109)
+#filter_bandwidths.append(0.0)
 
 
 #filter
@@ -71,137 +64,132 @@ filter_refnrs.append(329)
 filter_wavelengths.append(0.3676)
 filter_bandwidths.append(0.0)
 
+#TODO Fix this one
 #filter
-filter_fluxes.append('f814w')
-filter_errors.append('ef814w')
-filter_refnrs.append(95)
-filter_wavelengths.append(2.2109)
-filter_bandwidths.append(0.0)
+#filter_fluxes.append('f814w')
+#filter_errors.append('ef814w')
+#filter_refnrs.append(95)
+#filter_wavelengths.append(2.2109)
+#filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fU38')
 filter_errors.append('efU38')
 filter_refnrs.append(249)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.3676)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fIA427')
 filter_errors.append('efIA427')
 filter_refnrs.append(265)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.4263)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('f435w')
 filter_errors.append('ef435w')
 filter_refnrs.append(214)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.4328)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fIA505')
 filter_errors.append('efIA505')
 filter_refnrs.append(268)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.5063)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fIA527')
 filter_errors.append('efIA527')
 filter_refnrs.append(269)
-filter_wavelengths.append(2.2109)
-filter_bandwidths.append(0.0)
-
-#filter
-filter_fluxes.append('fV')
-filter_errors.append('efV')
-filter_refnrs.append(102)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.5261)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fIA574')
 filter_errors.append('efIA574')
 filter_refnrs.append(270)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.5764)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('f606w')
 filter_errors.append('ef606w')
 filter_refnrs.append(94)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.5959)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fIA624')
 filter_errors.append('efIA624')
 filter_refnrs.append(271)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.6233)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fIA679')
 filter_errors.append('efIA679')
 filter_refnrs.append(272)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.6781)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fIA738')
 filter_errors.append('efIA738')
 filter_refnrs.append(274)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.7361)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fIA767')
 filter_errors.append('efIA767')
 filter_refnrs.append(275)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.7684)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('f775w')
 filter_errors.append('ef775w')
 filter_refnrs.append(216)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.7705)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('f850lp')
 filter_errors.append('ef850lp')
 filter_refnrs.append(217)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(0.9048)
 filter_bandwidths.append(0.0)
 
 #filter
-filter_fluxes.append('ftJ')
-filter_errors.append('eftJ')
-filter_refnrs.append(102)
-filter_wavelengths.append(2.2109)
-filter_bandwidths.append(0.0)
+#filter_fluxes.append('ftJ')
+#filter_errors.append('eftJ')
+# TODO Get the correct thing for tJ filter
+#filter_refnrs.append(102)
+#filter_wavelengths.append(1.2499)
+#filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fJ')
 filter_errors.append('efJ')
-filter_refnrs.append(102)
-filter_wavelengths.append(2.2109)
+filter_refnrs.append(100)
+filter_wavelengths.append(1.2369)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('f160w')
 filter_errors.append('ef160w')
 filter_refnrs.append(298)
-filter_wavelengths.append(2.2109)
+filter_wavelengths.append(1.5419)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fH')
 filter_errors.append('efH')
-filter_refnrs.append(102)
-filter_wavelengths.append(2.2109)
+filter_refnrs.append(101)
+filter_wavelengths.append(1.6464)
 filter_bandwidths.append(0.0)
 
 #filter
@@ -214,23 +202,25 @@ filter_bandwidths.append(0.0)
 #filter
 filter_fluxes.append('fKs')
 filter_errors.append('efKs')
-filter_refnrs.append(102)
-filter_wavelengths.append(2.2109)
+# TODO Not sure this is the right one
+filter_refnrs.append(107)
+filter_wavelengths.append(2.1454)
 filter_bandwidths.append(0.0)
 
+#TODO Fix these effective lambdas
 #filter
-filter_fluxes.append('f24um')
-filter_errors.append('ef24um')
-filter_refnrs.append(102)
-filter_wavelengths.append(2.2109)
-filter_bandwidths.append(0.0)
+#filter_fluxes.append('f24um')
+#filter_errors.append('ef24um')
+#filter_refnrs.append(102)
+#filter_wavelengths.append(2.2109)
+#filter_bandwidths.append(0.0)
 
 #filter
-filter_fluxes.append('fnu_1mm')
-filter_errors.append('efnu_1mm')
-filter_refnrs.append(102)
-filter_wavelengths.append(2.2109)
-filter_bandwidths.append(0.0)
+#filter_fluxes.append('fnu_1mm')
+#filter_errors.append('efnu_1mm')
+#filter_refnrs.append(102)
+#filter_wavelengths.append(2.2109)
+#filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fB')
