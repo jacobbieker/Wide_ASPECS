@@ -3,14 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
 from scipy import stats
+from numpy.polynomial.polynomial import polyfit
 
 def create_points_and_error(column_base_name, full_catalog):
     centerpoints = full_catalog[str(column_base_name + "_50")]
     lower_error = full_catalog[str(column_base_name + "_16")]
     upper_error = full_catalog[str(column_base_name + "_84")]
     centerpoints = np.nan_to_num(centerpoints)
-    lower_error = np.nan_to_num(lower_error)
-    upper_error = np.nan_to_num(upper_error)
+    zero_mask = centerpoints != 0.0
+    centerpoints = centerpoints[zero_mask]
+    lower_error = lower_error[zero_mask]
+    upper_error = upper_error[zero_mask]
     error_bars = [lower_error, upper_error]
     print(error_bars[0].shape)
 
@@ -76,11 +79,7 @@ full_catalog = np.nan_to_num(full_catalog)
 
 # Now stellar mass distribution
 mass_star, mass_star_error = create_points_and_error("Mstar", full_catalog)
-x = range(len(mass_star))
-plt.scatter(x, mass_star)
-plt.errorbar(x, mass_star, yerr=mass_star_error)
-plt.show()
-plt.hist(mass_star, label='Stellar Mass', log=True, bins=100)
+plt.hist(mass_star, label='Stellar Mass', bins=100)
 plt.title("Stellar Mass Distribution")
 plt.xlabel("Log Stellar Mass (Log(Msun))")
 plt.ylabel("Count")
@@ -94,8 +93,8 @@ plt.scatter(mass_star, sfr, s=2)
 plt.title("Log Stellar Mass vs Log Star Formation Rate")
 plt.xlabel("Log Stellar Mass (Log(Msun))")
 plt.ylabel("Log Star Formation Rate")
-plt.xlim(5,np.max(mass_star))
-plt.ylim(np.min(sfr),np.max(sfr))
+#plt.xlim(5,np.max(mass_star))
+#plt.ylim(np.min(sfr),np.max(sfr))
 plt.show()
 
 # Star Formation vs Stellar Mass split by Z
@@ -113,14 +112,109 @@ vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z(
 
 f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='row')
 ax1.scatter(low_z_mass, low_z_sfr, color='pink', s=1)
+ax1.plot(np.unique(low_z_mass), np.poly1d(np.polyfit(low_z_mass, low_z_sfr, 1))(np.unique(low_z_mass)), color='r')
 ax1.set_title('0 < Z < 1')
 ax2.scatter(mid_z_mass, mid_z_sfr, color='blue', s=1)
+ax2.plot(np.unique(mid_z_mass), np.poly1d(np.polyfit(mid_z_mass, mid_z_sfr, 1))(np.unique(mid_z_mass)), color='r')
 ax2.set_title('1 < Z < 2')
 ax3.scatter(high_z_mass, high_z_sfr, color='green', s=1)
+ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_sfr, 1))(np.unique(high_z_mass)), color='r')
 ax3.set_title('2 < Z < 3')
 ax4.scatter(vhigh_z_mass, vhigh_z_sfr, color='orange', s=1)
+ax4.plot(np.unique(vhigh_z_mass), np.poly1d(np.polyfit(vhigh_z_mass, vhigh_z_sfr, 1))(np.unique(vhigh_z_mass)), color='r')
 #ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error)
 ax4.set_title('3 < Z < 4')
-f.text(0.5, 0.01, 'Log Stellar Mass (Mstar)', ha='center')
+f.text(0.5, 0.01, 'Log Stellar Mass (M*)', ha='center')
 f.text(0.01, 0.5, 'Log Star Formation Rate', va='center', rotation='vertical')
 f.show()
+
+# Specific Star Formation Rate
+
+ssfr, ssfr_error = create_points_and_error("sSFR", full_catalog)
+
+plt.hist(ssfr, label="sSFR", bins=100)
+plt.ylabel("Count")
+plt.xlabel("Log sSFR")
+plt.title("sSFR Distribution")
+plt.show()
+
+plt.scatter(mass_star, ssfr, s=2)
+plt.plot(np.unique(mass_star), np.poly1d(np.polyfit(mass_star, ssfr, 1))(np.unique(mass_star)), color='r')
+#plt.errorbar(mass_star, sfr, xerr=mass_star_error, yerr=sfr_error)
+plt.title("Log Stellar Mass vs Log Specific Star Formation Rate")
+plt.xlabel("Log Stellar Mass (Log(Msun))")
+plt.ylabel("Log sSFR")
+#plt.xlim(5,np.max(mass_star))
+#plt.ylim(np.min(sfr),np.max(sfr))
+plt.show()
+
+# Now do it by redshift
+
+low_z_ssfr, low_z_ssfr_error, low_z_ssfr_z = create_points_and_error_by_z("sSFR", full_catalog, 0, 1)
+mid_z_ssfr, mid_z_ssfr_error, mid_z_ssfr_z = create_points_and_error_by_z("sSFR", full_catalog, 1, 2)
+high_z_ssfr, high_z_ssfr_error, high_z_ssfr_z = create_points_and_error_by_z("sSFR", full_catalog, 2, 3)
+vhigh_z_ssfr, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("sSFR", full_catalog, 3, 4)
+
+
+f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='row')
+ax1.scatter(low_z_mass, low_z_ssfr, color='pink', s=1)
+ax1.plot(np.unique(low_z_mass), np.poly1d(np.polyfit(low_z_mass, low_z_ssfr, 1))(np.unique(low_z_mass)), color='r')
+ax1.set_title('0 < Z < 1')
+ax2.scatter(mid_z_mass, mid_z_ssfr, color='blue', s=1)
+ax2.plot(np.unique(mid_z_mass), np.poly1d(np.polyfit(mid_z_mass, mid_z_ssfr, 1))(np.unique(mid_z_mass)), color='r')
+ax2.set_title('1 < Z < 2')
+ax3.scatter(high_z_mass, high_z_ssfr, color='green', s=1)
+ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_ssfr, 1))(np.unique(high_z_mass)), color='r')
+ax3.set_title('2 < Z < 3')
+ax4.scatter(vhigh_z_mass, vhigh_z_ssfr, color='orange', s=1)
+ax4.plot(np.unique(vhigh_z_mass), np.poly1d(np.polyfit(vhigh_z_mass, vhigh_z_ssfr, 1))(np.unique(vhigh_z_mass)), color='r')
+#ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error)
+ax4.set_title('3 < Z < 4')
+f.text(0.5, 0.01, 'Log Stellar Mass (M*)', ha='center')
+f.text(0.01, 0.5, 'Log Specific Star Formation Rate', va='center', rotation='vertical')
+f.show()
+
+# Plot the Age distribution
+age, age_error = create_points_and_error("age_M", full_catalog)
+
+plt.hist(age, label="Log(Age)", bins=100)
+plt.ylabel("Count")
+plt.xlabel("Log(Age)")
+plt.title("Age Distribution")
+plt.show()
+
+# Plot the Dust distribution and Temp
+dust_mass, dust_mass_error = create_points_and_error("Mdust", full_catalog)
+plt.hist(dust_mass, label="Log Dust Mass", bins=100)
+plt.ylabel("Count")
+plt.xlabel("Log Dust Mass")
+plt.title("Dust Mass Distribution")
+plt.show()
+
+dust_temp, dust_temp_error = create_points_and_error("Tdust", full_catalog)
+plt.hist(dust_temp, label="Log Dust Temperature", bins=100)
+plt.ylabel("Count")
+plt.xlabel("Log Dust Mass")
+plt.title("Dust Temperature Distribution")
+plt.show()
+
+# Dust Mass vs Dust Temp
+plt.scatter(dust_mass, dust_temp, s=1)
+plt.plot(np.unique(dust_mass), np.poly1d(np.polyfit(dust_mass, dust_temp, 1))(np.unique(dust_mass)), color='r')
+#plt.errorbar(dust_mass, dust_temp, xerr=dust_mass_error, yerr=dust_temp_error)
+plt.ylabel("Log Dust Temperature")
+plt.xlabel("Log Dust Mass")
+plt.title("Dust Mass vs Temperature")
+plt.show()
+
+# Now dust Luminosity vs Dust temp, should show something
+
+dust_lum, dust_lum_error = create_points_and_error("Ldust", full_catalog)
+
+plt.scatter(dust_mass, dust_lum, s=1)
+plt.plot(np.unique(dust_mass), np.poly1d(np.polyfit(dust_mass, dust_lum, 1))(np.unique(dust_mass)), color='r')
+plt.ylabel("Log Dust Luminosity")
+plt.xlabel("Log Dust Mass")
+plt.title("Dust Mass vs Luminosity")
+plt.show()
+
