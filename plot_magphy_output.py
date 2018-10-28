@@ -213,6 +213,7 @@ dust_lum, dust_lum_error = create_points_and_error("Ldust", full_catalog)
 
 plt.scatter(dust_mass, dust_lum, s=1)
 plt.plot(np.unique(dust_mass), np.poly1d(np.polyfit(dust_mass, dust_lum, 1))(np.unique(dust_mass)), color='r')
+#plt.errorbar(dust_mass, dust_lum, xerr=dust_mass_error, yerr=dust_lum_error)
 plt.ylabel("Log Dust Luminosity")
 plt.xlabel("Log Dust Mass")
 plt.title("Dust Mass vs Luminosity")

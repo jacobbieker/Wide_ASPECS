@@ -31,66 +31,75 @@ filter_wavelengths.append(0.3676)
 filter_bandwidths.append(0.0)
 
 #filter
+# VIMOS U, Could also be KPNO U
 filter_fluxes.append('fU')
 filter_errors.append('efU')
-filter_refnrs.append(222)
-filter_wavelengths.append(0.36402)
+filter_refnrs.append(363)
+filter_wavelengths.append(0.37651)
 filter_bandwidths.append(0.0)
 
 #filter
+# VIMOS R, since Rc is from WFI
 filter_fluxes.append('fR')
 filter_errors.append('efR')
-filter_refnrs.append(225)
-filter_wavelengths.append(0.6442)
+filter_refnrs.append(364)
+filter_wavelengths.append(0.63755)
 filter_bandwidths.append(0.0)
 
 #filter
+# For sure from WFI, no Rc filter, so R filter from Hildebrandt et al. (2006)
+filter_fluxes.append('fRc')
+filter_errors.append('efRc')
+filter_refnrs.append(252)
+filter_wavelengths.append(0.64284)
+filter_bandwidths.append(0.0)
+
+#filter
+# Supposed to be WFI I believe, lots of B filters, this shows up the most
 filter_fluxes.append('fB')
 filter_errors.append('efB')
-filter_refnrs.append(223)
-filter_wavelengths.append(0.43363)
+filter_refnrs.append(250)
+filter_wavelengths.append(0.44562)
 filter_bandwidths.append(0.0)
 
 #filter
+# Also WFI
 filter_fluxes.append('fV')
 filter_errors.append('efV')
-filter_refnrs.append(224)
-filter_wavelengths.append(0.5354)
+filter_refnrs.append(251)
+filter_wavelengths.append(0.53401)
 filter_bandwidths.append(0.0)
 
 #filter
+# Also WFI
 filter_fluxes.append('fI')
 filter_errors.append('efI')
-filter_refnrs.append(226)
-filter_wavelengths.append(0.7936)
+filter_refnrs.append(253)
+filter_wavelengths.append(0.81454)
 filter_bandwidths.append(0.0)
 
 #filter
+# ISAAC J band b/c in GOOD-S
 filter_fluxes.append('fJ')
 filter_errors.append('efJ')
-filter_refnrs.append(450)
-filter_wavelengths.append(1.2369)
+filter_refnrs.append(211)
+filter_wavelengths.append(1.24279)
 filter_bandwidths.append(0.0)
 
 #filter
+# WIRcam H because in AEGIS and COSMOS, not MOIRCS or ISAAC H because only in one survey
+# Also the survey that uses WIRcam is much larger than the other two, so most came from that
 filter_fluxes.append('fH')
 filter_errors.append('efH')
-filter_refnrs.append(451)
-filter_wavelengths.append(1.6464)
-filter_bandwidths.append(0.0)
-
-#filter
-filter_fluxes.append('fK')
-filter_errors.append('efK')
-filter_refnrs.append(452)
-filter_wavelengths.append(2.2109)
+filter_refnrs.append(278)
+filter_wavelengths.append(1.61582)
 filter_bandwidths.append(0.0)
 
 #filter
 filter_fluxes.append('fKs')
 filter_errors.append('efKs')
-filter_refnrs.append(108)
-filter_wavelengths.append(2.13708)
+filter_refnrs.append(213)
+filter_wavelengths.append(2.15217)
 filter_bandwidths.append(0.0)
 
 #filter
@@ -254,11 +263,27 @@ filter_refnrs.append(328)
 filter_wavelengths.append(1.23049)
 filter_bandwidths.append(0.0)
 
+#filter
+# This is Wircam
+filter_fluxes.append('ftJ')
+filter_errors.append('eftJ')
+filter_refnrs.append(277)
+filter_wavelengths.append(1.24815)
+filter_bandwidths.append(0.0)
+
+#filter
+# This is Wircam, TENIS Ks band
+filter_fluxes.append('ftK')
+filter_errors.append('eftK')
+filter_refnrs.append(279)
+filter_wavelengths.append(2.13378)
+filter_bandwidths.append(0.0)
+
 print(full_catalog.columns)
 size_f = 0
 print("Missing from Filter set")
 for name in full_catalog.columns:
-    if "flag_" not in name and "f" in name and name not in filter_fluxes:
+    if "flag_" not in name and "f" in name and "ef" not in name and name not in filter_fluxes:
         print(name)
         size_f += 1
 print(size_f)
