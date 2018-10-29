@@ -31,7 +31,6 @@ filter_wavelengths.append(0.3676)
 filter_bandwidths.append(0.0)
 
 #filter
-# VIMOS U, Could also be KPNO U
 filter_fluxes.append('fU')
 filter_errors.append('efU')
 filter_refnrs.append(363)
@@ -55,7 +54,6 @@ filter_wavelengths.append(0.64284)
 filter_bandwidths.append(0.0)
 
 #filter
-# Supposed to be WFI I believe, lots of B filters, this shows up the most
 filter_fluxes.append('fB')
 filter_errors.append('efB')
 filter_refnrs.append(250)
@@ -87,12 +85,10 @@ filter_wavelengths.append(1.24279)
 filter_bandwidths.append(0.0)
 
 #filter
-# WIRcam H because in AEGIS and COSMOS, not MOIRCS or ISAAC H because only in one survey
-# Also the survey that uses WIRcam is much larger than the other two, so most came from that
 filter_fluxes.append('fH')
 filter_errors.append('efH')
-filter_refnrs.append(278)
-filter_wavelengths.append(1.61582)
+filter_refnrs.append(212)
+filter_wavelengths.append(1.63661)
 filter_bandwidths.append(0.0)
 
 #filter
