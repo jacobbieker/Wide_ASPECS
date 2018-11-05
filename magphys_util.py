@@ -292,40 +292,54 @@ filter_bandwidths.append(0.0)
 
 # Now remove any of those that does not have a value for any of those
 rows_to_remove = []
+
+current_fits = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb2.fits")
+
+data_fits = current_fits[1].data
+
+for index, row in enumerate(full_catalog):
+    if row['id'] in data_fits['id']:
+        rows_to_remove.append(index)
+
+print("Rows to Remove from FITS")
+print(len(rows_to_remove))
+
+print(len(full_catalog))
+full_catalog.remove_rows(rows_to_remove)
+print(len(full_catalog))
+
+rows_to_remove = []
 for index, row in enumerate(full_catalog):
     for filter_type in filter_fluxes:
-        if row[filter_type] > 0.0000001:
-            rows_to_remove.append(index)
-
-# Now keep the rows in rows_to_remove
-
-all_indicies = range(0, len(full_catalog))
+        if int(row[filter_type]) < 1 or np.isclose(row[filter_type], 0.0):
+            if int(row['fnu_1mm']) is 0:
+                rows_to_remove.append(index)
+print("Rows to Remove from FITS")
+print(len(rows_to_remove))
 
 print("Size Before: " + str(len(full_catalog)))
-rows_to_really_remove = []
-for item in all_indicies:
-    if item not in rows_to_remove:
-        rows_to_really_remove.append(item)
 
-full_catalog.remove_rows(rows_to_really_remove)
+print(len(full_catalog))
+full_catalog.remove_rows(rows_to_remove)
+print(len(full_catalog))
 
 print("Size After: " + str(len(full_catalog)))
 #print(len(full_catalog.columns))
 #print(len(data_field[0]))
 
 #print(hdu_list[1].columns.names)
-print(full_catalog.columns)
-print("In full catalog but not in FITS ---------------------")
-for name in full_catalog.columns:
-    if name not in hdu_list[1].columns.names:
-        print(name)
+#print(full_catalog.columns)
+#print("In full catalog but not in FITS ---------------------")
+#for name in full_catalog.columns:
+#    if name not in hdu_list[1].columns.names:
+#        print(name)
 
-print("In FITS but not in Full Catalog ---------------------")
-for name in hdu_list[1].columns.names:
-    if name not in full_catalog.columns:
-        print(name)
+#print("In FITS but not in Full Catalog ---------------------")
+#for name in hdu_list[1].columns.names:
+#    if name not in full_catalog.columns:
+#        print(name)
 
 
 # Now build the FITS file for use everywhere
 
-fits.writeto("aspecs_catalog.fits", np.array(full_catalog))
+fits.writeto("aspecs_catalog_remaining2.fits", np.array(full_catalog))

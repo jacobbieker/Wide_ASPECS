@@ -36,7 +36,7 @@ def create_points_and_error_by_z(column_base_name, full_catalog, low_z, high_z):
     error_bars = [lower_error, upper_error]
     return centerpoints, error_bars, z_values
 
-hdu_list = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb.fits")
+hdu_list = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb3.fits")
 print(hdu_list.info())
 print(hdu_list[1].header)
 print(hdu_list[1].columns.info())
@@ -61,7 +61,19 @@ only_photo_z_mask = photo_z_mask & ((full_catalog["z_spec_3dh"] < 0.001) & (full
 only_spec_z_mask = spec_z_mask & ((full_catalog["zm_s12"] < 0.001) & (full_catalog["zm_z13"] < 0.001) &(full_catalog["zm_m12"] < 0.001)
                                   & (full_catalog["z_m2"] < 0.001) & (full_catalog["zm_b15"] < 0.001) & (full_catalog["zm_coe"] < 0.001))
 
+print(len(full_catalog[spec_z_mask]))
+
+
 pos_z_mask = full_catalog["z"] > 0.001
+
+full_catalog = full_catalog[spec_z_mask]
+
+# Quality control cuts
+#quality_cuts = (full_catalog["Q0"] < 2.0) & (full_catalog["Q2"] < 1.0) & ((full_catalog["Mstar_50"] - full_catalog["Mstar_16"]) < 0.5) &\
+#               ((full_catalog["SFR_50"] - full_catalog["SFR_16"]) < 0.5)
+
+#full_catalog = full_catalog[quality_cuts]
+
 
 # Now get the SFR
 
@@ -89,7 +101,7 @@ plt.show()
 
 sfr, sfr_error = create_points_and_error("SFR", full_catalog)
 plt.scatter(mass_star, sfr, s=2)
-#plt.errorbar(mass_star, sfr, xerr=mass_star_error, yerr=sfr_error)
+plt.errorbar(mass_star, sfr, xerr=mass_star_error, yerr=sfr_error)
 plt.title("Log Stellar Mass vs Log Star Formation Rate")
 plt.xlabel("Log Stellar Mass (Log(Msun))")
 plt.ylabel("Log Star Formation Rate")
