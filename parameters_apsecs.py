@@ -247,6 +247,12 @@ filter_refnrs.append(350) #possibly incorrect
 filter_wavelengths.append(1000)
 filter_bandwidths.append(0.0)
 
+filter_fluxes.append('1.1mm')
+filter_errors.append('1.1mm_err')
+filter_refnrs.append(247)
+filter_wavelengths.append(1100)
+filter_bandwidths.append(0.0)
+
 #filter
 filter_fluxes.append('f125w')
 filter_errors.append('ef125w')

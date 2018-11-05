@@ -293,13 +293,13 @@ filter_bandwidths.append(0.0)
 # Now remove any of those that does not have a value for any of those
 rows_to_remove = []
 
-current_fits = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb2.fits")
+#current_fits = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb2.fits")
 
-data_fits = current_fits[1].data
+#data_fits = current_fits[1].data
 
-for index, row in enumerate(full_catalog):
-    if row['id'] in data_fits['id']:
-        rows_to_remove.append(index)
+#for index, row in enumerate(full_catalog):
+#    if row['id'] in data_fits['id']:
+#        rows_to_remove.append(index)
 
 print("Rows to Remove from FITS")
 print(len(rows_to_remove))
@@ -310,10 +310,9 @@ print(len(full_catalog))
 
 rows_to_remove = []
 for index, row in enumerate(full_catalog):
-    for filter_type in filter_fluxes:
-        if int(row[filter_type]) < 1 or np.isclose(row[filter_type], 0.0):
-            if int(row['fnu_1mm']) is 0:
-                rows_to_remove.append(index)
+    if np.isclose(row['1.1mm'], 0.0):
+        print(row['1.1mm'])
+        rows_to_remove.append(index)
 print("Rows to Remove from FITS")
 print(len(rows_to_remove))
 
@@ -342,4 +341,4 @@ print("Size After: " + str(len(full_catalog)))
 
 # Now build the FITS file for use everywhere
 
-fits.writeto("aspecs_catalog_remaining2.fits", np.array(full_catalog))
+fits.writeto("aspecs_catalog_franco.fits", np.array(full_catalog))

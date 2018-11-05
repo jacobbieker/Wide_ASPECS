@@ -66,6 +66,10 @@ print(len(full_catalog[spec_z_mask]))
 
 pos_z_mask = full_catalog["z"] > 0.001
 
+from copy import deepcopy
+
+all_catalog = deepcopy(full_catalog)
+
 full_catalog = full_catalog[spec_z_mask]
 
 # Quality control cuts
@@ -89,24 +93,30 @@ Tdust_cols = ["Tdust"]
 
 full_catalog = np.nan_to_num(full_catalog)
 
+
+
 # Now stellar mass distribution
-mass_star, mass_star_error = create_points_and_error("Mstar", full_catalog)
-plt.hist(mass_star, label='Stellar Mass', bins=100)
+spec_mass_star, spec_mass_star_error = create_points_and_error("Mstar", full_catalog)
+mass_star, mass_star_error = create_points_and_error("Mstar", all_catalog)
+plt.hist(mass_star, label='Stellar Mass', bins=100, histtype='step')
+plt.hist(spec_mass_star, label="Spec Stellar Mass", bins=100, histtype='step')
 plt.title("Stellar Mass Distribution")
 plt.xlabel("Log Stellar Mass (Log(Msun))")
 plt.ylabel("Count")
+plt.legend(loc='best')
 plt.show()
 
 # Star Formation vs Stellar Mass
 
-sfr, sfr_error = create_points_and_error("SFR", full_catalog)
-plt.scatter(mass_star, sfr, s=2)
-plt.errorbar(mass_star, sfr, xerr=mass_star_error, yerr=sfr_error)
+sfr, sfr_error = create_points_and_error("SFR", all_catalog)
+spec_sfr, spec_sfr_error = create_points_and_error("SFR", full_catalog)
+plt.scatter(mass_star, sfr, s=2, color='lightgrey')
+plt.scatter(spec_mass_star, spec_sfr, s=2, color='black')
+#plt.errorbar(mass_star, sfr, xerr=mass_star_error, yerr=sfr_error, ecolor='grey', capsize=0, alpha=0.2, fmt='o')
 plt.title("Log Stellar Mass vs Log Star Formation Rate")
 plt.xlabel("Log Stellar Mass (Log(Msun))")
 plt.ylabel("Log Star Formation Rate")
-#plt.xlim(5,np.max(mass_star))
-#plt.ylim(np.min(sfr),np.max(sfr))
+plt.legend(loc='best')
 plt.show()
 
 # Star Formation vs Stellar Mass split by Z
@@ -121,24 +131,44 @@ mid_z_mass, mid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("Mstar
 high_z_mass, high_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", full_catalog, 2, 3)
 vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", full_catalog, 3, 4)
 
+all_low_z_sfr, low_z_sfr_error, low_z_sfr_z = create_points_and_error_by_z("SFR", all_catalog, 0, 1)
+all_mid_z_sfr, mid_z_sfr_error, mid_z_sfr_z = create_points_and_error_by_z("SFR", all_catalog, 1, 2)
+all_high_z_sfr, high_z_sfr_error, high_z_sfr_z = create_points_and_error_by_z("SFR", all_catalog, 2, 3)
+all_vhigh_z_sfr, vhigh_z_sfr_error, vhigh_z_sfr_z = create_points_and_error_by_z("SFR", all_catalog, 3, 4)
 
-f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='row')
-ax1.scatter(low_z_mass, low_z_sfr, color='pink', s=1)
+all_low_z_mass, low_z_mass_error, low_z_mass_z = create_points_and_error_by_z("Mstar", all_catalog, 0, 1)
+all_mid_z_mass, mid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("Mstar", all_catalog, 1, 2)
+all_high_z_mass, high_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", all_catalog, 2, 3)
+all_vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", all_catalog, 3, 4)
+
+
+f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
+ax1.scatter(all_low_z_mass, all_low_z_sfr, color='pink', s=1)
+ax1.scatter(low_z_mass, low_z_sfr, color='black', s=1)
 ax1.plot(np.unique(low_z_mass), np.poly1d(np.polyfit(low_z_mass, low_z_sfr, 1))(np.unique(low_z_mass)), color='r')
+ax1.plot(np.unique(all_low_z_mass), np.poly1d(np.polyfit(all_low_z_mass, all_low_z_sfr, 1))(np.unique(all_low_z_mass)), color='lightgrey')
 ax1.set_title('0 < Z < 1')
-ax2.scatter(mid_z_mass, mid_z_sfr, color='blue', s=1)
+ax2.scatter(all_mid_z_mass, all_mid_z_sfr, color='blue', s=1)
+ax2.scatter(mid_z_mass, mid_z_sfr, color='black', s=1)
 ax2.plot(np.unique(mid_z_mass), np.poly1d(np.polyfit(mid_z_mass, mid_z_sfr, 1))(np.unique(mid_z_mass)), color='r')
+ax2.plot(np.unique(all_mid_z_mass), np.poly1d(np.polyfit(all_mid_z_mass, all_mid_z_sfr, 1))(np.unique(all_mid_z_mass)), color='lightgrey')
 ax2.set_title('1 < Z < 2')
-ax3.scatter(high_z_mass, high_z_sfr, color='green', s=1)
+ax3.scatter(all_high_z_mass, all_high_z_sfr, color='green', s=1)
+ax3.scatter(high_z_mass, high_z_sfr, color='black', s=1)
 ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_sfr, 1))(np.unique(high_z_mass)), color='r')
+ax3.plot(np.unique(all_high_z_mass), np.poly1d(np.polyfit(all_high_z_mass, all_high_z_sfr, 1))(np.unique(all_high_z_mass)), color='lightgrey')
 ax3.set_title('2 < Z < 3')
-ax4.scatter(vhigh_z_mass, vhigh_z_sfr, color='orange', s=1)
+#ax3.set_ylim(-2, 4)
+ax4.scatter(all_vhigh_z_mass, all_vhigh_z_sfr, color='orange', s=1)
+ax4.scatter(vhigh_z_mass, vhigh_z_sfr, color='black', s=1)
 ax4.plot(np.unique(vhigh_z_mass), np.poly1d(np.polyfit(vhigh_z_mass, vhigh_z_sfr, 1))(np.unique(vhigh_z_mass)), color='r')
-#ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error)
+ax4.plot(np.unique(all_vhigh_z_mass), np.poly1d(np.polyfit(all_vhigh_z_mass, all_vhigh_z_sfr, 1))(np.unique(all_vhigh_z_mass)), color='lightgrey')
+#ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error, ecolor='grey', capsize=0, alpha=0.2, fmt='o')
 ax4.set_title('3 < Z < 4')
 f.text(0.5, 0.01, 'Log Stellar Mass (M*)', ha='center')
 f.text(0.01, 0.5, 'Log Star Formation Rate', va='center', rotation='vertical')
 f.show()
+
 
 # Specific Star Formation Rate
 
@@ -150,8 +180,8 @@ plt.xlabel("Log sSFR")
 plt.title("sSFR Distribution")
 plt.show()
 
-plt.scatter(mass_star, ssfr, s=2)
-plt.plot(np.unique(mass_star), np.poly1d(np.polyfit(mass_star, ssfr, 1))(np.unique(mass_star)), color='r')
+plt.scatter(spec_mass_star, ssfr, s=2)
+plt.plot(np.unique(spec_mass_star), np.poly1d(np.polyfit(spec_mass_star, ssfr, 1))(np.unique(spec_mass_star)), color='r')
 #plt.errorbar(mass_star, sfr, xerr=mass_star_error, yerr=sfr_error)
 plt.title("Log Stellar Mass vs Log Specific Star Formation Rate")
 plt.xlabel("Log Stellar Mass (Log(Msun))")
@@ -168,7 +198,7 @@ high_z_ssfr, high_z_ssfr_error, high_z_ssfr_z = create_points_and_error_by_z("sS
 vhigh_z_ssfr, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("sSFR", full_catalog, 3, 4)
 
 
-f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='row')
+f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
 ax1.scatter(low_z_mass, low_z_ssfr, color='pink', s=1)
 ax1.plot(np.unique(low_z_mass), np.poly1d(np.polyfit(low_z_mass, low_z_ssfr, 1))(np.unique(low_z_mass)), color='r')
 ax1.set_title('0 < Z < 1')
@@ -231,3 +261,102 @@ plt.xlabel("Log Dust Mass")
 plt.title("Dust Mass vs Luminosity")
 plt.show()
 
+# Now from Leinhard, Log MStar and Log SFR number and percentage of the total with MUSE vs Non MUSE
+all_mstar_12, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("MStar", all_catalog, 1, 2)
+all_sfr_12, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("SFR", all_catalog, 1, 2)
+
+full_mstar_12, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("MStar", full_catalog, 1, 2)
+full_sfr_12, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("SFR", full_catalog, 1, 2)
+
+all_mstar_23, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("MStar", all_catalog, 2, 3)
+all_sfr_23, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("SFR", all_catalog, 2, 3)
+
+full_mstar_23, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("MStar", full_catalog, 2, 3)
+full_sfr_23, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("SFR", full_catalog, 2, 3)
+
+all_mstar_34, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("MStar", all_catalog, 3, 4)
+all_sfr_34, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("SFR", all_catalog, 3, 4)
+
+full_mstar_34, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("MStar", full_catalog, 3, 4)
+full_sfr_34, vhigh_z_ssfr_error, vhigh_z_ssfr_z = create_points_and_error_by_z("SFR", full_catalog, 3, 4)
+
+f, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, sharex='col', sharey='all')
+ax1.hist(all_mstar_12, color='black', histtype='step', bins=10)
+ax1.set_yscale('log')
+ax1.set_title('1 < Z < 2 LogMStar')
+ax1.hist(full_mstar_12, color='blue', histtype='step', bins=10)
+ax2.set_title('1 < Z < 2 LogSFR')
+ax2.hist(all_sfr_12, color='black', histtype='step', bins=10)
+ax2.hist(full_sfr_12, color='blue', histtype='step', bins=10)
+ax3.set_title('2 < Z < 3 LogMStar')
+ax3.hist(all_mstar_23, color='black', histtype='step', bins=10)
+ax3.hist(full_mstar_23, color='blue', histtype='step', bins=10)
+ax4.set_title('2 < Z < 3 LogSFR')
+ax4.hist(all_sfr_23, color='black', histtype='step', bins=10)
+ax4.hist(full_sfr_23, color='blue', histtype='step', bins=10)
+
+ax6.set_title('3 < Z < 4 LogSFR')
+ax6.hist(all_sfr_34, color='black', histtype='step', bins=10)
+ax6.hist(full_sfr_34, color='blue', histtype='step', bins=10)
+
+ax5.set_title('3 < Z < 4 LogMStar')
+ax5.hist(all_mstar_34, color='black', histtype='step', bins=10)
+ax5.hist(full_mstar_34, color='blue', histtype='step', bins=10)
+
+f.show()
+
+f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='all')
+ax1.hist(all_mstar_12, color='black', histtype='step', bins=10)
+ax1.set_yscale('log')
+ax1.set_title('1 < Z < 2 LogMStar')
+ax1.set_ylabel('Count')
+ax1.set_xlabel('Log M*')
+ax1.hist(full_mstar_12, color='blue', histtype='step', bins=10)
+ax2.set_title('1 < Z < 2 LogSFR')
+ax2.set_ylabel('Count')
+ax2.set_xlabel('Log SFR')
+ax2.hist(all_sfr_12, color='black', histtype='step', bins=10)
+ax2.hist(full_sfr_12, color='blue', histtype='step', bins=10)
+ax3.set_title('2 < Z < 3 LogMStar')
+ax3.set_ylabel('Count')
+ax3.set_xlabel('Log M*')
+ax3.hist(all_mstar_23, color='black', histtype='step', bins=10)
+ax3.hist(full_mstar_23, color='blue', histtype='step', bins=10)
+ax4.set_title('2 < Z < 3 LogSFR')
+ax4.set_ylabel('Count')
+ax4.set_xlabel('Log SFR')
+ax4.hist(all_sfr_23, color='black', histtype='step', bins=10)
+ax4.hist(full_sfr_23, color='blue', histtype='step', bins=10)
+
+f.show()
+
+f, ((ax1, ax2)) = plt.subplots(1, 2, sharex='col', sharey='all')
+ax1.hist(all_mstar_12, color='black', histtype='step', bins=10)
+ax1.set_yscale('log')
+ax1.set_title('1 < Z < 2 LogMStar')
+ax1.set_ylabel('Count')
+ax1.set_xlabel('Log M*')
+ax1.hist(full_mstar_12, color='blue', histtype='step', bins=10)
+ax2.set_title('1 < Z < 2 LogSFR')
+ax2.set_ylabel('Count')
+ax2.set_xlabel('Log SFR')
+ax2.hist(all_sfr_12, color='black', histtype='step', bins=10)
+ax2.hist(full_sfr_12, color='blue', histtype='step', bins=10)
+f.show()
+
+f, ((ax3, ax4)) = plt.subplots(1, 2, sharex='col', sharey='all')
+ax3.set_yscale('log')
+ax3.set_title('2 < Z < 3 LogMStar')
+ax3.set_ylabel('Count')
+ax3.set_xlabel('Log M*')
+ax3.hist(all_mstar_23, color='black', histtype='step', bins=10)
+ax3.hist(full_mstar_23, color='blue', histtype='step', bins=10)
+ax4.set_title('2 < Z < 3 LogSFR')
+ax4.set_ylabel('Count')
+ax4.set_xlabel('Log SFR')
+ax4.hist(all_sfr_23, color='black', histtype='step', bins=10)
+ax4.hist(full_sfr_23, color='blue', histtype='step', bins=10)
+
+f.show()
+
+# Now try the tV
