@@ -93,6 +93,24 @@ spec_catalog = perform_cuts(spec_catalog)
 franco_catalog = perform_cuts(franco_catalog)
 full_catalog = perform_cuts(full_catalog)
 
+spec_ids = full_catalog['id']
+diff_ids = []
+for id in roberto_catalog['id']:
+    if id in spec_ids:
+        diff_ids.append(id)
+# now create smaller catalog with full catalog info
+
+rows_to_use = []
+for index, row in enumerate(full_catalog):
+    if row['id'] in diff_ids:
+        rows_to_use.append(index)
+
+smaller_catalog = full_catalog[rows_to_use]
+print(smaller_catalog)
+Table.write(smaller_catalog, "roberto_full_catalog.fits", format='fits')
+print("Fraction of differing galaxies (Roberto): " + str(len(diff_ids)/len(roberto_catalog)))
+print("Fraction of differing galaxies (Spec): " + str(len(diff_ids)/len(spec_catalog)))
+
 av, av_error = create_points_and_error("A_V", full_catalog)
 rob_av, rob_av_error = create_points_and_error("A_V", roberto_catalog)
 spec_av, spec_av_error = create_points_and_error("A_V", spec_catalog)
