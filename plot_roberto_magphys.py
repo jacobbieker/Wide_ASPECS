@@ -39,7 +39,7 @@ def create_points_and_error_by_z(column_base_name, full_catalog, low_z, high_z):
     return centerpoints, error_bars, z_values
 
 # List of the fits files to open
-roberto_magphys_output = ["/home/jacob/Research/MAGPHYS/roberto2/catalog.fits",
+roberto_magphys_output = ["/home/jacob/Research/MAGPHYS/roberto2/catalog.fits", "/home/jacob/Research/MAGPHYS/roberto10/catalog.fits",
                           "/home/jacob/Research/MAGPHYS/roberto3/catalog.fits", "/home/jacob/Research/MAGPHYS/roberto4/catalog.fits",
                           "/home/jacob/Research/MAGPHYS/roberto5/catalog.fits", "/home/jacob/Research/MAGPHYS/roberto6/catalog.fits",
                           "/home/jacob/Research/MAGPHYS/roberto7/catalog.fits", "/home/jacob/Research/MAGPHYS/roberto8/catalog.fits",
