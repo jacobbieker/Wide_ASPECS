@@ -92,7 +92,7 @@ F850LP = 2238.1
 
 def janksy_to_AB(ab):
     # Given in microJansky, get Jansky for AB Magnitude
-    return -2.5 * np.log10((ab*(1e-6))/3631)
+    return 25.0 -2.5 * np.log10((ab))
 
 def convert_flux_to_mag(flux):
     # Flux is in ergs
@@ -104,7 +104,7 @@ for row in full_catalog:
         if janksy_to_AB(row['f850lp']) < 27.5 and janksy_to_AB(row['f160w']) < 27.5:
             count += 1
 print("Count: ", count)
-
+exit()
 
 # Now the quality cuts
 roberto_catalog = perform_cuts(roberto_catalog)
