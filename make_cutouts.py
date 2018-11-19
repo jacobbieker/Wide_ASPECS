@@ -127,10 +127,11 @@ ax.scatter(aspecs_ra_dec.ra.deg, aspecs_ra_dec.dec.deg, transform=ax.get_transfo
 plt.show()
 idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
 
+
 for index, coord in enumerate(aspecs_ra_dec):
     f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[index]],
                               id=index, aspecs_freqs=aspecs_freqs)
-    f.savefig("Skelton_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + ".png", dpi=300)
+    f.savefig(str("Skelton_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + "_Sep_{:0.3f}" +".png").format(coord.separation(ra_dec[idx[index]]).arcsecond), dpi=300)
     f.clf()
     plt.close()
 
@@ -138,20 +139,22 @@ for index, coord in enumerate(aspecs_ra_dec):
 catalog_goodss = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb3.fits")
 full_goodss = catalog_goodss[1].data
 aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
-ra_dec = SkyCoord(full_goodss['ra'] * u.deg, full_goodss['dec'] * u.deg, frame='fk5')
+ra_dec = SkyCoord(full_goodss['ra'] * u.deg, full_goodss['dc'] * u.deg, frame='fk5')
+idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
+
 
 for index, coord in enumerate(aspecs_ra_dec):
     f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[index]],
                               id=index, aspecs_freqs=aspecs_freqs)
-    f.savefig("Full_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + ".png", dpi=300)
+    f.savefig(str("Full_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + "_Sep_{:0.3f}" +".png").format(coord.separation(ra_dec[idx[index]]).arcsecond), dpi=300)
     f.clf()
     plt.close()
-
 
 # Now do it with the Roberto's Catalog, getting the Ra and Dec from the full catalog
 roberto_catalog = fits.open("data/magphys_in.fits")
 spec_ids = full_goodss['id']
 diff_ids = []
+roberto_catalog = roberto_catalog[1].data
 for id in roberto_catalog['id']:
     if id in spec_ids:
         diff_ids.append(id)
@@ -164,11 +167,12 @@ for index, row in enumerate(full_goodss):
 
 smaller_catalog = full_goodss[rows_to_use]
 aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
-ra_dec = SkyCoord(smaller_catalog['ra'] * u.deg, smaller_catalog['dec'] * u.deg, frame='fk5')
+ra_dec = SkyCoord(smaller_catalog['ra'] * u.deg, smaller_catalog['dc'] * u.deg, frame='fk5')
+idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
 
 for index, coord in enumerate(aspecs_ra_dec):
     f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[index]],
                               id=index, aspecs_freqs=aspecs_freqs)
-    f.savefig("Roberto_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + ".png", dpi=300)
+    f.savefig(str("Roberto_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + "_Sep_{:0.3f}" +".png").format(coord.separation(ra_dec[idx[index]]).arcsecond), dpi=300)
     f.clf()
     plt.close()

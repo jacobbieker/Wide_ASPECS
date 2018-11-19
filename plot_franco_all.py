@@ -6,7 +6,7 @@ from astropy.table import vstack
 from astropy.table import Table, hstack
 from scipy import stats
 from numpy.polynomial.polynomial import polyfit
-
+from aspecs_catalog_builder import compare_catalog_locations
 
 def create_points_and_error(column_base_name, full_catalog):
     centerpoints = full_catalog[str(column_base_name + "_50")]
@@ -85,7 +85,17 @@ spec_z_mask = (full_catalog["z_spec_3dh"] > 0.001) | (full_catalog["zm_vds"] > 0
         full_catalog["zm_coeS"] > 0.001) \
               | (full_catalog["zs_mor"] > 0.001) | (full_catalog["zm_ina"] > 0.001) | (full_catalog["zm_her"] > 0.001)
 
+muse_z_mask = (full_catalog['zm_ina'] > 0.001) | (full_catalog['zm_her'] > 0.001)
+
 spec_catalog = full_catalog[spec_z_mask]
+muse_catalog = full_catalog[muse_z_mask]
+
+leinhardt_catalog = compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+
+leinhardt_muse_z_mask = (leinhardt_catalog['zm_ina'] > 0.001) | (leinhardt_catalog['zm_her'] > 0.001) | (leinhardt_catalog['muse_wide_z'] > 0.0001)
+
+leinhardt_catalog = leinhardt_catalog[leinhardt_muse_z_mask]
+leinhardt_catalog = perform_cuts(leinhardt_catalog)
 
 F850LP = 2238.1
 
@@ -104,13 +114,13 @@ for row in full_catalog:
         if janksy_to_AB(row['f850lp']) < 27.5 and janksy_to_AB(row['f160w']) < 27.5:
             count += 1
 print("Count: ", count)
-exit()
 
 # Now the quality cuts
 roberto_catalog = perform_cuts(roberto_catalog)
 spec_catalog = perform_cuts(spec_catalog)
 franco_catalog = perform_cuts(franco_catalog)
 full_catalog = perform_cuts(full_catalog)
+muse_catalog = perform_cuts(muse_catalog)
 count = 0
 for row in full_catalog:
     if row['f850lp'] > 0.00001 and row['f160w'] > 0.00001:
@@ -249,7 +259,7 @@ ax1.plot(np.unique(spec_low_z_mass),
 ax1.scatter(rob_low_z_mass, rob_low_z_sfr, color='black', marker='s', label='Roberto', s=1)
 ax1.plot(np.unique(rob_low_z_mass), np.poly1d(np.polyfit(rob_low_z_mass, rob_low_z_sfr, 1))(np.unique(rob_low_z_mass)),
          label='Roberto Fit', color='green')
-# ax1.scatter(franco_low_z_mass, franco_low_z_sfr, color='yellow1, marker='*', s=8)
+ax1.scatter(franco_low_z_mass, franco_low_z_sfr, color='yellow', marker='*', s=8)
 ax1.set_title('0 < Z < 1')
 ax2.errorbar(mid_z_mass, mid_z_sfr, yerr=mid_z_sfr_error, xerr=mid_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='lightgrey', elinewidth=1, zorder=-32)
@@ -260,7 +270,7 @@ ax2.plot(np.unique(spec_mid_z_mass),
 ax2.scatter(rob_mid_z_mass, rob_mid_z_sfr, color='black', marker='s', s=1)
 ax2.plot(np.unique(rob_mid_z_mass), np.poly1d(np.polyfit(rob_mid_z_mass, rob_mid_z_sfr, 1))(np.unique(rob_mid_z_mass)),
          color='green')
-# ax2.scatter(franco_mid_z_mass, franco_mid_z_sfr, color='yellow1, marker='*', s=8)
+ax2.scatter(franco_mid_z_mass, franco_mid_z_sfr, color='yellow', marker='*', s=8)
 ax2.set_title('1 < Z < 2')
 ax3.errorbar(high_z_mass, high_z_sfr, yerr=high_z_sfr_error, xerr=high_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='lightgrey', elinewidth=1, zorder=-32)
@@ -271,7 +281,7 @@ ax3.plot(np.unique(spec_high_z_mass),
 ax3.scatter(rob_high_z_mass, rob_high_z_sfr, color='black', marker='s', s=1)
 ax3.plot(np.unique(rob_high_z_mass),
          np.poly1d(np.polyfit(rob_high_z_mass, rob_high_z_sfr, 1))(np.unique(rob_high_z_mass)), color='green')
-# ax3.scatter(franco_high_z_mass, franco_high_z_sfr, color='yellow1, marker='*', s=8)
+ax3.scatter(franco_high_z_mass, franco_high_z_sfr, color='yellow', marker='*', s=8)
 ax3.set_title('2 < Z < 3')
 ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error, ecolor='lightgrey', fmt='.',
              ms=1, mec='lightgrey', elinewidth=1, zorder=-32)
@@ -283,7 +293,7 @@ ax4.plot(np.unique(spec_vhigh_z_mass),
 ax4.scatter(rob_vhigh_z_mass, rob_vhigh_z_sfr, color='black', marker='s', s=1)
 ax4.plot(np.unique(rob_vhigh_z_mass),
          np.poly1d(np.polyfit(rob_vhigh_z_mass, rob_vhigh_z_sfr, 1))(np.unique(rob_vhigh_z_mass)), color='green')
-# ax4.scatter(franco_vhigh_z_mass, franco_vhigh_z_sfr, color='yellow1, marker='*', s=8)
+ax4.scatter(franco_vhigh_z_mass, franco_vhigh_z_sfr, color='yellow', marker='*', s=8)
 # ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error)
 ax4.set_title('3 < Z < 4')
 handles, labels = ax1.get_legend_handles_labels()
@@ -292,7 +302,7 @@ f.text(0.5, 0.01, 'Log Stellar Mass (Mstar)', ha='center')
 f.text(0.01, 0.5, 'Log Star Formation Rate', va='center', rotation='vertical')
 f.savefig("MstarVsSFRbyZ04.png", bbox_inches='tight', dpi=300)
 f.show()
-
+exit()
 # Only Spectroscopic and Roberto
 
 f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
@@ -363,7 +373,7 @@ plt.errorbar(mass, sfr, yerr=sfr_error, xerr=mass_error, ecolor='lightgrey', fmt
              label='All', elinewidth=1, zorder=-32)
 plt.scatter(spec_mass, spec_sfr, color='yellow', label='Spectroscopic Z', s=1)
 plt.scatter(rob_mass, rob_sfr, color='black', label='Roberto', s=1)
-# plt.scatter(franco_mass, franco_sfr, color='yellow1, marker="*", label='Franco et. al.', s=8)
+plt.scatter(franco_mass, franco_sfr, color='yellow', marker="*", label='Franco et. al.', s=8)
 plt.plot(np.unique(mass), np.poly1d(np.polyfit(mass, sfr, 1))(np.unique(mass)), color='red', label='All Fit')
 plt.plot(np.unique(rob_mass), np.poly1d(np.polyfit(rob_mass, rob_sfr, 1))(np.unique(rob_mass)), color='green',
          label='Roberto fit')
@@ -468,24 +478,53 @@ plt.show()
 
 # Plot the histograms that Leinhard has with the percentages
 
+muse_low_z_sfr, low_z_sfr_error, low_z_sfr_z = create_points_and_error_by_z("SFR", muse_catalog, 0, 1)
+muse_mid_z_sfr, mid_z_sfr_error, mid_z_sfr_z = create_points_and_error_by_z("SFR", muse_catalog, 1, 2)
+muse_high_z_sfr, high_z_sfr_error, high_z_sfr_z = create_points_and_error_by_z("SFR", muse_catalog, 2, 3)
+muse_vhigh_z_sfr, vhigh_z_sfr_error, vhigh_z_sfr_z = create_points_and_error_by_z("SFR", muse_catalog, 3, 4)
+
+muse_low_z_mass, low_z_mass_error, low_z_mass_z = create_points_and_error_by_z("Mstar", muse_catalog, 0, 1)
+muse_mid_z_mass, mid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("Mstar", muse_catalog, 1, 2)
+muse_high_z_mass, high_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", muse_catalog, 2, 3)
+muse_vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", muse_catalog, 3, 4)
+
+leinhardt_low_z_sfr, low_z_sfr_error, low_z_sfr_z = create_points_and_error_by_z("SFR", leinhardt_catalog, 0, 1)
+leinhardt_mid_z_sfr, mid_z_sfr_error, mid_z_sfr_z = create_points_and_error_by_z("SFR", leinhardt_catalog, 1, 2)
+leinhardt_high_z_sfr, high_z_sfr_error, high_z_sfr_z = create_points_and_error_by_z("SFR", leinhardt_catalog, 2, 3)
+leinhardt_vhigh_z_sfr, vhigh_z_sfr_error, vhigh_z_sfr_z = create_points_and_error_by_z("SFR", leinhardt_catalog, 3, 4)
+
+leinhardt_low_z_mass, low_z_mass_error, low_z_mass_z = create_points_and_error_by_z("Mstar", leinhardt_catalog, 0, 1)
+leinhardt_mid_z_mass, mid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("Mstar", leinhardt_catalog, 1, 2)
+leinhardt_high_z_mass, high_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", leinhardt_catalog, 2, 3)
+leinhardt_vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", leinhardt_catalog, 3, 4)
+
+
 f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='col', sharey='all')
 ax1.hist(low_z_mass, color='lightgrey', histtype='step', bins=10)
 ax1.set_yscale('log')
 ax1.set_title('0 < Z < 1')
 ax1.hist(spec_low_z_mass, color='yellow', histtype='step', bins=10)
 ax1.hist(rob_low_z_mass, color='black', histtype='step', bins=10)
+ax1.hist(muse_low_z_mass, color='green', histtype='step', bins=10)
+ax1.hist(leinhardt_low_z_mass, color='orange', histtype='step', bins=10)
 ax2.set_title('0 < Z < 1')
 ax2.hist(low_z_sfr, color='lightgrey', histtype='step', bins=10)
 ax2.hist(spec_low_z_sfr, color='yellow', histtype='step', bins=10)
 ax2.hist(rob_low_z_sfr, color='black', histtype='step', bins=10)
+ax2.hist(muse_low_z_sfr, color='green', histtype='step', bins=10)
+ax2.hist(leinhardt_low_z_sfr, color='orange', histtype='step', bins=10)
 ax3.set_title('1 < Z < 2')
 ax3.hist(mid_z_mass, color='lightgrey', histtype='step', bins=10)
 ax3.hist(spec_mid_z_mass, color='yellow', histtype='step', bins=10)
 ax3.hist(rob_mid_z_mass, color='black', histtype='step', bins=10)
+ax3.hist(muse_mid_z_mass, color='green', histtype='step', bins=10)
+ax3.hist(leinhardt_mid_z_mass, color='orange', histtype='step', bins=10)
 ax4.set_title('1 < Z < 2')
 ax4.hist(mid_z_sfr, color='lightgrey', histtype='step', label='All', bins=10)
 ax4.hist(spec_mid_z_sfr, color='yellow', histtype='step', label='Spectroscopic', bins=10)
 ax4.hist(rob_mid_z_sfr, color='black', histtype='step', label='Roberto', bins=10)
+ax4.hist(muse_mid_z_sfr, color='green', histtype='step', label='MUSE', bins=10)
+ax4.hist(leinhardt_mid_z_sfr, color='orange', histtype='step', label='Leindert', bins=10)
 handles, labels = ax4.get_legend_handles_labels()
 f.legend(loc='best', handles=handles, labels=labels, prop={'size': 6})
 f.text(0.25, 0.01, 'Log Stellar Mass (Mstar)', ha='center')
@@ -501,18 +540,26 @@ ax1.set_yscale('log')
 ax1.set_title('2 < Z < 3')
 ax1.hist(spec_high_z_mass, color='yellow', histtype='step', bins=10)
 ax1.hist(rob_high_z_mass, color='black', histtype='step', bins=10)
+ax1.hist(muse_high_z_mass, color='green', histtype='step', bins=10)
+ax1.hist(leinhardt_high_z_mass, color='orange', histtype='step', bins=10)
 ax2.set_title('2 < Z < 3')
 ax2.hist(high_z_sfr, color='lightgrey', histtype='step', bins=10)
 ax2.hist(spec_high_z_sfr, color='yellow', histtype='step', bins=10)
 ax2.hist(rob_high_z_sfr, color='black', histtype='step', bins=10)
+ax2.hist(muse_high_z_sfr, color='green', histtype='step', bins=10)
+ax2.hist(leinhardt_high_z_sfr, color='orange', histtype='step', bins=10)
 ax3.set_title('3 < Z < 4')
 ax3.hist(vhigh_z_mass, color='lightgrey', histtype='step', bins=10)
 ax3.hist(spec_vhigh_z_mass, color='yellow', histtype='step', bins=10)
 ax3.hist(rob_vhigh_z_mass, color='black', histtype='step', bins=10)
+ax3.hist(muse_vhigh_z_mass, color='green', histtype='step', bins=10)
+ax3.hist(leinhardt_vhigh_z_mass, color='orange', histtype='step', bins=10)
 ax4.set_title('3 < Z < 4')
 ax4.hist(vhigh_z_sfr, color='lightgrey', histtype='step', label='All', bins=10)
 ax4.hist(spec_vhigh_z_sfr, color='yellow', histtype='step', label='Spectroscopic', bins=10)
 ax4.hist(rob_vhigh_z_sfr, color='black', histtype='step', label='Roberto', bins=10)
+ax4.hist(muse_vhigh_z_sfr, color='green', histtype='step', bins=10, label='MUSE')
+ax4.hist(leinhardt_vhigh_z_sfr, color='orange', histtype='step', label='Leindert', bins=10)
 handles, labels = ax4.get_legend_handles_labels()
 f.legend(loc='best', handles=handles, labels=labels, prop={'size': 6})
 f.text(0.25, 0.01, 'Log Stellar Mass (Mstar)', ha='center')
@@ -521,6 +568,8 @@ f.text(0.01, 0.25, 'Count', va='center', rotation='vertical')
 f.text(0.01, 0.75, 'Count', va='center', rotation='vertical')
 f.savefig("LeinhardHist24.png", bbox_inches='tight', dpi=300)
 f.show()
+
+exit()
 
 # plot MStar vs sSFR
 

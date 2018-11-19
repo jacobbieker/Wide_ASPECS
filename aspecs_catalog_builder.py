@@ -56,7 +56,7 @@ def build_aspecs_catalog(initial_catalog=None, dec_key='dec', ra_key='ra', frame
     print("Distances: ")
     num_in_close = 0
     for index, id in enumerate(idx):
-        if coords[index].separation(ra_dec[id]).arcsecond < 1.0:
+        if coords[index].separation(ra_dec[id]).arcsecond < 0.75:
             num_in_close += 1
             print("\nMatch: " + str(index))
             print("Distance: " + str(coords[index].separation(ra_dec[id]).arcsecond))
@@ -81,10 +81,90 @@ def build_aspecs_catalog(initial_catalog=None, dec_key='dec', ra_key='ra', frame
 def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec_key='dec', frame='fk5'):
     hdu_list = fits.open(initial_catalog)
     initial_catalog = hdu_list[1].data
+    emline = fits.open("data/MW_44fields_emline_table_v1.0.fits")[1].data
+    diff_ids = []
+    for id in initial_catalog['unique_id']:
+        if id in emline['UNIQUE_ID']:
+            diff_ids.append(id)
+    rows_to_use = []
+    for index, row in enumerate(initial_catalog):
+        if row['unique_id'] in diff_ids:
+            rows_to_use.append(index)
+    initial_catalog = initial_catalog[rows_to_use]
+
     ra_dec = SkyCoord(initial_catalog[ra_key] * u.deg, initial_catalog[dec_key] * u.deg, frame=frame)
     hdu_list = fits.open(roberto_catalog)
     rob_cat = hdu_list[1].data
     roberto_ra_dec = SkyCoord(rob_cat['ra'] * u.deg, rob_cat['dc'] * u.deg, frame=frame)
+
+    # Now compare the two catalogs to find matches
+    idx, d2d, d3d = roberto_ra_dec.match_to_catalog_sky(ra_dec)
+    # Matches less than 0.5 arc seconds
+    less_than_5 = []
+    # Less than 0.25 arc seconds
+    less_than_25 = []
+    # Less than 1 arc second
+    less_than_1 = []
+    for index, id in enumerate(idx):
+        if roberto_ra_dec[index].separation(ra_dec[id]).arcsecond < 1:
+            less_than_1.append(id)
+        if roberto_ra_dec[index].separation(ra_dec[id]).arcsecond < 0.5:
+            less_than_5.append(id)
+        if roberto_ra_dec[index].separation(ra_dec[id]).arcsecond < 0.25:
+            less_than_25.append(id)
+            if False:
+                print("\nMatch: " + str(index))
+                print("Location: " + str(roberto_ra_dec[index]))
+                print("Distance: " + str(roberto_ra_dec[index].separation(ra_dec[id]).arcsecond))
+                try:
+                    print("MUSE Catalog Sep: " + str(initial_catalog[id]['skelton_sep']))
+                    print("Difference Between MUSE and Roberto: " + str(initial_catalog[id]['skelton_sep'] - roberto_ra_dec[index].separation(ra_dec[id]).arcsecond))
+                    print("Catalog ID: " + str(rob_cat[index]['id']))
+                    print("In Skelton et al. Catalog: " + str(rob_cat[index]['flag_3dh']))
+                    print("Skelton et al. ID: " + str(initial_catalog[id]['skelton_id']))
+                    print("MUSE Catalog ID: " + str(initial_catalog[id]['unique_id']))
+                except:
+                    continue
+
+    print("Less than 1.0 arcseconds: " + str(len(np.unique(less_than_1))))
+    print("Less than 0.5 arcseconds: " + str(len(np.unique(less_than_5))))
+    print("Less than 0.25 arcseconds: " + str(len(np.unique(less_than_25))))
+
+    roberto_catalog = Table.read(roberto_catalog, format='fits')
+    # Now add those matches within a given constraint to the FITS file to get add another Z fit
+    roberto_catalog['muse_wide_z'] = np.zeros(len(rob_cat['ra']))
+    roberto_catalog['muse_wide_z_err'] = np.zeros(len(rob_cat['ra']))
+    roberto_catalog['muse_id'] = np.zeros(len(rob_cat['ra']))
+    print(idx)
+    total_matches = 0
+    not_in_error_z = []
+    for index, galaxy in enumerate(idx):
+        # Change this if want better/worse coverage
+        if roberto_ra_dec[index].separation(ra_dec[galaxy]).arcsecond < 0.25:
+            total_matches += 1
+            roberto_catalog[index]['muse_wide_z'] = initial_catalog[galaxy]['z']
+            roberto_catalog[index]['muse_wide_z_err'] = initial_catalog[galaxy]['z_err']
+            roberto_catalog[index]['muse_id'] = initial_catalog[galaxy]['unique_id']
+            low_z_range = np.round(roberto_catalog[index]['muse_wide_z'] - roberto_catalog[index]['muse_wide_z_err'], decimals=3)
+            high_z_range = np.round(roberto_catalog[index]['muse_wide_z'] + roberto_catalog[index]['muse_wide_z_err'], decimals=3)
+
+            if roberto_catalog[index]['z'] < low_z_range or roberto_catalog[index]['z'] > high_z_range:
+                # Offset not consistent
+                not_in_error_z.append(index)
+
+    print("Number of inconsistent matches: " + str(len(not_in_error_z)) + "/" + str(total_matches))
+    print(not_in_error_z)
+    for index in not_in_error_z:
+        print("\nMUSE ID: " + str(roberto_catalog[index]['muse_id']))
+        print("Roberto Best Z: " + str(roberto_catalog[index]["z"]))
+        print("MUSE Best Z: " + str(np.round(roberto_catalog[index]["muse_wide_z"], decimals=3)) +"+-" + str(np.round(roberto_catalog[index]["muse_wide_z_err"], decimals=3)))
+        print("Difference: " + str(np.round(roberto_catalog[index]['muse_wide_z'] - roberto_catalog[index]['z'], decimals=3)))
+
+    return roberto_catalog
+
+def compare_open_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec_key='dec', frame='fk5'):
+    ra_dec = SkyCoord(initial_catalog[ra_key] * u.deg, initial_catalog[dec_key] * u.deg, frame=frame)
+    roberto_ra_dec = SkyCoord(roberto_catalog['ra'] * u.deg, roberto_catalog['dc'] * u.deg, frame=frame)
 
     # Now compare the two catalogs to find matches
     idx, d2d, d3d = roberto_ra_dec.match_to_catalog_sky(ra_dec)
@@ -101,39 +181,48 @@ def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec
             less_than_5.append([index, id])
         if roberto_ra_dec[index].separation(ra_dec[id]).arcsecond < 0.25:
             less_than_25.append([index, id])
-            print("\nMatch: " + str(index))
-            print("Location: " + str(roberto_ra_dec[index]))
-            print("Distance: " + str(roberto_ra_dec[index].separation(ra_dec[id]).arcsecond))
-            try:
-                print("MUSE Catalog Sep: " + str(initial_catalog[id]['skelton_sep']))
-                print("Difference Between MUSE and Roberto: " + str(initial_catalog[id]['skelton_sep'] - roberto_ra_dec[index].separation(ra_dec[id]).arcsecond))
-                print("Catalog ID: " + str(rob_cat[index]['id']))
-                print("In Skelton et al. Catalog: " + str(rob_cat[index]['flag_3dh']))
-                print("Skelton et al. ID: " + str(initial_catalog[id]['skelton_id']))
-                print("MUSE Catalog ID: " + str(initial_catalog[id]['unique_id']))
-            except:
-                continue
+            if False:
+                print("\nMatch: " + str(index))
+                print("Location: " + str(roberto_ra_dec[index]))
+                print("Distance: " + str(roberto_ra_dec[index].separation(ra_dec[id]).arcsecond))
+                try:
+                    print("MUSE Catalog Sep: " + str(initial_catalog[id]['skelton_sep']))
+                    print("Difference Between MUSE and Roberto: " + str(initial_catalog[id]['skelton_sep'] - roberto_ra_dec[index].separation(ra_dec[id]).arcsecond))
+                    print("Catalog ID: " + str(roberto_catalog[index]['id']))
+                    print("In Skelton et al. Catalog: " + str(roberto_catalog[index]['flag_3dh']))
+                    print("Skelton et al. ID: " + str(initial_catalog[id]['skelton_id']))
+                    print("MUSE Catalog ID: " + str(initial_catalog[id]['unique_id']))
+                except:
+                    continue
 
     print("Less than 1.0 arcseconds: " + str(len(less_than_1)))
     print("Less than 0.5 arcseconds: " + str(len(less_than_5)))
     print("Less than 0.25 arcseconds: " + str(len(less_than_25)))
 
-    roberto_catalog = Table.read(roberto_catalog, format='fits')
-    # Now add those matches within a given constraint to the FITS file to get add another Z fit
-    roberto_catalog['muse_wide_z'] = np.zeros(len(rob_cat['ra']))
-    roberto_catalog['muse_wide_z_err'] = np.zeros(len(rob_cat['ra']))
-    print(idx)
-    for index, galaxy in enumerate(idx):
-        # Change this if want better/worse coverage
-        if roberto_ra_dec[index].separation(ra_dec[galaxy]).arcsecond < 1:
-            roberto_catalog[galaxy]['muse_wide_z'] = initial_catalog[galaxy]['z']
-            roberto_catalog[galaxy]['muse_wide_z_err'] = initial_catalog[galaxy]['z_err']
-
-    return roberto_catalog
-
-"""
 build_aspecs_catalog(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), dec_key='dc')
 build_aspecs_catalog(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
 
 compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+"""
+full_goodss = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb3.fits")
+full_goodss = full_goodss[1].data
+roberto_catalog = fits.open("data/magphys_in.fits")
+spec_ids = full_goodss['id']
+diff_ids = []
+roberto_catalog = roberto_catalog[1].data
+for id in roberto_catalog['id']:
+    if id in spec_ids:
+        diff_ids.append(id)
+# now create smaller catalog with full catalog info
+
+rows_to_use = []
+for index, row in enumerate(full_goodss):
+    if row['id'] in diff_ids:
+        rows_to_use.append(index)
+
+smaller_catalog = full_goodss[rows_to_use]
+
+initial_catalog = fits.open(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))[1].data
+
+compare_open_catalog_locations(smaller_catalog, initial_catalog)
 """
