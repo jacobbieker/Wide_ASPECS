@@ -62,6 +62,29 @@ def create_aspecs_cutouts(aspecs_coordinates, fits_files, fits_names, wcs_data, 
     return f
 
 
+# ASPECS_Data Cubes
+aspecs_a1_chn = fits.open("/home/jacob/Research/gs_A1_2chn.fits")
+aspecs_a2_chn = fits.open("/home/jacob/Research/gs_A2_2chn.fits")
+
+print(aspecs_a2_chn.info())
+print(aspecs_a1_chn.info())
+print(aspecs_a1_chn[0].header)
+aspecs_a1_chn_data = aspecs_a1_chn[0].data
+print(aspecs_a2_chn[0].data[0, 400, 400])
+print(aspecs_a2_chn[1].columns)
+print(aspecs_a1_chn[0].shape)
+f160w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")
+w = wcs.WCS(f160w_goodss[0].header)
+ax = plt.subplot(projection=w)
+image_data = np.reshape(aspecs_a1_chn[0].data, (480, 2048, 2048))
+image_data = np.sum(image_data, axis=0)
+ax.imshow(image_data, cmap='gray')
+aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
+ax.scatter(aspecs_ra_dec.ra.deg, aspecs_ra_dec.dec.deg, transform=ax.get_transform('fk5'), s=100,
+           edgecolor='black', facecolor='none')
+plt.show()
+exit()
+
 f125w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f125w/goodss_3dhst.v4.0.F125W_orig_sci.fits")
 f140w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f140w/goodss_3dhst.v4.0.F140W_orig_sci.fits")
 f160w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")

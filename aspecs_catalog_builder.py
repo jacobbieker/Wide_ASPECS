@@ -56,7 +56,7 @@ def build_aspecs_catalog(initial_catalog=None, dec_key='dec', ra_key='ra', frame
     print("Distances: ")
     num_in_close = 0
     for index, id in enumerate(idx):
-        if coords[index].separation(ra_dec[id]).arcsecond < 0.75:
+        if coords[index].separation(ra_dec[id]).arcsecond < 1.0:
             num_in_close += 1
             print("\nMatch: " + str(index))
             print("Distance: " + str(coords[index].separation(ra_dec[id]).arcsecond))
@@ -135,31 +135,62 @@ def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec
     roberto_catalog['muse_wide_z'] = np.zeros(len(rob_cat['ra']))
     roberto_catalog['muse_wide_z_err'] = np.zeros(len(rob_cat['ra']))
     roberto_catalog['muse_id'] = np.zeros(len(rob_cat['ra']))
+    roberto_catalog['muse_quality'] = np.zeros(len(rob_cat['ra']))
     print(idx)
     total_matches = 0
     not_in_error_z = []
     for index, galaxy in enumerate(idx):
         # Change this if want better/worse coverage
-        if roberto_ra_dec[index].separation(ra_dec[galaxy]).arcsecond < 0.25:
+        if roberto_ra_dec[index].separation(ra_dec[galaxy]).arcsecond < 0.5:
             total_matches += 1
             roberto_catalog[index]['muse_wide_z'] = initial_catalog[galaxy]['z']
             roberto_catalog[index]['muse_wide_z_err'] = initial_catalog[galaxy]['z_err']
             roberto_catalog[index]['muse_id'] = initial_catalog[galaxy]['unique_id']
-            low_z_range = np.round(roberto_catalog[index]['muse_wide_z'] - roberto_catalog[index]['muse_wide_z_err'], decimals=3)
-            high_z_range = np.round(roberto_catalog[index]['muse_wide_z'] + roberto_catalog[index]['muse_wide_z_err'], decimals=3)
+            roberto_catalog[index]['muse_quality'] = initial_catalog[galaxy]['confidence']
+            low_z_range = np.round(roberto_catalog[index]['muse_wide_z'] - roberto_catalog[index]['muse_wide_z_err'], decimals=3)-0.15
+            high_z_range = np.round(roberto_catalog[index]['muse_wide_z'] + roberto_catalog[index]['muse_wide_z_err'], decimals=3)+0.15
 
             if roberto_catalog[index]['z'] < low_z_range or roberto_catalog[index]['z'] > high_z_range:
                 # Offset not consistent
                 not_in_error_z.append(index)
 
-    print("Number of inconsistent matches: " + str(len(not_in_error_z)) + "/" + str(total_matches))
     print(not_in_error_z)
     for index in not_in_error_z:
         print("\nMUSE ID: " + str(roberto_catalog[index]['muse_id']))
         print("Roberto Best Z: " + str(roberto_catalog[index]["z"]))
         print("MUSE Best Z: " + str(np.round(roberto_catalog[index]["muse_wide_z"], decimals=3)) +"+-" + str(np.round(roberto_catalog[index]["muse_wide_z_err"], decimals=3)))
         print("Difference: " + str(np.round(roberto_catalog[index]['muse_wide_z'] - roberto_catalog[index]['z'], decimals=3)))
+    print("Number of inconsistent matches: " + str(len(not_in_error_z)) + "/" + str(total_matches))
+    roberto_magphys = Table.read("/home/jacob/Research/magphys_in_latest.fits", format='fits')
+    print(roberto_magphys.columns)
+    print(len(roberto_magphys))
 
+    # Check the same Z redshifts vs both default and muse wide Z
+    same_as_muse = 0
+    same_as_overall = 0
+    not_same = 0
+    for index, galaxy in enumerate(roberto_magphys):
+        # Get the ID
+        id_galaxy = galaxy['id']
+
+        id_mask = (roberto_catalog['id'] == id_galaxy)
+        # Check if it is same Z
+        gal = roberto_catalog[id_mask]
+        # Same ID
+        if np.isclose(galaxy['z'],gal['muse_wide_z']):
+            #print("\nSame As MUSE Z ID: " + str(id_galaxy))
+            same_as_muse += 1
+        if np.isclose(galaxy['z'], gal['z']):
+            #print("\nSame Overall Z ID: " + str(id_galaxy))
+            same_as_overall += 1
+        if not np.isclose(galaxy['z'], gal['z']) and not np.isclose(galaxy['z'], gal['muse_wide_z']):
+            not_same += 1
+
+    print("Same Overall: " + str(same_as_overall))
+    print("Same as MUSE: " + str(same_as_muse))
+    print("Not Same: " + str(not_same))
+
+    roberto_catalog.write("roberto_catalog_muse.fits", format='fits')
     return roberto_catalog
 
 def compare_open_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec_key='dec', frame='fk5'):
@@ -199,10 +230,13 @@ def compare_open_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra'
     print("Less than 0.5 arcseconds: " + str(len(less_than_5)))
     print("Less than 0.25 arcseconds: " + str(len(less_than_25)))
 
-build_aspecs_catalog(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), dec_key='dc')
-build_aspecs_catalog(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
 
-compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+if __name__ == "__main__":
+    #build_aspecs_catalog(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), dec_key='dc')
+    #build_aspecs_catalog(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+    build_aspecs_catalog(os.path.join("roberto_catalog_muse.fits"), dec_key='dc')
+
+    compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
 """
 full_goodss = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb3.fits")
 full_goodss = full_goodss[1].data
