@@ -130,16 +130,18 @@ def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec
     print("Less than 0.5 arcseconds: " + str(len(np.unique(less_than_5))))
     print("Less than 0.25 arcseconds: " + str(len(np.unique(less_than_25))))
 
-    roberto_catalog = Table.read(roberto_catalog, format='fits')
+    roberto_catalog = Table.read("roberto_catalog_muse_skelton.fits", format='fits')
     # Now add those matches within a given constraint to the FITS file to get add another Z fit
     roberto_catalog['muse_wide_z'] = np.zeros(len(rob_cat['ra']))
     roberto_catalog['muse_wide_z_err'] = np.zeros(len(rob_cat['ra']))
     roberto_catalog['muse_id'] = np.zeros(len(rob_cat['ra']))
     roberto_catalog['muse_quality'] = np.zeros(len(rob_cat['ra']))
+    roberto_catalog['skelton_id'] = np.zeros(len(rob_cat['ra']))
     print(idx)
     total_matches = 0
     not_in_error_z = []
     for index, galaxy in enumerate(idx):
+        # Use
         # Change this if want better/worse coverage
         if roberto_ra_dec[index].separation(ra_dec[galaxy]).arcsecond < 0.5:
             total_matches += 1
@@ -147,6 +149,7 @@ def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec
             roberto_catalog[index]['muse_wide_z_err'] = initial_catalog[galaxy]['z_err']
             roberto_catalog[index]['muse_id'] = initial_catalog[galaxy]['unique_id']
             roberto_catalog[index]['muse_quality'] = initial_catalog[galaxy]['confidence']
+            roberto_catalog[index]['skelton_id'] = initial_catalog[galaxy]['skelton_id']
             low_z_range = np.round(roberto_catalog[index]['muse_wide_z'] - roberto_catalog[index]['muse_wide_z_err'], decimals=3)-0.15
             high_z_range = np.round(roberto_catalog[index]['muse_wide_z'] + roberto_catalog[index]['muse_wide_z_err'], decimals=3)+0.15
 
@@ -155,7 +158,9 @@ def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec
                 not_in_error_z.append(index)
 
     print(not_in_error_z)
+    muse_error_ids = []
     for index in not_in_error_z:
+        muse_error_ids.append(roberto_catalog[index]['muse_id'])
         print("\nMUSE ID: " + str(roberto_catalog[index]['muse_id']))
         print("Roberto Best Z: " + str(roberto_catalog[index]["z"]))
         print("MUSE Best Z: " + str(np.round(roberto_catalog[index]["muse_wide_z"], decimals=3)) +"+-" + str(np.round(roberto_catalog[index]["muse_wide_z_err"], decimals=3)))
@@ -189,8 +194,9 @@ def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec
     print("Same Overall: " + str(same_as_overall))
     print("Same as MUSE: " + str(same_as_muse))
     print("Not Same: " + str(not_same))
+    print(muse_error_ids)
 
-    roberto_catalog.write("roberto_catalog_muse.fits", format='fits')
+    roberto_catalog.write("roberto_catalog_muse_skelton_matched.fits", format='fits')
     return roberto_catalog
 
 def compare_open_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec_key='dec', frame='fk5'):
@@ -232,11 +238,116 @@ def compare_open_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra'
 
 
 if __name__ == "__main__":
+
     #build_aspecs_catalog(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), dec_key='dc')
     #build_aspecs_catalog(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
-    build_aspecs_catalog(os.path.join("roberto_catalog_muse.fits"), dec_key='dc')
+    #build_aspecs_catalog(os.path.join("roberto_catalog_muse.fits"), dec_key='dc')
 
-    compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+    #compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+
+    catalog_goodss = fits.open("/home/jacob/Research/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
+    skelton_goodss = catalog_goodss[1].data
+
+    muse_hdu = fits.open(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+    muse_catalog = muse_hdu[1].data
+
+    # Add Skelton IDs to the Roberto Catalog with MUSE
+    muse_roberto_catalog = fits.open("roberto_catalog_muse.fits")[1].data
+
+    #ra_dec = SkyCoord(skelton_goodss['ra'] * u.deg, skelton_goodss['dec'] * u.deg, frame='fk5')
+    roberto_ra_dec = SkyCoord(muse_roberto_catalog['ra'] * u.deg, muse_roberto_catalog['dc'] * u.deg, frame='fk5')
+    #idx, d2d, d3d = roberto_ra_dec.match_to_catalog_sky(ra_dec)
+
+    # Matches less than 0.5 arc seconds
+    less_than_5 = []
+    # Less than 0.25 arc seconds
+    less_than_25 = []
+    # Less than 1 arc second
+    less_than_1 = []
+    '''
+    roberto_catalog = Table.read("roberto_catalog_muse.fits", format='fits')
+
+    num_less_than_15 = 0
+    roberto_catalog['skelton_id'] = np.zeros(len(roberto_ra_dec))
+
+    for index, id in enumerate(idx):
+        if roberto_ra_dec[index].separation(ra_dec[id]).arcsecond < 0.1:
+            num_less_than_15 += 1
+            roberto_catalog[index]['skelton_id'] = skelton_goodss[id]['id']
+
+
+    print("Less than 0.1 arcseconds: " + str(num_less_than_15))
+    roberto_catalog.write("roberto_catalog_muse_skelton.fits", format='fits')
+    '''
+
+    # Now have skelton IDs, can match directly with MUSE matchings
+    # Only MUSE ones without skelton IDs are the separations used
+    roberto_catalog = Table.read("roberto_catalog_muse_skelton.fits", format='fits')
+    roberto_catalog['muse_wide_z'] = np.zeros(len(roberto_catalog))
+    roberto_catalog['muse_wide_z_err'] = np.zeros(len(roberto_catalog))
+    roberto_catalog['muse_id'] = np.zeros(len(roberto_catalog))
+    roberto_catalog['muse_quality'] = np.zeros(len(roberto_catalog))
+
+    # Now have that, match by skelton_id, then if id not zero, match by Sky
+    for index, row in enumerate(roberto_catalog):
+        skelton_id = row['skelton_id']
+        if skelton_id != 0:
+            muse_mask = (np.isclose(muse_catalog['skelton_id'], skelton_id))
+            if len(muse_catalog[muse_mask]) > 1:
+                print(muse_catalog[muse_mask])
+            if len(muse_catalog[muse_mask]) == 1:
+                roberto_catalog[index]['muse_wide_z'] = muse_catalog[muse_mask]['z']
+                roberto_catalog[index]['muse_wide_z_err'] = muse_catalog[muse_mask]['z_err']
+                roberto_catalog[index]['muse_id'] = muse_catalog[muse_mask]['unique_id']
+                roberto_catalog[index]['muse_quality'] = muse_catalog[muse_mask]['confidence']
+                roberto_catalog[index]['z'] = muse_catalog[muse_mask]['z']
+            if len(muse_catalog[muse_mask]) == 2:
+                roberto_catalog[index]['muse_wide_z'] = muse_catalog[muse_mask][0]['z']
+                roberto_catalog[index]['muse_wide_z_err'] = muse_catalog[muse_mask][0]['z_err']
+                roberto_catalog[index]['muse_id'] = muse_catalog[muse_mask][0]['unique_id']
+                roberto_catalog[index]['muse_quality'] = muse_catalog[muse_mask][0]['confidence']
+                roberto_catalog[index]['z'] = muse_catalog[muse_mask][0]['z']
+
+    # Now only those with no skelton id match:
+    muse_ra_dec = SkyCoord(muse_catalog['ra'] * u.deg, muse_catalog['dec'] * u.deg, frame='fk5')
+
+    idx, d2d, d3d = roberto_ra_dec.match_to_catalog_sky(muse_ra_dec)
+    num_less_than_15 = 0
+    less_than_15 = []
+    for index, id in enumerate(idx):
+        if np.isclose(roberto_catalog[index]['muse_id'], 0):
+            # No match
+            if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 1:
+                less_than_1.append([index, id])
+                if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.5:
+                    if roberto_catalog[index]['muse_id'] < 1: # No current MUSE match
+                        less_than_5.append([index, id])
+                        roberto_catalog[index]['muse_wide_z'] = muse_catalog[id]['z']
+                        roberto_catalog[index]['muse_wide_z_err'] = muse_catalog[id]['z_err']
+                        roberto_catalog[index]['muse_id'] = muse_catalog[id]['unique_id']
+                        roberto_catalog[index]['muse_quality'] = muse_catalog[id]['confidence']
+                    if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.25:
+                        less_than_25.append([index, id])
+                        if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.1:
+                            less_than_15.append([index, id])
+
+
+
+    print("Less than 1.0 arcseconds: " + str(len(np.unique(less_than_1))) + "/" + str(len(less_than_1)))
+    print("Less than 0.5 arcseconds: " + str(len(np.unique(less_than_5))) + "/" + str(len(less_than_5)))
+    print("Less than 0.25 arcseconds: " + str(len(np.unique(less_than_25))) + "/" + str(len(less_than_25)))
+    print("Less than 0.1 arcseconds: " + str(len(np.unique(less_than_15))) + "/" + str(len(less_than_15)))
+    print(less_than_15)
+    print("----------------  Now Less Than 0.5 arcseconds")
+    print(less_than_5)
+
+    roberto_catalog.write("roberto_catalog_muse_skelton_matched_two.fits", format='fits')
+
+
+
+
+
+
 """
 full_goodss = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb3.fits")
 full_goodss = full_goodss[1].data
@@ -259,4 +370,28 @@ smaller_catalog = full_goodss[rows_to_use]
 initial_catalog = fits.open(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))[1].data
 
 compare_open_catalog_locations(smaller_catalog, initial_catalog)
+"""
+
+"""
+
+Vastly different Roberto and MUSE redshifts
+
+[146041313.0, 146069355.0, 145049108.0, 146052337.0, 145006019.0, 145006019.0, 146082368.0, 145022065.0, 145034089.0, 
+145019060.0, 145005017.0, 146018244.0, 146044319.0, 145038096.0, 146061346.0, 145050109.0, 144049136.0, 144024074.0, 
+144025075.0, 143031111.0, 143042127.0, 144050137.0, 143040124.0, 143009021.0, 144057147.0, 143037118.0, 143002006.0, 
+107020110.0, 142044159.0, 141028124.0, 141052165.0, 141011083.0, 141016089.0, 142002064.0, 141039152.0, 141002074.0, 
+141003075.0, 141003075.0, 141040153.0, 141006078.0, 141004076.0, 131021114.0, 132020035.0, 141017090.0, 132015026.0, 
+132009020.0, 131051155.0, 132048102.0, 131011094.0, 132003006.0, 130033059.0, 131016105.0, 132045098.0, 131048152.0, 
+131046150.0, 137070146.0, 130015022.0, 130001001.0, 131041145.0, 131014103.0, 129017133.0, 131053157.0, 137053126.0, 
+130006006.0, 128064270.0, 130038064.0, 129019135.0, 131013100.0, 136012137.0, 130003003.0, 130009010.0, 137083161.0, 
+128045247.0, 136007129.0, 137012028.0, 128044246.0, 135037227.0, 135038228.0, 135009176.0, 136044198.0, 129002081.0, 
+135015184.0, 128032224.0, 137043105.0, 128007194.0, 136045199.0, 128055260.0, 128040241.0, 135005170.0, 134006016.0, 
+128025217.0, 128038236.0, 136037187.0, 134027046.0, 140002014.0, 128019210.0, 128019210.0, 134009019.0, 140024077.0, 
+134036056.0, 122017082.0, 135035225.0, 140018054.0, 139013229.0, 134037057.0, 135002046.0, 134011023.0, 134002002.0, 
+134002002.0, 140005024.0, 134025044.0, 140012041.0, 134030050.0, 139046300.0, 139019244.0, 135026216.0, 139051305.0, 
+133020056.0, 139055311.0, 134038060.0, 135041231.0, 139032271.0, 133033082.0, 134018030.0, 135046236.0, 133029074.0, 
+134020036.0, 134003004.0, 134003003.0, 133028073.0, 139054310.0, 139054310.0, 133017053.0, 139044297.0, 133032080.0, 
+125007023.0, 125006022.0, 125059136.0, 125001001.0, 125001001.0, 125052125.0, 125026077.0, 125037106.0, 125049122.0, 
+125009025.0, 125009025.0, 125040110.0, 126015035.0, 126047134.0, 126061172.0, 126042110.0, 126049137.0] 
+
 """

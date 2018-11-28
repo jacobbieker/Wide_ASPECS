@@ -7,9 +7,17 @@ import astropy.io.fits as fits
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+
+from astropy.table import Table
 from matplotlib.patches import Circle
 from aspecs_catalog_builder import get_aspecs_radec
 
+
+catalog_goodss = fits.open("/home/jacob/Research/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
+skelton_goodss = catalog_goodss[1].data
+print(catalog_goodss[0].header)
+print(skelton_goodss.columns)
+print(skelton_goodss['id'])
 
 def create_cutout(ax, wcs_header, image, ra, dec, aspecs_ra, aspecs_dec):
     """
@@ -56,7 +64,7 @@ def create_aspecs_cutouts(aspecs_coordinates, fits_files, fits_names, wcs_data, 
     f = plt.figure(figsize=(20, 20))
     f.suptitle('ID: ' + str(id) + " ALMA Freq: " + str(aspecs_freqs[id]))
     for index, image in enumerate(fits_files):
-        ax = f.add_subplot(shape_file, shape_file, index+1, projection=wcs_data)
+        ax = f.add_subplot(shape_file, shape_file, index + 1, projection=wcs_data)
         create_ax_cutout(ax, fits_names[index], image, aspecs_coordinates, catalog_coordinates)
 
     return f
@@ -83,7 +91,21 @@ aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
 ax.scatter(aspecs_ra_dec.ra.deg, aspecs_ra_dec.dec.deg, transform=ax.get_transform('fk5'), s=100,
            edgecolor='black', facecolor='none')
 plt.show()
-exit()
+
+roberto_muse = Table.read("roberto_catalog_muse.fits", format='fits')
+muse_catalog = fits.open(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))[1].data
+print(muse_catalog.columns)
+roberto_ra_dec = SkyCoord(roberto_muse['ra'] * u.deg, roberto_muse['dc'] * u.deg, frame='fk5')
+muse_ra_dec = SkyCoord(muse_catalog['RA'] * u.deg, muse_catalog['DEC'] * u.deg, frame='fk5')
+
+indicies_to_use = []
+muse_ids_to_use = []
+
+# For ones with same ID
+from matplotlib.text import OffsetFrom
+
+# For ones with off Z
+
 
 f125w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f125w/goodss_3dhst.v4.0.F125W_orig_sci.fits")
 f140w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f140w/goodss_3dhst.v4.0.F140W_orig_sci.fits")
@@ -126,19 +148,94 @@ irac3_goodss = fits.open("/home/jacob/Research/GOODS-S_irac3/GOODS-S_irac3_s1_sc
 irac4_goodss = fits.open("/home/jacob/Research/GOODS-S_irac4/GOODS-S_irac4_s1_sci.fits")
 
 # Add to the list with names
+
+ia_ones = [ia427_goodss, ia445_goodss, ia505_goodss, ia527_goodss, ia550_goodss, ia574_goodss,
+           ia624_goodss, ia651_goodss, ia679_goodss, ia738_foodss, ia797_foodss, ]
 fits_files = [f125w_goodss, f140w_goodss, f160w_goodss, f435w_goodss, f606w_goodss, f775w_goodss, f850lp_goodss,
               f814w_goodss, R_goodss, U38_goodss, V_goodss, B_goodss, J_goodss, H_goodss, I_goodss, tKs_goodss,
-              tJ_goodss, ia427_goodss, ia445_goodss, ia505_goodss, ia527_goodss, ia550_goodss, ia574_goodss,
-              ia624_goodss, ia651_goodss, ia679_goodss, ia738_foodss, ia797_foodss, irac1_goodss, irac2_goodss,
+              tJ_goodss, irac1_goodss, irac2_goodss,
               irac3_goodss, irac4_goodss]
+ia_nmes = ["IA427", "IA445", "IA505", "IA527", "IA550", "IA574",
+           "IA624", "IA651", "IA679", "IA738", "IA797", ]
 
 fits_names = ["F125W", "F140W", "F160W", "F435W", "F606W", "F775W", "F850LP",
               "F814W", "R", "U38", "V", "B", "J", "H", "I", "tKs",
-              "tJ", "IA427", "IA445", "IA505", "IA527", "IA550", "IA574",
-              "IA624", "IA651", "IA679", "IA738", "IA797",
+              "tJ",
               "IRAC1", "IRAC2", "IRAC3", "IRAC4"]
 catalog_goodss = fits.open("/home/jacob/Research/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
 skelton_goodss = catalog_goodss[1].data
+
+
+def create_overlap_cutout(ax, wcs_header, image, muse, row, other_row, index, other_index):
+    """
+    :param ax: Matplotlib ax to use
+    :param wcs_header: Image header with WCS info
+    :param image: Image
+    :param ra: RA coordiantes for center in J2000
+    :param dec: DEC coordinates for center in J2000
+    :param size: Size, in degrees, of the cutout
+    :return:
+    """
+
+    w = wcs.WCS(wcs_header)
+    muse_mask = (muse['UNIQUE_ID'] == int(other_row['muse_id']))
+    center = SkyCoord(muse[muse_mask]['RA'] * u.deg, muse[muse_mask]['DEC'] * u.deg, frame='fk5')
+    row_center = roberto_ra_dec[index]
+    other_row_center = roberto_ra_dec[other_index]
+    size = np.ceil(
+        np.max([center.separation(row_center).arcsecond * 2., center.separation(other_row_center).arcsecond * 2.]))
+    if size < 3.0:
+        size = 3
+    # then make an array cutout
+    row_cutout = Cutout2D(image, row_center, size=size * u.arcsec, wcs=w)
+    other_row_cutout = Cutout2D(image, other_row_center, size=size * u.arcsec, wcs=w)
+    co = Cutout2D(image, center, size=size * u.arcsec, wcs=w)
+    ax.imshow(co.data, origin='lower', cmap='gray')
+    center_image = Circle((co.center_cutout[0], co.center_cutout[1]), 3, fill=False, color='r')
+    ax.add_patch(center_image)
+    ax.annotate(str(int(row['muse_id'])), xy=(co.center_cutout[0], co.center_cutout[1]), textcoords='offset pixels',
+                xytext=(2, 1), color='r')
+
+    aspecs_loc_x, aspecs_loc_y = co.to_cutout_position(row_cutout.center_original)
+    aspecs_loc_x_other, aspecs_loc_y_other = co.to_cutout_position(other_row_cutout.center_original)
+    first_image = Circle((aspecs_loc_x, aspecs_loc_y), 3, fill=False, color='g')
+    ax.add_patch(first_image)
+    ax.annotate(row['id'], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(2, 1), color='g')
+    other_image = Circle((aspecs_loc_x_other, aspecs_loc_y_other), 3, fill=False, color='w')
+    ax.add_patch(other_image)
+    ax.annotate(other_row['id'], xy=(aspecs_loc_x_other, aspecs_loc_y_other), textcoords='offset pixels',
+                xytext=(2, 1), color='w')
+
+    return ax
+
+
+def create_overlap_ax_cutout(ax, name, fit_data, aspecs_coordinate, catalog_coordinate, other_row, index, other_index):
+    ax = create_overlap_cutout(ax, fit_data[0].header, fit_data[0].data, catalog_coordinate,
+                               aspecs_coordinate, other_row, index, other_index)
+    ax.set_title(name)
+    ax.tick_params(direction='in', colors='w', bottom=True, top=True, left=True, right=True, labelbottom=True,
+                   labeltop=False, labelleft=True, labelright=False)
+    return ax
+
+
+for index, row in enumerate(roberto_muse):
+    if row['muse_id'] > 0:
+        for other_index, other_row in enumerate(roberto_muse):
+            # Ones before current index should already have been found
+            if int(other_row['muse_id']) == int(row['muse_id']) and int(other_row['id']) != int(row['id']):
+                shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+                f = plt.figure(figsize=(20, 20))
+                f.suptitle(
+                    'MUSE ID: ' + str(int(row['muse_id'])) + " Roberto IDs: " + str(row['id']) + "/" + str(other_row['id']))
+                for third_index, image in enumerate(fits_files):
+                    ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+                    create_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=muse_catalog, aspecs_coordinate=row, other_row=other_row, index=index,
+                                             other_index=other_index)
+                f.savefig(str("Overlap_2_MUSE_Cutout_" + str(index) + "MUSE" + str(row['muse_id']) + ".png"), dpi=300)
+                f.clf()
+                plt.close()
+exit()
+
 aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
 ra_dec = SkyCoord(skelton_goodss['ra'] * u.deg, skelton_goodss['dec'] * u.deg, frame='fk5')
 
@@ -150,11 +247,12 @@ ax.scatter(aspecs_ra_dec.ra.deg, aspecs_ra_dec.dec.deg, transform=ax.get_transfo
 plt.show()
 idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
 
-
-for index, coord in enumerate(aspecs_ra_dec):
-    f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[index]],
-                              id=index, aspecs_freqs=aspecs_freqs)
-    f.savefig(str("Skelton_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + "_Sep_{:0.3f}" +".png").format(coord.separation(ra_dec[idx[index]]).arcsecond), dpi=300)
+for third_index, coord in enumerate(aspecs_ra_dec):
+    f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[third_index]],
+                              id=third_index, aspecs_freqs=aspecs_freqs)
+    f.savefig(str("Skelton_ASPECS_Cutout_" + str(third_index) + "_Freq_" + str(
+        aspecs_freqs[third_index]) + "_Sep_{:0.3f}" + ".png").format(
+        coord.separation(ra_dec[idx[third_index]]).arcsecond), dpi=300)
     f.clf()
     plt.close()
 
@@ -165,11 +263,12 @@ aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
 ra_dec = SkyCoord(full_goodss['ra'] * u.deg, full_goodss['dc'] * u.deg, frame='fk5')
 idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
 
-
-for index, coord in enumerate(aspecs_ra_dec):
-    f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[index]],
-                              id=index, aspecs_freqs=aspecs_freqs)
-    f.savefig(str("Full_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + "_Sep_{:0.3f}" +".png").format(coord.separation(ra_dec[idx[index]]).arcsecond), dpi=300)
+for third_index, coord in enumerate(aspecs_ra_dec):
+    f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[third_index]],
+                              id=third_index, aspecs_freqs=aspecs_freqs)
+    f.savefig(str("Full_ASPECS_Cutout_" + str(third_index) + "_Freq_" + str(
+        aspecs_freqs[third_index]) + "_Sep_{:0.3f}" + ".png").format(
+        coord.separation(ra_dec[idx[third_index]]).arcsecond), dpi=300)
     f.clf()
     plt.close()
 
@@ -184,18 +283,20 @@ for id in roberto_catalog['id']:
 # now create smaller catalog with full catalog info
 
 rows_to_use = []
-for index, row in enumerate(full_goodss):
+for third_index, row in enumerate(full_goodss):
     if row['id'] in diff_ids:
-        rows_to_use.append(index)
+        rows_to_use.append(third_index)
 
 smaller_catalog = full_goodss[rows_to_use]
 aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
 ra_dec = SkyCoord(smaller_catalog['ra'] * u.deg, smaller_catalog['dc'] * u.deg, frame='fk5')
 idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
 
-for index, coord in enumerate(aspecs_ra_dec):
-    f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[index]],
-                              id=index, aspecs_freqs=aspecs_freqs)
-    f.savefig(str("Roberto_ASPECS_Cutout_" + str(index) + "_Freq_" + str(aspecs_freqs[index]) + "_Sep_{:0.3f}" +".png").format(coord.separation(ra_dec[idx[index]]).arcsecond), dpi=300)
+for third_index, coord in enumerate(aspecs_ra_dec):
+    f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[third_index]],
+                              id=third_index, aspecs_freqs=aspecs_freqs)
+    f.savefig(str("Roberto_ASPECS_Cutout_" + str(third_index) + "_Freq_" + str(
+        aspecs_freqs[third_index]) + "_Sep_{:0.3f}" + ".png").format(
+        coord.separation(ra_dec[idx[third_index]]).arcsecond), dpi=300)
     f.clf()
     plt.close()
