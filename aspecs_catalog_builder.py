@@ -316,20 +316,31 @@ if __name__ == "__main__":
     less_than_15 = []
     for index, id in enumerate(idx):
         if np.isclose(roberto_catalog[index]['muse_id'], 0):
-            # No match
-            if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 1:
-                less_than_1.append([index, id])
-                if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.5:
-                    if roberto_catalog[index]['muse_id'] < 1: # No current MUSE match
-                        less_than_5.append([index, id])
-                        roberto_catalog[index]['muse_wide_z'] = muse_catalog[id]['z']
-                        roberto_catalog[index]['muse_wide_z_err'] = muse_catalog[id]['z_err']
-                        roberto_catalog[index]['muse_id'] = muse_catalog[id]['unique_id']
-                        roberto_catalog[index]['muse_quality'] = muse_catalog[id]['confidence']
-                    if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.25:
-                        less_than_25.append([index, id])
-                        if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.1:
-                            less_than_15.append([index, id])
+            if np.isclose(muse_catalog[id]['skelton_id'], 0):
+                # No match and not already in Skelton
+                if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 1:
+                    less_than_1.append([index, id])
+                    if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.5:
+                        # Check if already matched to Skelton object
+                        if muse_catalog[id]['unique_id'] not in roberto_catalog['muse_id']:
+                            # Now do the by hand adding
+                            if np.isclose(muse_catalog[id]['unique_id'], 125009025) and np.isclose(roberto_catalog['id'], 51778):
+                                print("Hit One Manual Change")
+                                continue
+                            if np.isclose(muse_catalog[id]['unique_id'], 119002002) and np.isclose(roberto_catalog['id'], 62887):
+                                print("Hit Other Manual Change")
+                                continue
+                            less_than_5.append([roberto_catalog[index]['id'], muse_catalog[id]['unique_id']])
+                            roberto_catalog[index]['muse_wide_z'] = muse_catalog[id]['z']
+                            roberto_catalog[index]['muse_wide_z_err'] = muse_catalog[id]['z_err']
+                            roberto_catalog[index]['muse_id'] = muse_catalog[id]['unique_id']
+                            roberto_catalog[index]['muse_quality'] = muse_catalog[id]['confidence']
+                        else:
+                            print("ID Already Exists with Roberto ID ")
+                        if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.25:
+                            less_than_25.append([index, id])
+                            if roberto_ra_dec[index].separation(muse_ra_dec[id]).arcsecond < 0.1:
+                                less_than_15.append([index, id])
 
 
 
@@ -341,7 +352,7 @@ if __name__ == "__main__":
     print("----------------  Now Less Than 0.5 arcseconds")
     print(less_than_5)
 
-    roberto_catalog.write("roberto_catalog_muse_skelton_matched_two.fits", format='fits')
+    roberto_catalog.write("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')
 
 
 

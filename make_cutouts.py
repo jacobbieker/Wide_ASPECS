@@ -218,22 +218,62 @@ def create_overlap_ax_cutout(ax, name, fit_data, aspecs_coordinate, catalog_coor
     return ax
 
 
+row_mask = (roberto_muse['id'] == 51778) | (roberto_muse['id'] == 57545) |(roberto_muse['id'] == 62887) |(roberto_muse['id'] == 18816)
+
+row_masked = roberto_muse[row_mask]
+row_masked[0]['muse_id'] = 125009025
+row_masked[1]['muse_id'] = 125009025
+
+row_masked[2]['muse_id'] = 119002002
+row_masked[3]['muse_id'] = 119002002
+
+print(row_masked)
+
+shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+f = plt.figure(figsize=(20, 20))
+f.suptitle(
+    'MUSE ID: ' + str(int(row_masked[0]['muse_id'])) + " Roberto IDs: " + str(row_masked[0]['id']) + "/" + str(row_masked[1]['id']))
+for third_index, image in enumerate(fits_files):
+    ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+    create_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=muse_catalog, aspecs_coordinate=row_masked[0],
+                             other_row=row_masked[1], index=46881,
+                             other_index=46963)
+plt.show()
+f.savefig(str("Overlap_2_MUSE_Cutout_" + str(46881) + "MUSE" + str(row_masked[0]['muse_id']) + ".png"), dpi=300)
+f.clf()
+
+shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+f = plt.figure(figsize=(20, 20))
+f.suptitle(
+    'MUSE ID: ' + str(int(row_masked[0]['muse_id'])) + " Roberto IDs: " + str(row_masked[2]['id']) + "/" + str(row_masked[3]['id']))
+for third_index, image in enumerate(fits_files):
+    ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+    create_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=muse_catalog, aspecs_coordinate=row_masked[2],
+                             other_row=row_masked[3], index=50461,
+                             other_index=50464)
+plt.show()
+f.savefig(str("Overlap_2_MUSE_Cutout_" + str(50461) + "MUSE" + str(row_masked[3]['muse_id']) + ".png"), dpi=300)
+f.clf()
+
+exit()
+
 for index, row in enumerate(roberto_muse):
-    if row['muse_id'] > 0:
-        for other_index, other_row in enumerate(roberto_muse):
-            # Ones before current index should already have been found
-            if int(other_row['muse_id']) == int(row['muse_id']) and int(other_row['id']) != int(row['id']):
-                shape_file = int(np.ceil(np.sqrt(len(fits_files))))
-                f = plt.figure(figsize=(20, 20))
-                f.suptitle(
-                    'MUSE ID: ' + str(int(row['muse_id'])) + " Roberto IDs: " + str(row['id']) + "/" + str(other_row['id']))
-                for third_index, image in enumerate(fits_files):
-                    ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
-                    create_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=muse_catalog, aspecs_coordinate=row, other_row=other_row, index=index,
-                                             other_index=other_index)
-                f.savefig(str("Overlap_2_MUSE_Cutout_" + str(index) + "MUSE" + str(row['muse_id']) + ".png"), dpi=300)
-                f.clf()
-                plt.close()
+    if row['id'] in [46881, 46963, 50461, 50464]:
+        if row['muse_id'] > 0:
+            for other_index, other_row in enumerate(roberto_muse):
+                # Ones before current index should already have been found
+                if int(other_row['muse_id']) == int(row['muse_id']) and int(other_row['id']) != int(row['id']):
+                    shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+                    f = plt.figure(figsize=(20, 20))
+                    f.suptitle(
+                        'MUSE ID: ' + str(int(row['muse_id'])) + " Roberto IDs: " + str(row['id']) + "/" + str(other_row['id']))
+                    for third_index, image in enumerate(fits_files):
+                        ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+                        create_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=muse_catalog, aspecs_coordinate=row, other_row=other_row, index=index,
+                                                 other_index=other_index)
+                    f.savefig(str("Overlap_2_MUSE_Cutout_" + str(index) + "MUSE" + str(row['muse_id']) + ".png"), dpi=300)
+                    f.clf()
+                    plt.close()
 exit()
 
 aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
