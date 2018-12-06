@@ -55,6 +55,7 @@ def build_aspecs_catalog(initial_catalog=None, dec_key='dec', ra_key='ra', frame
     print("\n----------------- Number of Matches: " + str(len(idx)) + "/" + str(len(initial_catalog[idx])))
     print("Distances: ")
     num_in_close = 0
+    catalog_ids = []
     for index, id in enumerate(idx):
         if coords[index].separation(ra_dec[id]).arcsecond < 1.0:
             num_in_close += 1
@@ -65,14 +66,18 @@ def build_aspecs_catalog(initial_catalog=None, dec_key='dec', ra_key='ra', frame
             print("Location (Deg): " + str(coords[index]))
             try:
                 print("Catalog ID: " + str(initial_catalog[id]['id']))
+                catalog_ids.append((initial_catalog[id]['id'],index))
                 print("In Skelton et al. Catalog: " + str(initial_catalog[id]['flag_3dh']))
             except:
                 try:
+                    catalog_ids.append((initial_catalog[id]['unique_id'],index))
                     print("Catalog ID: " + str(initial_catalog[id]['unique_id']))
                     print("Skelton et al. ID: " + str(initial_catalog[id]['skelton_id']))
                 except:
                     continue
     print("Number Close to Catalog: ", num_in_close)
+    print("Catalog IDs")
+    print(catalog_ids)
 
     # Get the IDs of the matched values
     #catalog_ids = initial_catalog[idx]['id']
@@ -239,11 +244,70 @@ def compare_open_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra'
 
 if __name__ == "__main__":
 
-    #build_aspecs_catalog(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), dec_key='dc')
+    ids = [13077, 9228, 14566, 14890, 17087, 17425, 18199, 18470, 19407, 21424, 22074, 22619, 23331, 24915, 28752, 28802, 51344, 51553, 56747, 57167, 57179, 61484]
+
+    rest_co = [377,182,102,111,235,249,178,311,246,280,143,209,219,184,212,234,212,241,420,246,243,365,246]
+    ones = {"1-0":3, "2-1":15, "3-2": 3, "4-3": 1}
+
+    one_sets = [3,15,3,1]
+
+    ones_expanded = [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,3]
+
+    plt.hist(ones_expanded, bins=4)
+
+    locs, labels = plt.xticks()
+    plt.xticks(locs, ['', '1-0', '2-1', '3-2', '4-3'])
+    plt.show()
+
+    zs = [3.11, 0.925, 0.085, 0.163, 1.535,1.685, 0.872, 2.32, 1.665, 1.675, 0.355, 0.96, 1.094, 0.738, 1.019, 1.191, 1.269, 1.537, 3.496, 1.599, 1.597, 2.835, 1.599]
+
+    build_aspecs_catalog(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), dec_key='dc')
     #build_aspecs_catalog(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
-    #build_aspecs_catalog(os.path.join("roberto_catalog_muse.fits"), dec_key='dc')
+    build_aspecs_catalog(os.path.join("roberto_catalog_muse.fits"), dec_key='dc')
+
+
 
     #compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+
+    roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched.fits", format='fits')
+    magphys = Table.read("/home/jacob/Development/Wide_ASPECS/mapghys_in_nov2018_all.fits", format='fits')
+
+    print(len(magphys))
+    same_as_muse = 0
+    different_z = 0
+    same_z = 0
+    different_from_muse = 0
+    big_diff = 0
+    total = 0
+
+    for galaxy in magphys:
+        gal_id = galaxy['id']
+        total += 1
+        mask = roberto_catalog['id'] == gal_id
+        masked_big = roberto_catalog[mask]
+        if np.isclose(np.round(masked_big['z'],3), np.round(galaxy['z'],3)):
+            same_z += 1
+        if np.isclose(np.round(masked_big['muse_wide_z'],3), np.round(galaxy['z'],3)):
+            same_as_muse += 1
+        if not np.isclose(np.round(masked_big['z'],3), np.round(galaxy['z'],3)):
+            if 1.01*np.round(masked_big['z'],3) < galaxy['z'] or 0.99*np.round(masked_big['z'],3) > galaxy['z']:
+                different_z += 1
+                #print("Different ID: {} \nMy Z: {}\n Magphys Z: {}\n".format(masked_big['id'][0], np.round(masked_big['muse_wide_z'],3), galaxy['z']))
+        if not np.isclose(np.round(masked_big['muse_wide_z'],3), np.round(galaxy['z'],3)):
+            if masked_big['muse_wide_z'] > 0:
+                different_from_muse += 1
+                if 1.15*np.round(masked_big['muse_wide_z'],3) < galaxy['z'] or 0.85*np.round(masked_big['muse_wide_z'],3) > galaxy['z']:
+                    print("ID: {} \nMUSE Z: {}\n Catalog Z: {}\n".format(masked_big['id'][0], np.round(masked_big['muse_wide_z'],3), galaxy['z']))
+                    big_diff += 1
+
+    print("Smae As Muse: " + str(same_as_muse))
+    print("Same Overall " + str(same_z))
+    print("different Overall " + str(different_z))
+    print("different From Muse " + str(different_from_muse))
+    print("Large Diff From Muse " + str(big_diff))
+    print("Total: " + str(total))
+
+
 
     catalog_goodss = fits.open("/home/jacob/Research/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
     skelton_goodss = catalog_goodss[1].data
@@ -283,10 +347,10 @@ if __name__ == "__main__":
     # Now have skelton IDs, can match directly with MUSE matchings
     # Only MUSE ones without skelton IDs are the separations used
     roberto_catalog = Table.read("roberto_catalog_muse_skelton.fits", format='fits')
-    roberto_catalog['muse_wide_z'] = np.zeros(len(roberto_catalog))
-    roberto_catalog['muse_wide_z_err'] = np.zeros(len(roberto_catalog))
-    roberto_catalog['muse_id'] = np.zeros(len(roberto_catalog))
-    roberto_catalog['muse_quality'] = np.zeros(len(roberto_catalog))
+    roberto_catalog['muse_wide_z'] = np.zeros(len(roberto_catalog['ra']))
+    roberto_catalog['muse_wide_z_err'] = np.zeros(len(roberto_catalog['ra']))
+    roberto_catalog['muse_id'] = np.zeros(len(roberto_catalog['ra']))
+    roberto_catalog['muse_quality'] = np.zeros(len(roberto_catalog['ra']))
 
     # Now have that, match by skelton_id, then if id not zero, match by Sky
     for index, row in enumerate(roberto_catalog):
