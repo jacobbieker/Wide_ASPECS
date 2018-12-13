@@ -81,28 +81,50 @@ from spectral_cube import SpectralCube
 aspecs_a1_chn = SpectralCube.read("/home/jacob/Research/gs_A1_2chn.fits")
 aspecs_a2_chn = SpectralCube.read("/home/jacob/Research/gs_A2_2chn.fits")
 
+plt.imshow(aspecs_a1_chn.unitless[1,:,:])
+plt.show()
+
 print(aspecs_a1_chn)
+summed_cub = fits.open("/home/jacob/Research/gs_A1_2chn.fits")
+summed_cub = summed_cub[0].data
+summed_cub = np.reshape(summed_cub, (480, 2048, 2048))
+print(summed_cub.shape)
+summed_cub = np.sum(summed_cub, axis=0)
+plt.imshow(summed_cub)
+plt.show()
 velo, dec, ra = aspecs_a1_chn.unitless.world[0,:,:]
 print(dec[0])
 alma_ra_dec = SkyCoord(ra, dec, frame='fk5')
+print(alma_ra_dec.shape)
 
-aspecs_a1_chn_fits = fits.open("/home/jacob/Research/gs_A1_2chn.fits")
+sub_stuff = np.zeros((2048,2048,3))
 
+max_cube = np.nanmax(summed_cub)
+for x, element in enumerate(summed_cub):
+    print(x)
+    for y, value in enumerate(element):
+        if not np.isnan(value):
+            sub_stuff[x][y][2] = float(value/max_cube)
+
+
+sub_stuff = sub_stuff.reshape(-1, 3).tolist()
 f160w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")
 w = wcs.WCS(f160w_goodss[0].header)
 ax = plt.subplot(projection=w)
 #ax.plot(aspecs_a1_chn[0,:,:], origin='lower')
-#ax.imshow(image_data, cmap='gray')
+#ax.imshow(sub_stuff, cmap='gray')
 aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
-print(aspecs_ra_dec.ra.deg)
 plt.scatter(full_catalog['ra'], full_catalog['dc'], transform=ax.get_transform('fk5'), label='All', s=2)
+print("bout to do them all")
+ax.scatter(alma_ra_dec.ra.deg, alma_ra_dec.dec.deg, c=sub_stuff, cmap='gray', transform=ax.get_transform('fk5'), label='ALMA Wide', s=1)
+print("Done them all")
 ax.scatter(aspecs_ra_dec.ra.deg, aspecs_ra_dec.dec.deg, transform=ax.get_transform('fk5'), s=50,
            edgecolor='black', facecolor='none')
-ax.scatter(ra, dec, transform=ax.get_transform('fk5'), label='All', s=6)
 plt.ylabel("DEC")
 plt.xlabel("RA")
+plt.show()
 plt.savefig("test.png", dpi=300)
-#plt.show()
+plt.show()
 exit()
 
 roberto_muse = Table.read("roberto_catalog_muse.fits", format='fits')

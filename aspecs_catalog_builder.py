@@ -280,6 +280,11 @@ if __name__ == "__main__":
     big_diff = 0
     total = 0
 
+    for x, id in enumerate(ids):
+        #mask = (magphys['id'] == id)
+        gal = magphys[id]
+        print("Zs: {} Cat: {}".format(zs[x], gal['z']))
+
     for galaxy in magphys:
         gal_id = galaxy['id']
         total += 1
