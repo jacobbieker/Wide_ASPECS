@@ -78,13 +78,13 @@ from astropy.utils import data
 from spectral_cube import SpectralCube
 
 # ASPECS_Data Cubes
-aspecs_a1_chn = SpectralCube.read("/home/jacob/Research/gs_A1_2chn.fits")
-aspecs_a2_chn = SpectralCube.read("/home/jacob/Research/gs_A2_2chn.fits")
+#aspecs_a1_chn = SpectralCube.read("/home/jacob/Research/gs_A1_2chn.fits")
+#aspecs_a2_chn = SpectralCube.read("/home/jacob/Research/gs_A2_2chn.fits")
 
-plt.imshow(aspecs_a1_chn.unitless[1,:,:])
-plt.show()
+#plt.imshow(aspecs_a1_chn.unitless[1,:,:])
+#plt.show()
 
-print(aspecs_a1_chn)
+#print(aspecs_a1_chn)
 summed_cub = fits.open("/home/jacob/Research/gs_A1_2chn.fits")
 summed_cub = summed_cub[0].data
 summed_cub = np.reshape(summed_cub, (480, 2048, 2048))
@@ -92,40 +92,9 @@ print(summed_cub.shape)
 summed_cub = np.sum(summed_cub, axis=0)
 plt.imshow(summed_cub)
 plt.show()
-velo, dec, ra = aspecs_a1_chn.unitless.world[0,:,:]
-print(dec[0])
-alma_ra_dec = SkyCoord(ra, dec, frame='fk5')
-print(alma_ra_dec.shape)
 
-sub_stuff = np.zeros((2048,2048,3))
-
-max_cube = np.nanmax(summed_cub)
-for x, element in enumerate(summed_cub):
-    print(x)
-    for y, value in enumerate(element):
-        if not np.isnan(value):
-            sub_stuff[x][y][2] = float(value/max_cube)
-
-
-sub_stuff = sub_stuff.reshape(-1, 3).tolist()
 f160w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")
 w = wcs.WCS(f160w_goodss[0].header)
-ax = plt.subplot(projection=w)
-#ax.plot(aspecs_a1_chn[0,:,:], origin='lower')
-#ax.imshow(sub_stuff, cmap='gray')
-aspecs_ra_dec, aspecs_freqs = get_aspecs_radec()
-plt.scatter(full_catalog['ra'], full_catalog['dc'], transform=ax.get_transform('fk5'), label='All', s=2)
-print("bout to do them all")
-ax.scatter(alma_ra_dec.ra.deg, alma_ra_dec.dec.deg, c=sub_stuff, cmap='gray', transform=ax.get_transform('fk5'), label='ALMA Wide', s=1)
-print("Done them all")
-ax.scatter(aspecs_ra_dec.ra.deg, aspecs_ra_dec.dec.deg, transform=ax.get_transform('fk5'), s=50,
-           edgecolor='black', facecolor='none')
-plt.ylabel("DEC")
-plt.xlabel("RA")
-plt.show()
-plt.savefig("test.png", dpi=300)
-plt.show()
-exit()
 
 roberto_muse = Table.read("roberto_catalog_muse.fits", format='fits')
 test_roberto = Table.read("/home/jacob/Development/Wide_ASPECS/mapghys_in_nov2018_all.fits", format='fits')
@@ -363,56 +332,51 @@ idx, d2d, d3d = coords.match_to_catalog_sky(roberto_ra_dec)
 aspecs_matches = [[] for _ in range(92)]
 back_match = {}
 
+print(idx)
 for index, id in enumerate(idx):
     if coords[index].separation(roberto_ra_dec[id]).arcsecond < 1.0:
         aspecs_matches[index].append(id)
-        if id in back_match.keys():
-            back_match[id].append(index)
+        if roberto_muse[id]['id'] in back_match.keys():
+            back_match[roberto_muse[id]['id']].append(index)
         else:
-            back_match[id] = [index]
-
+            back_match[roberto_muse[id]['id']] = [index]
+#exit()
 # Now have the matches, plot them on the sky
-
-
-
-"""
-for idx, sublist in enumerate(aspecs_matches):
-    if len(sublist) > 0:
-        # Make the cutouts
-        shape_file = int(np.ceil(np.sqrt(len(fits_files))))
-        f = plt.figure(figsize=(20, 20))
-        f.suptitle(
-            'ASPECS ID: ' + str(idx) + " Number Matches: " + str(len(sublist)))
-        for third_index, image in enumerate(fits_files):
-            ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
-            create_multi_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=coords[idx], matches=sublist, index=idx)
-        plt.show()
-        f.savefig(str("Overlap_ASPECS_Sources_Cutout_" + str(idx) + ".png"), dpi=300)
-        f.clf()
 
 for key, values in back_match.items():
     if len(values) > 0:
         # Make the cutouts
         shape_file = int(np.ceil(np.sqrt(len(fits_files))))
         f = plt.figure(figsize=(20, 20))
-        test_mask = (test_roberto['id'] == roberto_muse[key]['id'])
+        test_mask = (roberto_muse['id'] == key)
+        print(roberto_muse[test_mask])
+        roberto_ra_dec_index = 1e30
+        for index, i in enumerate(roberto_muse):
+            if i['id'] == key:
+                roberto_ra_dec_index = index
+
+        distances = []
         freq_valus = []
         for value in values:
             print("Value: ", value)
             print("Freq: ", freqs[value])
             freq_valus.append(freqs[value])
+            for index, id in enumerate(idx):
+                if index == value:
+                    distances.append(coords[index].separation(roberto_ra_dec[id]).arcsecond)
         f.suptitle(
-            'Roberto ID: ' + str(key) + "Z: " + str(test_roberto[test_mask]['z']) + " Matches: " + str(freq_valus))
+            'Roberto ID: ' + str(key) + " Z_1: " + str(roberto_muse[test_mask]['z_1'][0]) + " Z_2: " + str(roberto_muse[test_mask]['z_2'][0]) + " Matches: " + str(freq_valus) + " \nDistance: " + str(distances))
         for third_index, image in enumerate(fits_files):
             ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
-            create_multi_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=roberto_ra_dec[key], matches=values, index=idx, ra_dec=coords)
+            create_multi_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
+                                           matches=values, index=idx, ra_dec=coords)
         # plt.show()
-        f.savefig(str("Overlap_ASPECS_From_Roberto_Sources_Cutout_" + str(key) + ".png"), dpi=300)
+        f.savefig(str("Roberto_ASPECS_Overlap_V2_Cutout_" + str(key) + ".png"), dpi=300)
         f.clf()
         plt.close()
 # Now work backwards
 exit()
-
+"""
 for index, row in enumerate(roberto_muse):
     if row['id'] in [46881, 46963, 50461, 50464]:
         if row['muse_id'] > 0:

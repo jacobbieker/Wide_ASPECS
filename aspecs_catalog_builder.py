@@ -244,7 +244,12 @@ def compare_open_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra'
 
 if __name__ == "__main__":
 
-    ids = [13077, 9228, 14566, 14890, 17087, 17425, 18199, 18470, 19407, 21424, 22074, 22619, 23331, 24915, 28752, 28802, 51344, 51553, 56747, 57167, 57179, 61484]
+    ids = [13077, 9228, 14566, 14890,
+           17087, 17425, 18199, 18470,
+           19407, 21424, 22074, 22619,
+           23331, 24915, 28752, 28802,
+           51344, 51553, 56747, 57167,
+           57179, 61484]
 
     rest_co = [377,182,102,111,235,249,178,311,246,280,143,209,219,184,212,234,212,241,420,246,243,365,246]
     ones = {"1-0":3, "2-1":15, "3-2": 3, "4-3": 1}
@@ -259,11 +264,18 @@ if __name__ == "__main__":
     plt.xticks(locs, ['', '1-0', '2-1', '3-2', '4-3'])
     plt.show()
 
-    zs = [3.11, 0.925, 0.085, 0.163, 1.535,1.685, 0.872, 2.32, 1.665, 1.675, 0.355, 0.96, 1.094, 0.738, 1.019, 1.191, 1.269, 1.537, 3.496, 1.599, 1.597, 2.835, 1.599]
+    zs = [3.11, 0.925, 0.085,
+          0.163, 1.535,1.685,
+          0.872, 2.32, 1.665,
+          1.675, 0.355, 0.96,
+          1.094, 0.738, 1.019,
+          1.191, 1.269, 1.537,
+          3.496, 1.599, 1.597,
+          2.835, 1.599]
 
-    build_aspecs_catalog(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), dec_key='dc')
+    #build_aspecs_catalog(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), dec_key='dc')
     #build_aspecs_catalog(os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
-    build_aspecs_catalog(os.path.join("roberto_catalog_muse.fits"), dec_key='dc')
+    #build_aspecs_catalog(os.path.join("roberto_catalog_muse.fits"), dec_key='dc')
 
 
 
@@ -281,10 +293,11 @@ if __name__ == "__main__":
     total = 0
 
     for x, id in enumerate(ids):
-        #mask = (magphys['id'] == id)
-        gal = magphys[id]
+        mask = (magphys['id'] == id)
+        print(magphys[id])
+        gal = magphys[mask]
         print("Zs: {} Cat: {}".format(zs[x], gal['z']))
-
+    exit()
     for galaxy in magphys:
         gal_id = galaxy['id']
         total += 1
