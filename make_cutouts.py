@@ -72,7 +72,7 @@ def create_aspecs_cutouts(aspecs_coordinates, fits_files, fits_names, wcs_data, 
 
 hdu_list = fits.open("data/jacob_aspecs_catalog_fixed_magphys_jcb3.fits")
 print(hdu_list[1].columns)
-full_catalog = hdu_list[1].data
+roberto_muse = hdu_list[1].data
 
 from astropy.utils import data
 from spectral_cube import SpectralCube
@@ -331,15 +331,25 @@ idx, d2d, d3d = coords.match_to_catalog_sky(roberto_ra_dec)
 
 aspecs_matches = [[] for _ in range(92)]
 back_match = {}
+z_specs = {}
+print(roberto_muse)
 
 print(idx)
 for index, id in enumerate(idx):
     if coords[index].separation(roberto_ra_dec[id]).arcsecond < 1.0:
+        test_mask = (roberto_muse['id'] == roberto_muse[id]['id'])
+        test_rob = roberto_muse[test_mask]
+        spec_z_mask = (test_rob["z_spec_3dh"] > 0.001) | (test_rob["zm_vds"] > 0.001) | (
+                test_rob["zm_coeS"] > 0.001) | (test_rob['muse_wide_z'] > 0.0001) \
+                      | (test_rob["zs_mor"] > 0.001) | (test_rob["zm_ina"] > 0.001) | (test_rob["zm_her"] > 0.001)
+        print(len(test_rob[spec_z_mask]))
         aspecs_matches[index].append(id)
         if roberto_muse[id]['id'] in back_match.keys():
             back_match[roberto_muse[id]['id']].append(index)
+            z_specs[roberto_muse[id]['id']].append(len(test_rob[spec_z_mask]))
         else:
             back_match[roberto_muse[id]['id']] = [index]
+            z_specs[roberto_muse[id]['id']] = [len(test_rob[spec_z_mask])]
 #exit()
 # Now have the matches, plot them on the sky
 
@@ -365,7 +375,8 @@ for key, values in back_match.items():
                 if index == value:
                     distances.append(coords[index].separation(roberto_ra_dec[id]).arcsecond)
         f.suptitle(
-            'Roberto ID: ' + str(key) + " Z_1: " + str(roberto_muse[test_mask]['z_1'][0]) + " Z_2: " + str(roberto_muse[test_mask]['z_2'][0]) + " Matches: " + str(freq_valus) + " \nDistance: " + str(distances))
+            'Roberto ID: ' + str(key) + " Z_1: " + str(roberto_muse[test_mask]['z_1'][0]) + " Z_2: " + str(roberto_muse[test_mask]['z_2'][0]) +
+            " Matches: " + str(freq_valus) + " \nDistance: " + str(distances) + "\n Spec Z: " + str(z_specs[roberto_muse[test_mask]['id'][0]]))
         for third_index, image in enumerate(fits_files):
             ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
             create_multi_overlap_ax_cutout(ax, fits_names[third_index], image, catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
