@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 from astropy.table import vstack
 from astropy.table import Table, hstack
+import astropy.units as u
+
 from scipy import stats
 from numpy.polynomial.polynomial import polyfit
 from aspecs_catalog_builder import compare_catalog_locations
@@ -90,44 +92,82 @@ muse_z_mask = (full_catalog['zm_ina'] > 0.001) | (full_catalog['zm_her'] > 0.001
 spec_catalog = full_catalog[spec_z_mask]
 muse_catalog = full_catalog[muse_z_mask]
 
-leinhardt_catalog = compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
+#leinhardt_catalog = compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
 
-leinhardt_muse_z_mask = (leinhardt_catalog['zm_ina'] > 0.001) | (leinhardt_catalog['zm_her'] > 0.001) | (leinhardt_catalog['muse_wide_z'] > 0.0001)
+#leinhardt_muse_z_mask = (leinhardt_catalog['zm_ina'] > 0.001) | (leinhardt_catalog['zm_her'] > 0.001) | (leinhardt_catalog['muse_wide_z'] > 0.0001)
 
-leinhardt_catalog = leinhardt_catalog[leinhardt_muse_z_mask]
-leinhardt_catalog = perform_cuts(leinhardt_catalog)
+#leinhardt_catalog = leinhardt_catalog[leinhardt_muse_z_mask]
 
-F850LP = 2238.1
+roberto_muse = Table.read("roberto_catalog_muse.fits", format='fits')
+test_roberto = Table.read("/home/jacob/Development/Wide_ASPECS/mapghys_in_nov2018_all.fits", format='fits')
+# Add in RA and Dec to test_roberto
+from astropy.table import join
 
+roberto_muse = join(test_roberto, roberto_muse, keys='id')
 
-def janksy_to_AB(ab):
-    # Given in microJansky, get Jansky for AB Magnitude
-    return 25.0 -2.5 * np.log10((ab))
+roberto_matched_ids = [[], [23419], [21510], [], [], [], [], [14630], [18282], [17508], [9258], [], [], [], [], [], [], [], [], [], [22705], [22705], [], [], [13131], [], [], [], [], [], [], [], [14957], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [28901], [17170], [17170], [28851], [52578], [58258], [52994], [], [58246], [58246], [58246], [58246], [58246], [62572], [62572], [], [], [], [], [], [25004], [], [], [], [], [], [], [], [], [], [52367], [], [], [], [57822], [], [], [22160], [], [], [18553], [18553], [19491]]
 
-def convert_flux_to_mag(flux):
-    # Flux is in ergs
-    return -2.5 * np.log10(flux) + -21.10
+results_dict = {1: (1.094, 218.71 * u.GHz, 23419),
+                2: (1.675, 279.602 * u.GHz, 21510),
+                7: (0.085, 101.745 * u.GHz, 14630),
+                8: (0.872, 177.885 * u.GHz, 18282),
+                9: (1.685, 249.474 * u.GHz, 17508),
+                10: (0.925, 181.568 * u.GHz, 9258),
+                20: (0.96, 209.308 * u.GHz, 22705),
+                21: (0.96, 209.338 * u.GHz, 22705),
+                24: (3.11, 377.384 * u.GHz, 13131),
+                32: (0.163, 110.94 * u.GHz, 14957),
+                49: (1.191, 234.301 * u.GHz, 28901),
+                50: (1.535, 235.043 * u.GHz, 17170),
+                51: (1.535, 235.063 * u.GHz, 17170),
+                52: (1.019, 211.949 * u.GHz, 28851),
+                53: (1.537, 241.314 * u.GHz, 52578),
+                54: (2.835, 364.747 * u.GHz, 58258),
+                55: (3.496, 420.165 * u.GHz, 52994),
+                57: (1.597, 243.105 * u.GHz, 58246),
+                58: (1.597, 243.084 * u.GHz, 58246),
+                59: (1.597, 243.084 * u.GHz, 58246),
+                60: (1.597, 243.126 * u.GHz, 58246),
+                61: (1.597, 243.126 * u.GHz, 58246),
+                62: (1.599, 246.073 * u.GHz, 62572),
+                63: (1.599, 246.053 * u.GHz, 62572),
+                69: (0.738, 184.459 * u.GHz, 25004),
+                79: (1.269, 211.816 * u.GHz, 52367),
+                83: (1.599, 246.359 * u.GHz, 57822),
+                86: (0.355, 143.493 * u.GHz, 22160),
+                89: (2.32, 311.433 * u.GHz, 18553),
+                90: (2.32, 311.406 * u.GHz, 18553),
+                91: (1.665, 246.118 * u.GHz, 19491)}
 
-count = 0
-for row in full_catalog:
-    if row['f850lp'] > 0.00001 and row['f160w'] > 0.00001:
-        if janksy_to_AB(row['f850lp']) < 27.5 and janksy_to_AB(row['f160w']) < 27.5:
-            count += 1
-print("Count: ", count)
+aspecs_number= []
+roberto_id = []
+for key, value in results_dict.items():
+    roberto_id.append(value[2])
+    aspecs_number.append(key)
+
+aspecs_catalog_mask = (full_catalog['id'] == 19491) | (full_catalog['id'] == 18553) | (full_catalog['id'] == 22160) | \
+                      (full_catalog['id'] == 57822) | (full_catalog['id'] == 52367) | (full_catalog['id'] == 25004) | \
+                      (full_catalog['id'] == 62572) | (full_catalog['id'] == 58246) | (full_catalog['id'] == 52994) | \
+                      (full_catalog['id'] == 58258) | (full_catalog['id'] == 52578) | (full_catalog['id'] == 28851) | \
+                      (full_catalog['id'] == 17170) | (full_catalog['id'] == 28901) | (full_catalog['id'] == 14957) | \
+                      (full_catalog['id'] == 28901) | (full_catalog['id'] == 14957) | (full_catalog['id'] == 13131) | \
+                      (full_catalog['id'] == 22705) | (full_catalog['id'] == 9258) | (full_catalog['id'] == 17508) | \
+                      (full_catalog['id'] == 18282) | (full_catalog['id'] == 14630) | (full_catalog['id'] == 21510) | \
+                      (full_catalog['id'] == 23419)
+
+aspecs_catalog = full_catalog[aspecs_catalog_mask]
+#leinhardt_catalog = perform_cuts(leinhardt_catalog)
 
 # Now the quality cuts
+#aspecs_catalog = perform_cuts(aspecs_catalog)
+print("Lenghth of ASPECS: {}".format(len(aspecs_catalog)))
+#exit()
 roberto_catalog = perform_cuts(roberto_catalog)
 spec_catalog = perform_cuts(spec_catalog)
 franco_catalog = perform_cuts(franco_catalog)
 full_catalog = perform_cuts(full_catalog)
 muse_catalog = perform_cuts(muse_catalog)
 count = 0
-for row in full_catalog:
-    if row['f850lp'] > 0.00001 and row['f160w'] > 0.00001:
-        if janksy_to_AB(row['f850lp']) < 27.5 and janksy_to_AB(row['f160w']) < 27.5:
-            count += 1
-print("Count: ", count)
-
 spec_ids = full_catalog['id']
 diff_ids = []
 for id in roberto_catalog['id']:
@@ -182,6 +222,23 @@ spec_mid_z_mass, mid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("
 spec_high_z_mass, high_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", spec_catalog, 2, 3)
 spec_vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", spec_catalog, 3, 4)
 
+# ASPECS Ones
+
+aspecs_low_z_sfr, low_z_sfr_error, low_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 0, 1)
+aspecs_mid_z_sfr, mid_z_sfr_error, mid_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 1, 2)
+aspecs_high_z_sfr, high_z_sfr_error, high_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 2, 3)
+aspecs_vhigh_z_sfr, vhigh_z_sfr_error, vhigh_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 3, 4)
+
+aspecs_low_z_mass, low_z_mass_error, low_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 0, 1)
+aspecs_mid_z_mass, mid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 1, 2)
+aspecs_high_z_mass, high_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 2, 3)
+aspecs_vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 3, 4)
+
+print("Lenghth of ASPECS VHigh: {}".format(len(aspecs_vhigh_z_sfr)))
+print("Lenghth of ASPECS High: {}".format(len(aspecs_high_z_sfr)))
+print("Lenghth of ASPECS Mid: {}".format(len(aspecs_mid_z_sfr)))
+print("Lenghth of ASPECS Low: {}".format(len(aspecs_low_z_sfr)))
+
 # Now the Roberto Ones
 
 rob_low_z_sfr, low_z_sfr_error, low_z_sfr_z = create_points_and_error_by_z("SFR", roberto_catalog, 0, 1)
@@ -223,29 +280,38 @@ ax1.errorbar(low_z_mass, low_z_sfr, yerr=low_z_sfr_error, xerr=low_z_mass_error,
              mec='pink', elinewidth=1)
 ax1.plot(np.unique(low_z_mass), np.poly1d(np.polyfit(low_z_mass, low_z_sfr, 1))(np.unique(low_z_mass)), label='All fit',
          color='r', zorder=10)
+ax1.scatter(aspecs_low_z_mass, aspecs_low_z_sfr, marker='.',
+            s=30, c='red',  label='ASPECS', zorder=20)
 ax1.set_title('0 < Z < 1')
 ax2.errorbar(mid_z_mass, mid_z_sfr, yerr=mid_z_sfr_error, xerr=mid_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='blue', elinewidth=1)
 ax2.plot(np.unique(mid_z_mass), np.poly1d(np.polyfit(mid_z_mass, mid_z_sfr, 1))(np.unique(mid_z_mass)), color='r',
          zorder=10)
+ax2.scatter(aspecs_mid_z_mass, aspecs_mid_z_sfr, marker='.',
+             s=30, c='red',zorder=20)
 ax2.set_title('1 < Z < 2')
 ax3.errorbar(high_z_mass, high_z_sfr, yerr=high_z_sfr_error, xerr=high_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='green', elinewidth=1)
 ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_sfr, 1))(np.unique(high_z_mass)), color='r',
          zorder=10)
+ax3.scatter(aspecs_high_z_mass, aspecs_high_z_sfr, marker='.',
+             s=30, c='red',zorder=20)
 ax3.set_title('2 < Z < 3')
 ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error, ecolor='lightgrey', fmt='.',
              ms=1, mec='orange', elinewidth=1)
 ax4.plot(np.unique(vhigh_z_mass), np.poly1d(np.polyfit(vhigh_z_mass, vhigh_z_sfr, 1))(np.unique(vhigh_z_mass)),
          color='r', zorder=10)
+ax4.scatter(aspecs_vhigh_z_mass, aspecs_vhigh_z_sfr, marker='.',
+             s=30, c='red',zorder=20)
 # ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error)
 ax4.set_title('3 < Z < 4')
 handles, labels = ax1.get_legend_handles_labels()
 f.legend(loc='best', handles=handles, labels=labels, prop={'size': 6})
 f.text(0.5, 0.01, 'Log Stellar Mass (Mstar)', ha='center')
 f.text(0.01, 0.5, 'Log Star Formation Rate', va='center', rotation='vertical')
-f.savefig("AllMstarVsSFRbyZ04.png", bbox_inches='tight', dpi=300)
+f.savefig("AllMStarSFR_ASPECS_MATCHES.png", bbox_inches='tight', dpi=300)
 f.show()
+exit()
 
 f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
 ax1.errorbar(low_z_mass, low_z_sfr, yerr=low_z_sfr_error, xerr=low_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,

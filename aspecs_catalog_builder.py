@@ -201,7 +201,7 @@ def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec
     print("Not Same: " + str(not_same))
     print(muse_error_ids)
 
-    roberto_catalog.write("roberto_catalog_muse_skelton_matched.fits", format='fits')
+    #roberto_catalog.write("roberto_catalog_muse_skelton_matched.fits", format='fits')
     return roberto_catalog
 
 def compare_open_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec_key='dec', frame='fk5'):
