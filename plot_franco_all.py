@@ -92,6 +92,7 @@ muse_z_mask = (full_catalog['zm_ina'] > 0.001) | (full_catalog['zm_her'] > 0.001
 spec_catalog = full_catalog[spec_z_mask]
 muse_catalog = full_catalog[muse_z_mask]
 
+
 #leinhardt_catalog = compare_catalog_locations(os.path.join("data", "jacob_aspecs_catalog_fixed_magphys_jcb3.fits"), os.path.join("data", "MW_44fields_main_table_v1.0.fits"))
 
 #leinhardt_muse_z_mask = (leinhardt_catalog['zm_ina'] > 0.001) | (leinhardt_catalog['zm_her'] > 0.001) | (leinhardt_catalog['muse_wide_z'] > 0.0001)
@@ -107,37 +108,45 @@ roberto_muse = join(test_roberto, roberto_muse, keys='id')
 
 roberto_matched_ids = [[], [23419], [21510], [], [], [], [], [14630], [18282], [17508], [9258], [], [], [], [], [], [], [], [], [], [22705], [22705], [], [], [13131], [], [], [], [], [], [], [], [14957], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [28901], [17170], [17170], [28851], [52578], [58258], [52994], [], [58246], [58246], [58246], [58246], [58246], [62572], [62572], [], [], [], [], [], [25004], [], [], [], [], [], [], [], [], [], [52367], [], [], [], [57822], [], [], [22160], [], [], [18553], [18553], [19491]]
 
-results_dict = {1: (1.094, 218.71 * u.GHz, 23419),
-                2: (1.675, 279.602 * u.GHz, 21510),
-                7: (0.085, 101.745 * u.GHz, 14630),
-                8: (0.872, 177.885 * u.GHz, 18282),
-                9: (1.685, 249.474 * u.GHz, 17508),
-                10: (0.925, 181.568 * u.GHz, 9258),
-                20: (0.96, 209.308 * u.GHz, 22705),
-                21: (0.96, 209.338 * u.GHz, 22705),
-                24: (3.11, 377.384 * u.GHz, 13131),
-                32: (0.163, 110.94 * u.GHz, 14957),
-                49: (1.191, 234.301 * u.GHz, 28901),
-                50: (1.535, 235.043 * u.GHz, 17170),
-                51: (1.535, 235.063 * u.GHz, 17170),
-                52: (1.019, 211.949 * u.GHz, 28851),
-                53: (1.537, 241.314 * u.GHz, 52578),
-                54: (2.835, 364.747 * u.GHz, 58258),
-                55: (3.496, 420.165 * u.GHz, 52994),
-                57: (1.597, 243.105 * u.GHz, 58246),
-                58: (1.597, 243.084 * u.GHz, 58246),
-                59: (1.597, 243.084 * u.GHz, 58246),
-                60: (1.597, 243.126 * u.GHz, 58246),
-                61: (1.597, 243.126 * u.GHz, 58246),
-                62: (1.599, 246.073 * u.GHz, 62572),
-                63: (1.599, 246.053 * u.GHz, 62572),
-                69: (0.738, 184.459 * u.GHz, 25004),
-                79: (1.269, 211.816 * u.GHz, 52367),
-                83: (1.599, 246.359 * u.GHz, 57822),
-                86: (0.355, 143.493 * u.GHz, 22160),
-                89: (2.32, 311.433 * u.GHz, 18553),
-                90: (2.32, 311.406 * u.GHz, 18553),
-                91: (1.665, 246.118 * u.GHz, 19491)}
+results_dict = {1: (1.094, 218.71 * u.GHz, 230.538 *u.GHz, 23419),
+                2: (1.675, 279.602 * u.GHz, 230.538 *u.GHz, 21510),
+                7: (0.085, 101.745 * u.GHz, 115.271 *u.GHz, 14630),
+                8: (0.872, 177.885 * u.GHz, 115.271 *u.GHz, 18282),
+                9: (1.685, 249.474 * u.GHz, 230.538 *u.GHz, 17508),
+                10: (0.925, 181.568 * u.GHz, 115.271 *u.GHz, 9258),
+                20: (0.96, 209.308 * u.GHz, 115.271 *u.GHz,  22705),
+                21: (0.96, 209.338 * u.GHz, 115.271 *u.GHz, 22705),
+                24: (3.11, 377.384 * u.GHz, 345.796 * u.GHz, 13131),
+                32: (0.163, 110.94 * u.GHz, 115.271 *u.GHz, 14957),
+                49: (1.191, 234.301 * u.GHz, 230.538 *u.GHz, 28901),
+                50: (1.535, 235.043 * u.GHz, 230.538 *u.GHz, 17170),
+                51: (1.535, 235.063 * u.GHz, 230.538 *u.GHz, 17170),
+                52: (1.019, 211.949 * u.GHz, 230.538 *u.GHz, 28851),
+                53: (1.537, 241.314 * u.GHz, 230.538 *u.GHz, 52578),
+                54: (2.835, 364.747 * u.GHz, 345.796 *u.GHz,  58258),
+                55: (3.496, 420.165 * u.GHz, 461.041 * u.GHz, 52994),
+                57: (1.597, 243.105 * u.GHz, 230.538 *u.GHz, 58246),
+                58: (1.597, 243.084 * u.GHz, 230.538 *u.GHz,58246),
+                59: (1.597, 243.084 * u.GHz, 230.538 *u.GHz,58246),
+                60: (1.597, 243.126 * u.GHz, 230.538 *u.GHz, 58246),
+                61: (1.597, 243.126 * u.GHz, 230.538 *u.GHz,58246),
+                62: (1.599, 246.073 * u.GHz, 230.538 *u.GHz, 62572),
+                63: (1.599, 246.053 * u.GHz, 230.538 *u.GHz, 62572),
+                69: (0.738, 184.459 * u.GHz, 115.271 *u.GHz, 25004),
+                79: (1.269, 211.816 * u.GHz, 230.538 *u.GHz, 52367),
+                83: (1.599, 246.359 * u.GHz, 230.538 *u.GHz, 57822),
+                86: (0.355, 143.493 * u.GHz, 115.271 *u.GHz, 22160),
+                89: (2.32, 311.433 * u.GHz, 345.796 *u.GHz, 18553),
+                90: (2.32, 311.406 * u.GHz, 345.796 *u.GHz, 18553),
+                91: (1.665, 246.118 * u.GHz, 230.538 *u.GHz, 19491)}
+
+
+
+GHz_diff = {}
+for key, value in results_dict.items():
+    GHz_diff[key] = value[1] - value[2]
+
+print(GHz_diff)
 
 aspecs_number= []
 roberto_id = []
@@ -277,38 +286,38 @@ vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z(
 
 f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
 ax1.errorbar(low_z_mass, low_z_sfr, yerr=low_z_sfr_error, xerr=low_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
-             mec='pink', elinewidth=1)
+             mec='darkgrey', elinewidth=1)
 ax1.plot(np.unique(low_z_mass), np.poly1d(np.polyfit(low_z_mass, low_z_sfr, 1))(np.unique(low_z_mass)), label='All fit',
-         color='r', zorder=10)
+         color='black', zorder=10)
 ax1.scatter(aspecs_low_z_mass, aspecs_low_z_sfr, marker='.',
             s=30, c='red',  label='ASPECS', zorder=20)
 ax1.set_title('0 < Z < 1')
 ax2.errorbar(mid_z_mass, mid_z_sfr, yerr=mid_z_sfr_error, xerr=mid_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
-             mec='blue', elinewidth=1)
-ax2.plot(np.unique(mid_z_mass), np.poly1d(np.polyfit(mid_z_mass, mid_z_sfr, 1))(np.unique(mid_z_mass)), color='r',
+             mec='darkgrey', elinewidth=1)
+ax2.plot(np.unique(mid_z_mass), np.poly1d(np.polyfit(mid_z_mass, mid_z_sfr, 1))(np.unique(mid_z_mass)), color='black',
          zorder=10)
 ax2.scatter(aspecs_mid_z_mass, aspecs_mid_z_sfr, marker='.',
              s=30, c='red',zorder=20)
 ax2.set_title('1 < Z < 2')
 ax3.errorbar(high_z_mass, high_z_sfr, yerr=high_z_sfr_error, xerr=high_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
-             mec='green', elinewidth=1)
-ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_sfr, 1))(np.unique(high_z_mass)), color='r',
+             mec='darkgrey', elinewidth=1)
+ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_sfr, 1))(np.unique(high_z_mass)), color='black',
          zorder=10)
 ax3.scatter(aspecs_high_z_mass, aspecs_high_z_sfr, marker='.',
              s=30, c='red',zorder=20)
 ax3.set_title('2 < Z < 3')
 ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error, ecolor='lightgrey', fmt='.',
-             ms=1, mec='orange', elinewidth=1)
+             ms=1, mec='darkgrey', elinewidth=1)
 ax4.plot(np.unique(vhigh_z_mass), np.poly1d(np.polyfit(vhigh_z_mass, vhigh_z_sfr, 1))(np.unique(vhigh_z_mass)),
-         color='r', zorder=10)
+         color='black', zorder=10)
 ax4.scatter(aspecs_vhigh_z_mass, aspecs_vhigh_z_sfr, marker='.',
              s=30, c='red',zorder=20)
 # ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error)
 ax4.set_title('3 < Z < 4')
 handles, labels = ax1.get_legend_handles_labels()
 f.legend(loc='best', handles=handles, labels=labels, prop={'size': 6})
-f.text(0.5, 0.01, 'Log Stellar Mass (Mstar)', ha='center')
-f.text(0.01, 0.5, 'Log Star Formation Rate', va='center', rotation='vertical')
+f.text(0.5, 0.01, 'Log(M*)', ha='center')
+f.text(0.01, 0.5, 'Log(SFR)', va='center', rotation='vertical')
 f.savefig("AllMStarSFR_ASPECS_MATCHES.png", bbox_inches='tight', dpi=300)
 f.show()
 exit()

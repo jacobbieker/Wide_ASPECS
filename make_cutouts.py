@@ -428,7 +428,7 @@ for key, values in back_match.items():
 # Now work backwards
 print(all_restframe_ghz)
 print(aspecs_matches)
-exit()
+
 results_dict = {1: (1.094, 218.71 * u.GHz, 23419),
                 2: (1.675, 279.602 * u.GHz, 21510),
                 7: (0.085, 101.745 * u.GHz, 14630),
@@ -489,9 +489,10 @@ ax = plt.subplot(projection=w)
 ax.imshow(f160w_goodss[0].data, cmap='gray')
 ax.scatter(aspecs_ra_dec.ra.deg, aspecs_ra_dec.dec.deg, transform=ax.get_transform('fk5'), s=100,
            edgecolor='white', facecolor='none')
+plt.savefig("92_Line_Can_Locations.png", dpi=300)
 plt.show()
 idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
-
+exit()
 for third_index, coord in enumerate(aspecs_ra_dec):
     f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[third_index]],
                               id=third_index, aspecs_freqs=aspecs_freqs)
