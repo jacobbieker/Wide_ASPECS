@@ -314,10 +314,6 @@ def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, match
     return ax
 
 
-coords = []
-freqs = []
-
-
 def convert_to_rest_frame_ghz(z, ghz):
     """
     Take a measured GHz value, and calculates the restframe GHz value based on the given z of the matched galaxy
@@ -343,24 +339,24 @@ def convert_to_rest_frame_ghz(z, ghz):
 
     return final_ghz
 
+aspecs_lines = Table.read("data/line_search_P3_wa_crop.out", format="ascii", header_start=0, data_start=1)
 
-with open(os.path.join("data", "ASPECS_lines.txt")) as data_file:
-    # Read in the locations and
-    for line in data_file:
-        no_circle = line.split("(")[1]
-        first_split = no_circle.split(",")
-        ra = float(first_split[0])
-        dec = float(first_split[1])
-        coords.append(SkyCoord(ra * u.deg, dec * u.deg, frame='fk5'))
-        frequency = first_split[2].split("{")[1]
-        frequency = float(frequency.split("}")[0])
-        freqs.append(frequency)
+transitions = {"1-0": [0.0030, 0.3694, 115.271],
+               "2-1": [1.0059, 1.7387, 230.538],
+               "3-2": [2.0088, 3.1080, 345.796],
+               "4-3": [3.0115, 4.4771, 461.041],
+               "5-4": [4.0142, 5.8460, 576.268],
+               "6-5": [5.0166, 7.2146, 691.473],
+               "7-6": [6.0188, 8.5829, 806.652],
+               "C1 1-0": [3.2823, 4.8468, 492.161],
+               "C1 2-1": [6.0422, 8.6148, 809.342]}
 
-coords = SkyCoord(coords)
+coords = SkyCoord(aspecs_lines['rra'] * u.deg, aspecs_lines['rdc'] * u.deg, frame='fk5')
+freqs = aspecs_lines['rfreq']
 
 idx, d2d, d3d = coords.match_to_catalog_sky(roberto_ra_dec)
 
-aspecs_matches = [[] for _ in range(92)]
+aspecs_matches = [[] for _ in range(len(aspecs_lines))]
 back_match = {}
 z_specs = {}
 
@@ -422,7 +418,7 @@ for key, values in back_match.items():
                                            catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
                                            matches=values, index=idx, ra_dec=coords)
         # plt.show()
-        f.savefig(str("Roberto_ASPECS_Overlap_V2_Cutout_" + str(key) + ".png"), dpi=300)
+        f.savefig(str("Jan_Output/ASPECS_Cutout_" + str(key) + ".png"), dpi=300)
         f.clf()
         plt.close()
 # Now work backwards

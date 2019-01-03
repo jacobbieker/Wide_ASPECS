@@ -82,6 +82,12 @@ def build_aspecs_catalog(initial_catalog=None, dec_key='dec', ra_key='ra', frame
     # Get the IDs of the matched values
     #catalog_ids = initial_catalog[idx]['id']
 
+def build_aspecs_catalog_ascii(initial_catalog=None, dec_key='dec', ra_key='ra', frame='fk5'):
+    hdu_list = fits.open(initial_catalog)
+    initial_catalog = hdu_list[1].data
+    ra_dec = SkyCoord(initial_catalog[ra_key] * u.deg, initial_catalog[dec_key] * u.deg, frame=frame)
+
+    aspecs_lines = Table.read("data/line_search_P3_wa_crop.out", format="ascii")
 
 def compare_catalog_locations(roberto_catalog, initial_catalog, ra_key='ra', dec_key='dec', frame='fk5'):
     hdu_list = fits.open(initial_catalog)
