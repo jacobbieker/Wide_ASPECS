@@ -303,7 +303,6 @@ if __name__ == "__main__":
         print(magphys[id])
         gal = magphys[mask]
         print("Zs: {} Cat: {}".format(zs[x], gal['z']))
-    exit()
     for galaxy in magphys:
         gal_id = galaxy['id']
         total += 1
@@ -412,12 +411,6 @@ if __name__ == "__main__":
                         # Check if already matched to Skelton object
                         if muse_catalog[id]['unique_id'] not in roberto_catalog['muse_id']:
                             # Now do the by hand adding
-                            if np.isclose(muse_catalog[id]['unique_id'][0], 125009025) and np.isclose(roberto_catalog['id'], 51778):
-                                print("Hit One Manual Change")
-                                continue
-                            if np.isclose(muse_catalog[id]['unique_id'][0], 119002002) and np.isclose(roberto_catalog['id'], 62887):
-                                print("Hit Other Manual Change")
-                                continue
                             less_than_5.append([roberto_catalog[index]['id'], muse_catalog[id]['unique_id']])
                             roberto_catalog[index]['muse_wide_z'] = muse_catalog[id]['z']
                             roberto_catalog[index]['muse_wide_z_err'] = muse_catalog[id]['z_err']
