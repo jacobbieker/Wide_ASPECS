@@ -83,9 +83,10 @@ for filename in roberto_magphys_output:
     hdu_list = Table.read(filename, format='fits')
     roberto_catalog = vstack([roberto_catalog, hdu_list])
 
-spec_z_mask = (full_catalog["z_spec_3dh"] > 0.001) | (full_catalog["zm_vds"] > 0.001) | (
-        full_catalog["zm_coeS"] > 0.001) \
-              | (full_catalog["zs_mor"] > 0.001) | (full_catalog["zm_ina"] > 0.001) | (full_catalog["zm_her"] > 0.001)
+spec_z_mask = (full_catalog["z_spec_3dh"] > 0.0001) | (full_catalog["zm_vds"] > 0.0001) | (
+        full_catalog["zm_coeS"] > 0.0001) \
+              | (full_catalog["zs_mor"] > 0.0001) | (full_catalog["zm_ina"] > 0.0001) | (full_catalog["zm_her"] > 0.0001) \
+    | (full_catalog['muse_z'] > 0.0001)
 
 muse_z_mask = (full_catalog['zm_ina'] > 0.001) | (full_catalog['zm_her'] > 0.001)
 
