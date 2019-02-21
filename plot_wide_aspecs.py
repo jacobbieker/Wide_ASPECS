@@ -266,7 +266,7 @@ f.clf()
 """
 
 
-def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, aspecs_index, ra_dec=roberto_ra_dec):
+def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=roberto_ra_dec):
     """
     :param ax: Matplotlib ax to use
     :param wcs_header: Image header with WCS info
@@ -305,9 +305,9 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, aspecs_i
     return ax
 
 
-def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, matches, index, ra_dec=roberto_ra_dec):
+def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, matches, ra_dec=roberto_ra_dec):
     ax = create_multi_overlap_cutout(ax, fit_data[0].header, fit_data[0].data, aspecs=catalog_coordinate,
-                                     matches=matches, aspecs_index=index, ra_dec=ra_dec)
+                                     matches=matches, ra_dec=ra_dec)
     ax.set_title(name)
     ax.tick_params(direction='in', colors='w', bottom=True, top=True, left=True, right=True, labelbottom=True,
                    labeltop=False, labelleft=True, labelright=False)
@@ -339,7 +339,9 @@ def convert_to_rest_frame_ghz(z, ghz):
 
     return final_ghz
 
-aspecs_lines = Table.read("data/line_search_P3_wa_crop.out", format="ascii", header_start=0, data_start=1)
+#aspecs_lines = Table.read("ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format="ascii", header_start=0, data_start=1)
+
+aspecs_lines = Table.read("ASPECS_Line_Candidates_ECSV", format='ascii.ecsv')
 
 transitions = {"1-0": [0.0030, 0.3694, 115.271],
                "2-1": [1.0059, 1.7387, 230.538],
@@ -351,8 +353,37 @@ transitions = {"1-0": [0.0030, 0.3694, 115.271],
                "C1 1-0": [3.2823, 4.8468, 492.161],
                "C1 2-1": [6.0422, 8.6148, 809.342]}
 
-coords = SkyCoord(aspecs_lines['rra'] * u.deg, aspecs_lines['rdc'] * u.deg, frame='fk5')
-freqs = aspecs_lines['rfreq']
+coords = SkyCoord(aspecs_lines['RA (J2000)'] * u.deg, aspecs_lines['DEC (J2000)'] * u.deg, frame='fk5')
+freqs = aspecs_lines['Observed CO (GHz)']
+
+# Now plot all Radio Sources and see what is around them for all ones without a match
+
+for index, row in enumerate(aspecs_lines):
+    if row['Roberto ID'] < 0:
+        # Make the cutouts
+        shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+        f = plt.figure(figsize=(20, 20))
+        # no counterpart
+        distances = [0]
+        freq_valus = [np.round(row['Observed CO (GHz)'], 3)]
+        rest_frame_ghz = [np.round(row['Restframe CO (GHz)'], 3)]
+        f.suptitle(
+            " Z: " + str(row['Z']) + " Delta_Z: " + str(
+                row['Delta Z']) +
+            " Observed: " + str(freq_valus) + "\n Spec Z: " + str(
+                row['Spec Z'])
+            + "\n Rest Frame GHz: " + str(rest_frame_ghz))
+        for third_index, image in enumerate(fits_files):
+            ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+            create_multi_overlap_ax_cutout(ax, fits_names[third_index], image,
+                                           catalog_coordinate=coords[index],
+                                           matches=[index], ra_dec=coords)
+        f.savefig(str("Feb_Output/ASPECS_Cutout_NoCounter" + str(index) + ".png"), dpi=300)
+        f.clf()
+        plt.close()
+
+
+exit()
 
 idx, d2d, d3d = coords.match_to_catalog_sky(roberto_ra_dec)
 
@@ -367,13 +398,14 @@ for index, id in enumerate(idx):
         spec_z_mask = (test_rob["z_spec_3dh"] > 0.001) | (test_rob["zm_vds"] > 0.001) | (
                 test_rob["zm_coeS"] > 0.001) | (test_rob['muse_wide_z'] > 0.0001) \
                       | (test_rob["zs_mor"] > 0.001) | (test_rob["zm_ina"] > 0.001) | (test_rob["zm_her"] > 0.001)
-        aspecs_matches[index].append(roberto_muse[id]['id'])
-        if roberto_muse[id]['id'] in back_match.keys():
-            back_match[roberto_muse[id]['id']].append(index)
-            z_specs[roberto_muse[id]['id']].append(len(test_rob[spec_z_mask]))
-        else:
-            back_match[roberto_muse[id]['id']] = [index]
-            z_specs[roberto_muse[id]['id']] = [len(test_rob[spec_z_mask])]
+        if int(aspecs_lines[index]["Roberto ID"]) == int(roberto_muse[id]['id']):
+            aspecs_matches[index].append(roberto_muse[id]['id'])
+            if roberto_muse[id]['id'] in back_match.keys():
+                back_match[roberto_muse[id]['id']].append(index)
+                z_specs[roberto_muse[id]['id']].append(len(test_rob[spec_z_mask]))
+            else:
+                back_match[roberto_muse[id]['id']] = [index]
+                z_specs[roberto_muse[id]['id']] = [len(test_rob[spec_z_mask])]
 # exit()
 # Now have the matches, plot them on the sky
 
@@ -421,6 +453,57 @@ for key, values in back_match.items():
         f.savefig(str("Feb_Output/ASPECS_Cutout_" + str(key) + ".png"), dpi=300)
         f.clf()
         plt.close()
+
+
+
+
+
+
+
+for key, values in enumerate(aspecs_matches):
+    if len(values) > 0:
+        # Make the cutouts
+        shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+        f = plt.figure(figsize=(20, 20))
+        test_mask = (roberto_muse['id'] == key)
+        roberto_ra_dec_index = 1e30
+        for index, i in enumerate(roberto_muse):
+            if i['id'] == key:
+                roberto_ra_dec_index = index
+
+        distances = []
+        freq_valus = []
+        rest_frame_ghz = []
+        for value in values:
+            print("Value: ", value)
+            print("Freq: ", freqs[value])
+            freq_valus.append(freqs[value])
+            print("Rest Frame GHz: " + str(convert_to_rest_frame_ghz(roberto_muse[test_mask]['z_1'][0], freqs[value])))
+            rest_frame_ghz.append(
+                np.round(convert_to_rest_frame_ghz(np.round(roberto_muse[test_mask]['z_1'][0], 3), freqs[value]), 3))
+            for index, id in enumerate(idx):
+                if index == value:
+                    distances.append(np.round(coords[index].separation(roberto_ra_dec[id]).arcsecond, 4))
+                    all_restframe_ghz[value] = (np.round(roberto_muse[test_mask]['z_1'][0], 3), np.round(
+                        convert_to_rest_frame_ghz(np.round(roberto_muse[test_mask]['z_1'][0], 3), freqs[value]), 3),
+                                                key)
+        f.suptitle(
+            'Roberto ID: ' + str(key) + " Z_1: " + str(roberto_muse[test_mask]['z_1'][0]) + " Z_2: " + str(
+                roberto_muse[test_mask]['z_2'][0]) +
+            " Matches: " + str(freq_valus) + " \nDistance: " + str(distances) + "\n Spec Z: " + str(
+                z_specs[roberto_muse[test_mask]['id'][0]])
+            + "\n Rest Frame GHz: " + str(rest_frame_ghz))
+        for third_index, image in enumerate(fits_files):
+            ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+            create_multi_overlap_ax_cutout(ax, fits_names[third_index], image,
+                                           catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
+                                           matches=values, index=idx, ra_dec=coords)
+        # plt.show()
+        f.savefig(str("Feb_Output/ASPECS_Cutout_" + str(key) + ".png"), dpi=300)
+        f.clf()
+        plt.close()
+
+
 # Now work backwards
 print(all_restframe_ghz)
 print(aspecs_matches)
@@ -508,7 +591,7 @@ idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
 for third_index, coord in enumerate(aspecs_ra_dec):
     f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[third_index]],
                               id=third_index, aspecs_freqs=aspecs_freqs)
-    f.savefig(str("Full_ASPECS_Cutout_" + str(third_index) + "_Freq_" + str(
+    f.savefig(str("FINAL_Full_ASPECS_Cutout_" + str(third_index) + "_Freq_" + str(
         aspecs_freqs[third_index]) + "_Sep_{:0.3f}" + ".png").format(
         coord.separation(ra_dec[idx[third_index]]).arcsecond), dpi=300)
     f.clf()
@@ -537,7 +620,7 @@ idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
 for third_index, coord in enumerate(aspecs_ra_dec):
     f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[third_index]],
                               id=third_index, aspecs_freqs=aspecs_freqs)
-    f.savefig(str("Roberto_ASPECS_Cutout_" + str(third_index) + "_Freq_" + str(
+    f.savefig(str("FINAL_Roberto_ASPECS_Cutout_" + str(third_index) + "_Freq_" + str(
         aspecs_freqs[third_index]) + "_Sep_{:0.3f}" + ".png").format(
         coord.separation(ra_dec[idx[third_index]]).arcsecond), dpi=300)
     f.clf()
