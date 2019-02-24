@@ -325,7 +325,7 @@ ascii.write(aspecs_table, "ASPECS_Line_Candidates_ECSV", format='ecsv')
 ascii.write(aspecs_table, "ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z': '%2.3f',
                                                                             'Delta Z': '%2.3f', 'Km/s': '%4.3f', 'Separation (Arcsecond)': '%2.4f', 'S/N': '%2.3f', 'Flux Density at Peak (Jy/beam)': '%2.4f',
                                                                               'Integrated Flux (Jy km/s)': '%2.4f', 'Cosmic Volume (Mpc^3)': '%8.0f'})
-exit()
+#exit()
 
 def channel_sn_hist(aspecs_table):
     integrated_fluxes = aspecs_table['Integrated Flux (Jy km/s)']
@@ -555,6 +555,78 @@ def perform_cuts(initial_catalog):
 
     return initial_catalog[quality_cuts]
 
+#TODO: Create SFR M* slope from papers:
+"""
+
+Schreiber C. et al. 2015
+
+log_10(SFR) = m - m_0 + a_0*r - a_1*[max(0, m-m_1-a_2*r)]^2
+
+with m_0 = 0.5 +-0.07, a_0 = 1.5 +- 0.15, a_ = 0.3 +- 0.08, m_1 = 0.36 +- 0.3, and a_2 = 2.5 +- 0.6
+
+r = log_10(1+z), and m = log_10(M*/10^9 M_solar)
+
+
+Second one is Whitaker, KE, et al. 2014
+
+log(SFR) = a + b*log(M*/M_sun) + c*log(M*/M_sun)^2
+
+0.5 < z < 1.0: a = -17.4+-1.91 b = 5.02 +- 0.39 c = -0.22+-0.02
+1.0 < z < 1.5 a = -26.03 +- 1.69 b = 4.62 +- 0.34 c = -0.19 +- 0.02
+1.5 < z < 2.0 -24.04 +- 2.08 b = 4.17 +- 0.40 c = -0.16 +- 0.02
+2.0 < z < 2.5 a = -19.99 +- 1.87 b = 3.44 +- 0.36 c = -0.13 +- 0.02
+
+
+"""
+
+def whitaker_main_sequence(z, mass_start, mass_end):
+    mass_range = np.linspace(mass_start, mass_end, 100)
+
+    sfr = -19.99 + 3.44*mass_range + -0.13*mass_range**2
+
+    return mass_range, sfr
+
+
+def schrieber_main_sequence(z, mass_start, mass_end):
+    """"
+    Returns the x and y values for the Schreiber C. et al. 2015 Main Sequence for galaxies
+
+    Because M* and SFR are given in log10 space anyway, need to do 10^value for linspace
+
+    But not for SFR output, because it equals log10(SFR) which is what is given
+    """
+
+    r = np.log10(1+z)
+
+    mass_range = np.linspace(10**mass_start, 10**mass_end, 100)
+
+    print(mass_start)
+    print(np.min(mass_range))
+    print(mass_end)
+    print(np.max(mass_range))
+
+
+    m_0 = 0.5 #+-0.07
+    a_0 = 1.5 #+- 0.15
+    a_1 = 0.3 #+- 0.08
+    m_1 = 0.36 # +- 0.3
+    a_2 = 2.5 # +- 0.6
+
+    m_s = np.log10(mass_range)
+    print(np.min(m_s))
+    print(np.max(m_s))
+
+    sfr = []
+    for m in m_s:
+        if m-m_1-a_2*r > 0:
+            sfr.append((m - m_0 + a_0*r - a_1*((m-m_1-a_2*r)**2)))
+        else:
+            sfr.append((m - m_0 + a_0*r))
+
+    return m_s, sfr
+
+
+
 print("Len ASPECS Catalog: ", len(aspecs_catalog))
 print(aspecs_catalog)
 #aspecs_catalog = perform_cuts(aspecs_catalog)
@@ -592,6 +664,12 @@ low_z_mass, low_z_mass_error, low_z_mass_z = create_points_and_error_by_z("Mstar
 mid_z_mass, mid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("Mstar", initial_catalog, 1.1, 1.8)
 high_z_mass, high_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", initial_catalog, 2.2, 3)
 vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", initial_catalog, 3, 4.4)
+
+# Get the Main Sequence for the general population
+
+schreiber_mass_11, schreiber_sfr_11 = whitaker_main_sequence(2.2, np.min(high_z_mass), np.max(high_z_mass))
+
+schreiber_mass_18, schreiber_sfr_18 = whitaker_main_sequence(3.0, np.min(high_z_mass), np.max(high_z_mass))
 
 # Compare Values properties M*, SFR, etc.
 full_sfr = initial_catalog['SFR_50_1']
@@ -633,6 +711,9 @@ ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_sfr, 1
          zorder=10)
 ax3.errorbar(aspecs_high_z_mass, aspecs_high_z_sfr, yerr=ahigh_z_sfr_error, xerr=ahigh_z_mass_error, ecolor='red', fmt='.',
              ms=5, mec='red', zorder=20)
+
+ax3.plot(schreiber_mass_11, schreiber_sfr_11, color='orange', zorder=20)
+ax3.plot(schreiber_mass_18, schreiber_sfr_18, color='green', zorder=20)
 ax3.set_title('2.2 < Z < 3')
 ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error, ecolor='lightgrey', fmt='.',
              ms=1, mec='darkgrey', elinewidth=1)
@@ -648,6 +729,8 @@ f.text(0.5, 0.01, 'Log(M*)', ha='center')
 f.text(0.01, 0.5, 'Log(SFR)', va='center', rotation='vertical')
 f.savefig("Wide_ASPECS_Final_MstarVsSFR_Limit_SN" + str(np.round(snr_limit,3)) + ".png", bbox_inches='tight', dpi=300)
 f.show()
+
+exit()
 
 muse_low_z_sfr, low_z_sfr_error, low_z_sfr_z = create_points_and_error_by_z("SFR", muse_catalog, 0, 0.4)
 muse_mid_z_sfr, mid_z_sfr_error, mid_z_sfr_z = create_points_and_error_by_z("SFR", muse_catalog, 1.1, 1.8)
