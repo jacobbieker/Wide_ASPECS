@@ -52,7 +52,7 @@ print(get_comoving_volume(0.0, 0.0873, 1.024))
 
 def get_observed_ghz(z, transition):
     """
-    Get the observed GHz for given redshift based on transition, only for C3-2 and above, from Wide ASPECS paper
+    Get the observed GHz for given redshift based on transition, from Wide ASPECS paper
     :param z: Z to calculate for
     :param transition:
     :return:
@@ -174,7 +174,7 @@ aspecs_lines = Table.read("data/line_search_P3_wa_crop.out", format="ascii", hea
 # hdu_list = fits.open(os.path.join("data", "jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits"))
 # initial_catalog = Table.read(os.path.join("data", "jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits"), format='fits')#hdu_list[1].data
 initial_catalog = Table.read("magphys_catalog.fits", format='fits')  # hdu_list[1].data
-
+print(initial_catalog["Mstar_50"])
 roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')
 
 initial_catalog = join(initial_catalog, roberto_catalog, keys='id')
@@ -227,10 +227,10 @@ z_sep = 0.3
 catalog_ids = []
 aspecs_redshifts = []
 aspecs_no_fit = []
-aspecs_table = Table(names=('RA (J2000)', 'DEC (J2000)', 'Roberto ID', 'Observed CO (GHz)', 'Restframe CO (GHz)', 'Transition', 'Z',
+aspecs_table = Table(names=('RA (J2000)', 'DEC (J2000)', 'Roberto ID', 'Roberto RA', 'Roberto DEC',  'Observed CO (GHz)', 'Restframe CO (GHz)', 'Transition', 'Z (Matched)', 'Z (CO)',
                             'Spec Z', 'Delta Z', 'Km/s', 'Separation (Arcsecond)', 'S/N', 'Flux Density at Peak (Jy/beam)',
-                            'Integrated Flux (Jy km/s)', 'Width (Channels)', 'Cosmic Volume (Mpc^3)'),
-                     dtype=('f8', 'f8', 'int32', 'f4', 'f4', 'U6', 'f4', 'bool', 'f4', 'f8', 'f4', 'f4', 'f4', 'f4', 'int8', 'f4'))
+                            'Integrated Flux (Jy km/s)', 'Width (Channels)', 'Cosmic Volume (Mpc^3)', 'Log(M*)', 'Error Log(M*)', 'Log(SFR)', 'Error Log(SFR)'),
+                     dtype=('f8', 'f8', 'int32', 'f8', 'f8', 'f4', 'f4', 'U6', 'f4', 'f4', 'bool', 'f4', 'f8', 'f4', 'f4', 'f4', 'f4', 'int8', 'f4', 'f4', 'f4', 'f4', 'f4'))
 
 all_more_snr_5 = 0
 
@@ -263,10 +263,12 @@ for index, id in enumerate(idx):
                             aspecs_redshifts.append((initial_catalog[id]['id'], index, rest_ghz, diff_freq, matched_key, aspecs_lines[index]['rsnrrbin'],
                                                      delta_z, initial_catalog[id]['z_1'], kms, aspecs_lines[index]['rfreq']))
                             aspecs_table.add_row((np.round(aspecs_lines[index]['rra'], 6), np.round(aspecs_lines[index]['rdc'], 6),
-                                                  np.int(initial_catalog[id]['id']), aspecs_lines[index]['rfreq'],
-                                                  rest_ghz, matched_key, initial_catalog[id]['z_1'], has_spec_z, delta_z, kms,
+                                                  np.int(initial_catalog[id]['id']),np.round(initial_catalog[id]['ra_1'], 6), np.round(initial_catalog[id]['dec'], 6), aspecs_lines[index]['rfreq'],
+                                                  rest_ghz, matched_key, initial_catalog[id]['z_1'], initial_catalog[id]['z_1'] + delta_z, has_spec_z, delta_z, kms,
                                                   np.round(coords[index].separation(ra_dec[id]).arcsecond, 4), aspecs_lines[index]['rsnrrbin'],
-                                                  aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3)))
+                                                  aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3),
+                                                 initial_catalog['Mstar_50_1'][id], initial_catalog['Mstar_84_1'][id] - initial_catalog['Mstar_50_1'][id],
+                                                 initial_catalog['SFR_50_1'][id], initial_catalog['SFR_84_1'][id] - initial_catalog['SFR_50_1'][id]))
         if not matched_z:
             num_out += 1
             estimated_transition, estimated_z = get_estimated_z(aspecs_lines[index]['rfreq'])
@@ -282,10 +284,11 @@ for index, id in enumerate(idx):
                         aspecs_no_fit.append((initial_catalog[id]['id'], index, rest_ghz, 0, matched_key, aspecs_lines[index]['rsnrrbin'],
                                               delta_z, initial_catalog[id]['z_1'], kms, aspecs_lines[index]['rfreq']))
                         aspecs_table.add_row((np.round(aspecs_lines[index]['rra'], 6), np.round(aspecs_lines[index]['rdc'], 6),
-                                              -999, aspecs_lines[index]['rfreq'],
-                                              rest_ghz, matched_key, estimated_z+delta_z, has_spec_z, delta_z, kms,
+                                              -999, -999, -999, aspecs_lines[index]['rfreq'],
+                                              rest_ghz, matched_key, estimated_z, estimated_z+delta_z, has_spec_z, delta_z, kms,
                                               -999, aspecs_lines[index]['rsnrrbin'],
-                                              aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3)))
+                                              aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3),
+                                              -999, -999, -999, -999))
 
         # print("\nMatch: " + str(index))
         # print("Distance: " + str(coords[index].separation(ra_dec[id]).arcsecond))
@@ -308,10 +311,11 @@ for index, id in enumerate(idx):
                     aspecs_no_fit.append((initial_catalog[id]['id'], index, rest_ghz, 0, matched_key, aspecs_lines[index]['rsnrrbin'],
                                              delta_z, initial_catalog[id]['z_1'], kms, aspecs_lines[index]['rfreq']))
                     aspecs_table.add_row((np.round(aspecs_lines[index]['rra'], 6), np.round(aspecs_lines[index]['rdc'], 6),
-                                          -999, aspecs_lines[index]['rfreq'],
-                                          rest_ghz, matched_key, estimated_z+delta_z, has_spec_z, delta_z, kms,
+                                          -999, -999, -999, aspecs_lines[index]['rfreq'],
+                                          rest_ghz, matched_key, estimated_z, estimated_z+delta_z, has_spec_z, delta_z, kms,
                                           -999, aspecs_lines[index]['rsnrrbin'],
-                                          aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3)))
+                                          aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3),
+                                          -999, -999, -999, -999))
 
 print(aspecs_table['Delta Z'])
 print("Number Close to Catalog: ", num_in_close)
@@ -320,11 +324,11 @@ print(catalog_ids)
 print(aspecs_redshifts)
 print(aspecs_table)
 
-ascii.write(aspecs_table, "ASPECS_Line_Candidates_ECSV", format='ecsv')
+ascii.write(aspecs_table, "ASPECS_Line_Candidates_ECSV.csv", format='ecsv')
 
-ascii.write(aspecs_table, "ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z': '%2.3f',
+ascii.write(aspecs_table, "ASPECS_Line_Candidates.txt", format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
                                                                             'Delta Z': '%2.3f', 'Km/s': '%4.3f', 'Separation (Arcsecond)': '%2.4f', 'S/N': '%2.3f', 'Flux Density at Peak (Jy/beam)': '%2.4f',
-                                                                              'Integrated Flux (Jy km/s)': '%2.4f', 'Cosmic Volume (Mpc^3)': '%8.0f'})
+                                                                              'Integrated Flux (Jy km/s)': '%2.4f', 'Cosmic Volume (Mpc^3)': '%8.0f', 'Log(M*)': '%2.4f', 'Error Log(M*)': '%2.4f', 'Log(SFR)': '%2.4f', 'Error Log(SFR)': '%2.4f'})
 #exit()
 
 def channel_sn_hist(aspecs_table):
@@ -582,7 +586,14 @@ log(SFR) = a + b*log(M*/M_sun) + c*log(M*/M_sun)^2
 def whitaker_main_sequence(z, mass_start, mass_end):
     mass_range = np.linspace(mass_start, mass_end, 100)
 
-    sfr = -19.99 + 3.44*mass_range + -0.13*mass_range**2
+    if z > 2.0:
+        sfr = -19.99 + 3.44*mass_range + -0.13*mass_range**2
+    elif 1.5 < z <= 2.0:
+        sfr = -24.04 + 4.17*mass_range + -0.16*mass_range**2
+    elif 1.0 < z <= 1.5:
+        sfr = -26.03 + 4.62*mass_range + -0.19*mass_range**2
+    elif z <= 1.0:
+        sfr = -27.4 + 5.02*mass_range + -0.22*mass_range**2
 
     return mass_range, sfr
 
@@ -598,7 +609,7 @@ def schrieber_main_sequence(z, mass_start, mass_end):
 
     r = np.log10(1+z)
 
-    mass_range = np.linspace(10**mass_start, 10**mass_end, 100)
+    mass_range = np.linspace(mass_start, mass_end, 100)
 
     print(mass_start)
     print(np.min(mass_range))
@@ -612,18 +623,15 @@ def schrieber_main_sequence(z, mass_start, mass_end):
     m_1 = 0.36 # +- 0.3
     a_2 = 2.5 # +- 0.6
 
-    m_s = np.log10(mass_range)
+    m_s = mass_range - 9.0
     print(np.min(m_s))
     print(np.max(m_s))
 
     sfr = []
     for m in m_s:
-        if m-m_1-a_2*r > 0:
-            sfr.append((m - m_0 + a_0*r - a_1*((m-m_1-a_2*r)**2)))
-        else:
-            sfr.append((m - m_0 + a_0*r))
+        sfr.append((m - m_0 + a_0*r - a_1*(np.max([0, (m-m_1-a_2*r)])**2)))
 
-    return m_s, sfr
+    return mass_range, sfr
 
 
 
@@ -667,9 +675,21 @@ vhigh_z_mass, vhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z(
 
 # Get the Main Sequence for the general population
 
-schreiber_mass_11, schreiber_sfr_11 = whitaker_main_sequence(2.2, np.min(high_z_mass), np.max(high_z_mass))
+schrieber_mass_25, schrieber_sfr_25 = schrieber_main_sequence(2.5, np.min(high_z_mass), np.max(high_z_mass))
 
-schreiber_mass_18, schreiber_sfr_18 = whitaker_main_sequence(3.0, np.min(high_z_mass), np.max(high_z_mass))
+schrieber_mass_35, schrieber_sfr_35 = schrieber_main_sequence(3.5, np.min(vhigh_z_mass), np.max(vhigh_z_mass))
+
+schrieber_mass_15, schrieber_sfr_15 = schrieber_main_sequence(1.5, np.min(mid_z_mass), np.max(mid_z_mass))
+
+schrieber_mass_05, schrieber_sfr_05 = schrieber_main_sequence(0.5, np.min(low_z_mass), np.max(low_z_mass))
+
+whitaker_mass_25, whitaker_sfr_25 = whitaker_main_sequence(2.5, np.min(high_z_mass), np.max(high_z_mass))
+
+whitaker_mass_35, whitaker_sfr_35 = whitaker_main_sequence(3.5, np.min(vhigh_z_mass), np.max(vhigh_z_mass))
+
+whitaker_mass_15, whitaker_sfr_15 = whitaker_main_sequence(1.5, np.min(mid_z_mass), np.max(mid_z_mass))
+
+whitaker_mass_05, whitaker_sfr_05 = whitaker_main_sequence(0.5, np.min(low_z_mass), np.max(low_z_mass))
 
 # Compare Values properties M*, SFR, etc.
 full_sfr = initial_catalog['SFR_50_1']
@@ -696,6 +716,8 @@ ax1.plot(np.unique(low_z_mass), np.poly1d(np.polyfit(low_z_mass, low_z_sfr, 1))(
          color='black', zorder=10)
 ax1.errorbar(aspecs_low_z_mass, aspecs_low_z_sfr, yerr=alow_z_sfr_error, xerr=alow_z_mass_error, ecolor='red', fmt='.',
             ms=5, mec='red', label='ASPECS', zorder=20)
+ax1.plot(whitaker_mass_05, whitaker_sfr_05, color='orange', zorder=20, label='W14', linestyle='dashed')
+ax1.plot(schrieber_mass_05, schrieber_sfr_05, color='green', zorder=20, label='S15')
 ax1.set_title('0 < Z < 0.4')
 ax2.errorbar(mid_z_mass, mid_z_sfr, yerr=mid_z_sfr_error, xerr=mid_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='darkgrey', elinewidth=1)
@@ -703,6 +725,8 @@ ax2.plot(np.unique(mid_z_mass), np.poly1d(np.polyfit(mid_z_mass, mid_z_sfr, 1))(
          zorder=10)
 ax2.errorbar(aspecs_mid_z_mass, aspecs_mid_z_sfr, yerr=amid_z_sfr_error, xerr=amid_z_mass_error, ecolor='red', fmt='.',
              ms=5, mec='red', zorder=20)
+ax2.plot(whitaker_mass_15, whitaker_sfr_15, color='orange', zorder=20)
+ax2.plot(schrieber_mass_15, schrieber_sfr_15, color='green', zorder=20)
 ax2.set_title('1.1 < Z < 1.8')
 ax3.errorbar(high_z_mass, high_z_sfr, yerr=high_z_sfr_error, xerr=high_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='darkgrey', elinewidth=1)
@@ -712,8 +736,8 @@ ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_sfr, 1
 ax3.errorbar(aspecs_high_z_mass, aspecs_high_z_sfr, yerr=ahigh_z_sfr_error, xerr=ahigh_z_mass_error, ecolor='red', fmt='.',
              ms=5, mec='red', zorder=20)
 
-ax3.plot(schreiber_mass_11, schreiber_sfr_11, color='orange', zorder=20)
-ax3.plot(schreiber_mass_18, schreiber_sfr_18, color='green', zorder=20)
+ax3.plot(whitaker_mass_25, whitaker_sfr_25, color='orange', zorder=20)
+ax3.plot(schrieber_mass_25, schrieber_sfr_25, color='green', zorder=20)
 ax3.set_title('2.2 < Z < 3')
 ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error, ecolor='lightgrey', fmt='.',
              ms=1, mec='darkgrey', elinewidth=1)
@@ -722,12 +746,15 @@ ax4.plot(np.unique(vhigh_z_mass), np.poly1d(np.polyfit(vhigh_z_mass, vhigh_z_sfr
 ax4.errorbar(aspecs_vhigh_z_mass, aspecs_vhigh_z_sfr, yerr=avhigh_z_sfr_error, xerr=avhigh_z_mass_error, ecolor='red', fmt='.',
              ms=5, mec='red', zorder=20)
 # ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error)
+ax4.plot(whitaker_mass_35, whitaker_sfr_35, color='orange', zorder=20, linestyle='dashed')
+ax4.plot(schrieber_mass_35, schrieber_sfr_35, color='green', zorder=20)
+
 ax4.set_title('3 < Z < 4.4')
 handles, labels = ax1.get_legend_handles_labels()
 f.legend(loc='best', handles=handles, labels=labels, prop={'size': 6})
 f.text(0.5, 0.01, 'Log(M*)', ha='center')
 f.text(0.01, 0.5, 'Log(SFR)', va='center', rotation='vertical')
-f.savefig("Wide_ASPECS_Final_MstarVsSFR_Limit_SN" + str(np.round(snr_limit,3)) + ".png", bbox_inches='tight', dpi=300)
+f.savefig("Wide_ASPECS_Final_Schrieber_MstarVsSFR_Limit_SN" + str(np.round(snr_limit,3)) + ".png", bbox_inches='tight', dpi=300)
 f.show()
 
 exit()

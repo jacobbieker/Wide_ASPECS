@@ -383,7 +383,6 @@ for index, row in enumerate(aspecs_lines):
         plt.close()
 
 
-exit()
 
 idx, d2d, d3d = coords.match_to_catalog_sky(roberto_ra_dec)
 
@@ -503,7 +502,7 @@ for key, values in enumerate(aspecs_matches):
         f.clf()
         plt.close()
 
-
+exit()
 # Now work backwards
 print(all_restframe_ghz)
 print(aspecs_matches)
@@ -571,7 +570,7 @@ ax.scatter(aspecs_ra_dec.ra.deg, aspecs_ra_dec.dec.deg, transform=ax.get_transfo
 plt.savefig("92_Line_Can_Locations.png", dpi=300)
 plt.show()
 idx, d2d, d3d = aspecs_ra_dec.match_to_catalog_sky(ra_dec)
-exit()
+
 for third_index, coord in enumerate(aspecs_ra_dec):
     f = create_aspecs_cutouts(coord, fits_files, fits_names, wcs_data=w, catalog_coordinates=ra_dec[idx[third_index]],
                               id=third_index, aspecs_freqs=aspecs_freqs)
