@@ -266,7 +266,7 @@ f.clf()
 """
 
 
-def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=roberto_ra_dec):
+def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=roberto_ra_dec, rob_z=0):
     """
     :param ax: Matplotlib ax to use
     :param wcs_header: Image header with WCS info
@@ -292,70 +292,31 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=r
     ax.imshow(co.data, origin='lower', cmap='gray')
     center_image = Circle((co.center_cutout[0], co.center_cutout[1]), 3, fill=False, color='r')
     ax.add_patch(center_image)
-    # ax.annotate(aspecs_index, xy=(co.center_cutout[0], co.center_cutout[1]), textcoords='offset pixels',
-    #            xytext=(2, 1), color='r')
+    if rob_z > 0:
+        ax.annotate(str(np.round(rob_z,3)), xy=(co.center_cutout[0], co.center_cutout[1]), textcoords='offset pixels',
+                    xytext=(2, 1), color='r')
 
     for idx, cutout in enumerate(cutouts):
         aspecs_loc_x, aspecs_loc_y = co.to_cutout_position(cutout.center_original)
         first_image = Circle((aspecs_loc_x, aspecs_loc_y), 3, fill=False, color='g')
         ax.add_patch(first_image)
-        ax.annotate(freqs[matches[idx]], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(2, 1),
+        ax.annotate(freqs[matches[idx]], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(20, 1),
                     color='g')
+        ax.annotate(np.round(z_s[matches[idx]],3), xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(-20, 1),
+                    color='orange')
 
     return ax
 
 
 
-def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, matches, ra_dec=roberto_ra_dec):
+def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, matches, ra_dec=roberto_ra_dec, rob_z=0):
     ax = create_multi_overlap_cutout(ax, fit_data[0].header, fit_data[0].data, aspecs=catalog_coordinate,
-                                     matches=matches, ra_dec=ra_dec)
+                                     matches=matches, ra_dec=ra_dec, rob_z=rob_z)
     ax.set_title(name)
     ax.tick_params(direction='in', colors='w', bottom=True, top=True, left=True, right=True, labelbottom=True,
                    labeltop=False, labelleft=True, labelright=False)
     return ax
 
-
-def create_multi_match_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=roberto_ra_dec):
-    """
-    Create multiple matches together on a single page
-    :param ax:
-    :param wcs_header: Header from FITS image
-    :param image: FITS images to use
-    :param aspecs: List of ASPECS coordinates
-    :param matches: List of match IDs in same order as ASPCS coordinates
-    :param ra_dec:
-    :return:
-    """
-
-    w = wcs.WCS(wcs_header)
-
-    # Now go through each ASPECS match
-    for aspecs_loc in aspecs:
-        center = aspecs
-
-        other_centers = []
-        for coord in matches:
-            other_centers.append(ra_dec[coord])
-        size = 2
-        cutouts = []
-        for row_center in other_centers:
-            # then make an array cutout
-            cutouts.append(Cutout2D(image, row_center, size=size * u.arcsec, wcs=w))
-        co = Cutout2D(image, center, size=size * u.arcsec, wcs=w)
-        ax.imshow(co.data, origin='lower', cmap='gray')
-        center_image = Circle((co.center_cutout[0], co.center_cutout[1]), 3, fill=False, color='r')
-        ax.add_patch(center_image)
-        # ax.annotate(aspecs_index, xy=(co.center_cutout[0], co.center_cutout[1]), textcoords='offset pixels',
-        #            xytext=(2, 1), color='r')
-
-    for idx, cutout in enumerate(cutouts):
-        aspecs_loc_x, aspecs_loc_y = co.to_cutout_position(cutout.center_original)
-        first_image = Circle((aspecs_loc_x, aspecs_loc_y), 3, fill=False, color='g')
-        ax.add_patch(first_image)
-        ax.annotate(freqs[matches[idx]], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(2, 1),
-                    color='g')
-
-    return ax
 
 def create_multi_matches_ax_cutout(ax, name, fit_data, catalog_coordinates, matches, ra_dec=roberto_ra_dec):
     """
@@ -416,6 +377,8 @@ transitions = {"1-0": [0.0030, 0.3694, 115.271],
 
 coords = SkyCoord(aspecs_lines['RA (J2000)'] * u.deg, aspecs_lines['DEC (J2000)'] * u.deg, frame='fk5')
 freqs = aspecs_lines['Observed CO (GHz)']
+z_s = aspecs_lines['Z'] + aspecs_lines['Delta Z']
+rob_z = aspecs_lines['Z']
 
 # Now plot all Radio Sources and see what is around them for all ones without a match
 
@@ -488,9 +451,9 @@ for fits_index in range(len(fits_files)):
                     roberto_ra_dec_index = index
             for third_index, image in enumerate([fits_files[fits_index]]):
                 ax = f.add_subplot(shape_file, shape_file, image_index + 1, projection=w)
-                create_multi_overlap_ax_cutout(ax, fits_names[third_index], image,
+                create_multi_overlap_ax_cutout(ax, fits_names[fits_index], image,
                                                catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
-                                               matches=values, ra_dec=coords)
+                                               matches=values, ra_dec=coords, rob_z=rob_z[values[0]])
         image_index += 1
     # plt.show()
     f.savefig(str("Feb_Output/ASPECS_Cutout_Matched_Galaxies_{}.png".format(fits_names[fits_index])), dpi=300)
