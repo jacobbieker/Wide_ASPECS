@@ -300,9 +300,9 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=r
         aspecs_loc_x, aspecs_loc_y = co.to_cutout_position(cutout.center_original)
         first_image = Circle((aspecs_loc_x, aspecs_loc_y), 3, fill=False, color='g')
         ax.add_patch(first_image)
-        ax.annotate(freqs[matches[idx]], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(20, 1),
+        ax.annotate(freqs[matches[idx]], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(5, 20),
                     color='g')
-        ax.annotate(np.round(z_s[matches[idx]],3), xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(-20, 1),
+        ax.annotate(np.round(z_s[matches[idx]],3), xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(5, -20),
                     color='orange')
 
     return ax
