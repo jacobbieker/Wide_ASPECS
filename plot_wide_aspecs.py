@@ -12,7 +12,7 @@ from astropy.table import Table, join
 from matplotlib.patches import Circle
 from aspecs_catalog_builder import get_aspecs_radec
 
-catalog_goodss = fits.open("/home/jacob/Research/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
+catalog_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
 skelton_goodss = catalog_goodss[1].data
 print(catalog_goodss[0].header)
 print(skelton_goodss.columns)
@@ -85,7 +85,7 @@ from spectral_cube import SpectralCube
 # plt.show()
 
 # print(aspecs_a1_chn)
-summed_cub = fits.open("/home/jacob/Research/gs_A1_2chn.fits")
+summed_cub = fits.open("/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 summed_cub = summed_cub[0].data
 summed_cub = np.reshape(summed_cub, (480, 2048, 2048))
 print(summed_cub.shape)
@@ -93,7 +93,7 @@ summed_cub = np.sum(summed_cub, axis=0)
 plt.imshow(summed_cub)
 plt.show()
 
-f160w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")
+f160w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")
 w = wcs.WCS(f160w_goodss[0].header)
 
 roberto_muse = Table.read("roberto_catalog_muse.fits", format='fits')
@@ -115,26 +115,26 @@ from matplotlib.text import OffsetFrom
 # For ones with off Z
 
 
-f125w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f125w/goodss_3dhst.v4.0.F125W_orig_sci.fits")
-f140w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f140w/goodss_3dhst.v4.0.F140W_orig_sci.fits")
-f160w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")
-f435w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f435w/goodss_3dhst.v4.0.F435W_orig_sci.fits")
-f606w_goodss = fits.open("/home/jacob/Research/goodss_3dhst.v4.0.f606wcand/goodss_3dhst.v4.0.F606Wcand_orig_sci.fits")
-f775w_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f775w/goodss_3dhst.v4.0.F775W_orig_sci.fits")
-f850lp_goodss = fits.open("/home/jacob/Research/goodss_3dhst_v4.0_f850lp/goodss_3dhst.v4.0.F850LP_orig_sci.fits")
-R_goodss = fits.open("/home/jacob/Research/GOODS-S_R/GOODS-S_R_sci.fits")
-U38_goodss = fits.open("/home/jacob/Research/GOODS-S_WFI_U38/GOODS-S_WFI_U38_sci.fits")
-V_goodss = fits.open("/home/jacob/Research/GOODS-S_WFI_V/GOODS-S_WFI_V_sci.fits")
-B_goodss = fits.open("/home/jacob/Research/GOODS-S_WFI_B/GOODS-S_WFI_B_sci.fits")
+f125w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst_v4.0_f125w/goodss_3dhst.v4.0.F125W_orig_sci.fits")
+f140w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst_v4.0_f140w/goodss_3dhst.v4.0.F140W_orig_sci.fits")
+f160w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")
+f435w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst_v4.0_f435w/goodss_3dhst.v4.0.F435W_orig_sci.fits")
+f606w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst.v4.0.f606wcand/goodss_3dhst.v4.0.F606Wcand_orig_sci.fits")
+f775w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst_v4.0_f775w/goodss_3dhst.v4.0.F775W_orig_sci.fits")
+f850lp_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst_v4.0_f850lp/goodss_3dhst.v4.0.F850LP_orig_sci.fits")
+R_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_R/GOODS-S_R_sci.fits")
+U38_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_WFI_U38/GOODS-S_WFI_U38_sci.fits")
+V_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_WFI_V/GOODS-S_WFI_V_sci.fits")
+B_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_WFI_B/GOODS-S_WFI_B_sci.fits")
 # U_goodss = fits.open("/home/jacob/Research/GOODS-S_U/GOODS-S_U_sci.fits")
-J_goodss = fits.open("/home/jacob/Research/GOODS-S_convJ/GOODS-S_convJ_sci.fits")
-H_goodss = fits.open("/home/jacob/Research/GOODS-S_convH/GOODS-S_convH_sci.fits")
-f814w_goodss = fits.open("/home/jacob/Research/goodss_3dhst.v4.0.f814wcand/goodss_3dhst.v4.0.F814Wcand_orig_sci.fits")
-I_goodss = fits.open("/home/jacob/Research/GOODS-S_WFI_I/GOODS-S_WFI_I_sci.fits")
+J_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_convJ/GOODS-S_convJ_sci.fits")
+H_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_convH/GOODS-S_convH_sci.fits")
+f814w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst.v4.0.f814wcand/goodss_3dhst.v4.0.F814Wcand_orig_sci.fits")
+I_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_WFI_I/GOODS-S_WFI_I_sci.fits")
 
 # Tenis Ones
-tKs_goodss = fits.open("/home/jacob/Research/GOODS-S_tenisK/GOODS-S_tenisK_sci.fits")
-tJ_goodss = fits.open("/home/jacob/Research/GOODS-S_tenisJ/GOODS-S_tenisJ_sci.fits")
+tKs_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_tenisK/GOODS-S_tenisK_sci.fits")
+tJ_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_tenisJ/GOODS-S_tenisJ_sci.fits")
 
 # MUSYC
 # ia427_goodss = fits.open("/home/jacob/Research/GOODS-S_IA427/GOODS-S_IA427_sci.fits")
@@ -150,10 +150,10 @@ tJ_goodss = fits.open("/home/jacob/Research/GOODS-S_tenisJ/GOODS-S_tenisJ_sci.fi
 # ia797_foodss = fits.open("/home/jacob/Research/GOODS-S_IA797/GOODS-S_IA797_sci.fits")
 
 # IRAC
-irac1_goodss = fits.open("/home/jacob/Research/GOODS-S_SEDS1/GOODS-S_SEDS1_sci_sub.fits")
-irac2_goodss = fits.open("/home/jacob/Research/GOODS-S_SEDS2/GOODS-S_SEDS2_sci_sub.fits")
-irac3_goodss = fits.open("/home/jacob/Research/GOODS-S_irac3/GOODS-S_irac3_s1_sci.fits")
-irac4_goodss = fits.open("/home/jacob/Research/GOODS-S_irac4/GOODS-S_irac4_s1_sci.fits")
+irac1_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_SEDS1/GOODS-S_SEDS1_sci_sub.fits")
+irac2_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_SEDS2/GOODS-S_SEDS2_sci_sub.fits")
+irac3_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_irac3/GOODS-S_irac3_s1_sci.fits")
+irac4_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS-S_irac4/GOODS-S_irac4_s1_sci.fits")
 
 # Add to the list with names
 
@@ -170,7 +170,7 @@ fits_names = ["F125W", "F140W", "F160W", "F435W", "F606W", "F775W", "F850LP",
               "F814W", "R", "U38", "V", "B", "J", "H", "I", "tKs",
               "tJ",
               "IRAC1", "IRAC2", "IRAC3", "IRAC4"]
-catalog_goodss = fits.open("/home/jacob/Research/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
+catalog_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
 skelton_goodss = catalog_goodss[1].data
 
 
@@ -305,6 +305,7 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=r
     return ax
 
 
+
 def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, matches, ra_dec=roberto_ra_dec):
     ax = create_multi_overlap_cutout(ax, fit_data[0].header, fit_data[0].data, aspecs=catalog_coordinate,
                                      matches=matches, ra_dec=ra_dec)
@@ -313,6 +314,66 @@ def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, match
                    labeltop=False, labelleft=True, labelright=False)
     return ax
 
+
+def create_multi_match_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=roberto_ra_dec):
+    """
+    Create multiple matches together on a single page
+    :param ax:
+    :param wcs_header: Header from FITS image
+    :param image: FITS images to use
+    :param aspecs: List of ASPECS coordinates
+    :param matches: List of match IDs in same order as ASPCS coordinates
+    :param ra_dec:
+    :return:
+    """
+
+    w = wcs.WCS(wcs_header)
+
+    # Now go through each ASPECS match
+    for aspecs_loc in aspecs:
+        center = aspecs
+
+        other_centers = []
+        for coord in matches:
+            other_centers.append(ra_dec[coord])
+        size = 2
+        cutouts = []
+        for row_center in other_centers:
+            # then make an array cutout
+            cutouts.append(Cutout2D(image, row_center, size=size * u.arcsec, wcs=w))
+        co = Cutout2D(image, center, size=size * u.arcsec, wcs=w)
+        ax.imshow(co.data, origin='lower', cmap='gray')
+        center_image = Circle((co.center_cutout[0], co.center_cutout[1]), 3, fill=False, color='r')
+        ax.add_patch(center_image)
+        # ax.annotate(aspecs_index, xy=(co.center_cutout[0], co.center_cutout[1]), textcoords='offset pixels',
+        #            xytext=(2, 1), color='r')
+
+    for idx, cutout in enumerate(cutouts):
+        aspecs_loc_x, aspecs_loc_y = co.to_cutout_position(cutout.center_original)
+        first_image = Circle((aspecs_loc_x, aspecs_loc_y), 3, fill=False, color='g')
+        ax.add_patch(first_image)
+        ax.annotate(freqs[matches[idx]], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(2, 1),
+                    color='g')
+
+    return ax
+
+def create_multi_matches_ax_cutout(ax, name, fit_data, catalog_coordinates, matches, ra_dec=roberto_ra_dec):
+    """
+    Makes a plot of all the matches on the same wavelength cutout
+    :param ax:
+    :param name:
+    :param fit_data: The FIT image to use
+    :param catalog_coordinates: Coordinates for the catalog matches
+    :param matches: The coordinates of the matches
+    :param redshifts: The redshifts in tuple format (CO, match)
+    :param ra_dec:
+    :return:
+    """
+
+    ax.set_title(name)
+    ax.tick_params(direction='in', colors='w', bottom=True, top=True, left=True, right=True, labelbottom=True,
+               labeltop=False, labelleft=True, labelright=False)
+    return ax
 
 def convert_to_rest_frame_ghz(z, ghz):
     """
@@ -410,6 +471,36 @@ for index, id in enumerate(idx):
 
 all_restframe_ghz = {}
 
+# Since all of them have a single match, just check if each one has a value > 0 and go with those
+for fits_index in range(len(fits_files)):
+    f = plt.figure(figsize=(20, 20))
+    f.suptitle(
+        'CO Lines Matched To Galaxies')
+    image_index = 0
+    for key, values in back_match.items():
+        if len(values) > 0:
+            # Make the cutouts
+            shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+            test_mask = (roberto_muse['id'] == key)
+            roberto_ra_dec_index = 1e30
+            for index, i in enumerate(roberto_muse):
+                if i['id'] == key:
+                    roberto_ra_dec_index = index
+            for third_index, image in enumerate([fits_files[fits_index]]):
+                ax = f.add_subplot(shape_file, shape_file, image_index + 1, projection=w)
+                create_multi_overlap_ax_cutout(ax, fits_names[third_index], image,
+                                               catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
+                                               matches=values, ra_dec=coords)
+        image_index += 1
+    # plt.show()
+    f.savefig(str("Feb_Output/ASPECS_Cutout_Matched_Galaxies_{}.png".format(fits_names[fits_index])), dpi=300)
+    f.clf()
+    plt.close()
+
+exit()
+
+all_restframe_ghz = {}
+
 for key, values in back_match.items():
     if len(values) > 0:
         # Make the cutouts
@@ -452,11 +543,6 @@ for key, values in back_match.items():
         f.savefig(str("Feb_Output/ASPECS_Cutout_" + str(key) + ".png"), dpi=300)
         f.clf()
         plt.close()
-
-
-
-
-
 
 
 for key, values in enumerate(aspecs_matches):

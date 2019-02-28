@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from spectral_cube import SpectralCube
 
-cubes = ["A2", "A1"]
+cubes = ["A1", "A2"]
 
 number_sn_bins = 24
 
