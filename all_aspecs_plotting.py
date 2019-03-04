@@ -63,6 +63,22 @@ def get_observed_ghz(z, transition):
     observed_ghz = observed_nm.to(u.GHz, equivalencies=u.spectral())
     return observed_ghz
 
+def get_observed_ghz_true(z, transition):
+    """
+    Get the observed GHz for given redshift based on transition, from Wide ASPECS paper
+    :param z: Z to calculate for
+    :param transition:
+    :return:
+    """
+    emitted_ghz = transitions[transition][2] * u.GHz
+
+    observed_ghz = emitted_ghz / (z + 1)
+
+    return observed_ghz
+
+print(get_observed_ghz(0.0030, "1-0"))
+print(get_observed_ghz_true(0.0030, "1-0"))
+
 #TODO Check Channel Width: ALTRVAL = 3.021582003656E+06 Hz
 
 def get_kms(channels, observed_ghz):
@@ -72,9 +88,7 @@ def get_kms(channels, observed_ghz):
     observed_ghz = observed_ghz * u.GHz
     width = channels * channel_width
 
-    #print(width)
-
-    #print(width * 299792.458)
+    #299792.458 = speed of light
     fwhm = (width * 299792.458) / observed_ghz
 
     fwhm = fwhm * (u.km / u.s)
@@ -122,6 +136,21 @@ def convert_to_rest_frame_ghz(z, ghz):
     :return:
     """
 
+    observed_ghz = ghz * u.GHz
+
+    emitted = observed_ghz * (z + 1)
+
+    return emitted
+
+
+def convert_to_rest_frame_ghz_true(z, ghz):
+    """
+    Take a measured GHz value, and calculates the restframe GHz value based on the given z of the matched galaxy
+    :param z:
+    :param ghz:
+    :return:
+    """
+
     # First step is to convert to nm rom rest rame GHz
 
     nm = (ghz * u.GHz).to(u.nm, equivalencies=u.spectral())
@@ -139,6 +168,23 @@ def convert_to_rest_frame_ghz(z, ghz):
 
     return final_ghz
 
+print(convert_to_rest_frame_ghz(1.334, 104.5160))
+print(convert_to_rest_frame_ghz_true(1.334, 104.5160))
+
+
+def convert_to_rest_frame_ghz(z, ghz):
+    """
+    Take a measured GHz value, and calculates the restframe GHz value based on the given z of the matched galaxy
+    :param z:
+    :param ghz:
+    :return:
+    """
+
+    observed_ghz = ghz * u.GHz
+
+    emitted = observed_ghz * (z + 1)
+
+    return emitted
 
 def get_delta_z(z, rest_ghz, ghz=None):
     """
@@ -153,10 +199,11 @@ def get_delta_z(z, rest_ghz, ghz=None):
     for key, values in transitions.items():
         if values[0] <= z <= values[1]:
             sghz = values[2] * u.GHz # Gets the GHz of the CO line
-            sghz = sghz.to(u.nm, equivalencies=u.spectral()) # Now Lambda_Emitted
-            rest_ghz = rest_ghz.to(u.nm, equivalencies=u.spectral()) # Lambda_Observed in rest frame
-            set_z = np.round(((sghz - rest_ghz) / rest_ghz), 3) # (Lambda_Observed - Lambda_Emitted) / Lambda_Emitted
-            # (Z+1)Lambda_Emitted = Lambda_Observed
+            rest_ghz /= (z+1)
+            set_z = np.round((sghz - rest_ghz)/ rest_ghz, 3) # (Freq_emitted - Freq_obs)/ Freq_obs = z
+
+            set_z = z - set_z
+
             print("Z: {} Set Z: {}".format(z, set_z))
             set_zs.append((key, set_z))
     set_z = np.min([np.abs(i[1]) for i in set_zs])
@@ -166,6 +213,8 @@ def get_delta_z(z, rest_ghz, ghz=None):
         if np.isclose(np.abs(element[1]),set_z):
             return element[1], element[0]
 
+print(convert_to_rest_frame_ghz(1.334, 104.5160) / (1.334+1))
+print(get_delta_z(1.334, convert_to_rest_frame_ghz(1.334, 104.5160)))
 
 aspecs_lines = Table.read("data/line_search_P3_wa_crop.out", format="ascii", header_start=0, data_start=1)
 
@@ -223,7 +272,7 @@ print("Distances: ")
 num_in_close = 0
 num_out = 0
 snr_limit = 6.
-z_sep = 0.3
+z_sep = 0.01
 catalog_ids = []
 aspecs_redshifts = []
 aspecs_no_fit = []

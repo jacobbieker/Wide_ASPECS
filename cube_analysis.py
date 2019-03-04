@@ -4,8 +4,7 @@ from spectral_cube import SpectralCube
 
 cubes = ["A1", "A2"]
 
-number_sn_bins = 24
-
+number_sn_bins = 100
 for i in range(len(cubes)):
     cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cubes[i]))
 
@@ -125,7 +124,8 @@ for i in range(len(cubes)):
     plt.ylabel("Count (Log)")
     plt.yscale('log')
     plt.savefig("Feb_Output/Fidelity_{}_2chn_All.png".format(cubes[i]))
-    #exit()
+    print(fidelity)
+    exit()
     # TODO Fidelity
     # Now go through each slice and do it for all of them
 
@@ -205,5 +205,6 @@ for i in range(len(cubes)):
     print(avg_fidelity_above_59 / count_59)
     print(count_53)
     print(avg_fidelity_above_53 / count_53)
+    del sub_cube
     exit()
 
