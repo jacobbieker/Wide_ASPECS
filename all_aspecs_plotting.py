@@ -204,6 +204,8 @@ def get_delta_z(z, rest_ghz, ghz=None):
 
             set_z = z - set_z
 
+            rest_ghz *= (z+1)
+
             print("Z: {} Set Z: {}".format(z, set_z))
             set_zs.append((key, set_z))
     set_z = np.min([np.abs(i[1]) for i in set_zs])
@@ -262,7 +264,7 @@ def create_spec_z_mask(spec_catalog):
 # Transitions
 
 
-ra_dec = SkyCoord(initial_catalog['ra_1'] * u.deg, initial_catalog['dec'] * u.deg, frame='fk5')
+ra_dec = SkyCoord(initial_catalog['ra'] * u.deg, initial_catalog['dc'] * u.deg, frame='fk5')
 
 coords = SkyCoord(aspecs_lines['rra'] * u.deg, aspecs_lines['rdc'] * u.deg, frame='fk5')
 
@@ -271,8 +273,8 @@ print("\n----------------- Number of Matches: " + str(len(idx)) + "/" + str(len(
 print("Distances: ")
 num_in_close = 0
 num_out = 0
-snr_limit = 6.
-z_sep = 0.01
+snr_limit = 6.0
+z_sep = 0.3
 catalog_ids = []
 aspecs_redshifts = []
 aspecs_no_fit = []
@@ -312,7 +314,7 @@ for index, id in enumerate(idx):
                             aspecs_redshifts.append((initial_catalog[id]['id'], index, rest_ghz, diff_freq, matched_key, aspecs_lines[index]['rsnrrbin'],
                                                      delta_z, initial_catalog[id]['z_1'], kms, aspecs_lines[index]['rfreq']))
                             aspecs_table.add_row((np.round(aspecs_lines[index]['rra'], 6), np.round(aspecs_lines[index]['rdc'], 6),
-                                                  np.int(initial_catalog[id]['id']),np.round(initial_catalog[id]['ra_1'], 6), np.round(initial_catalog[id]['dec'], 6), aspecs_lines[index]['rfreq'],
+                                                  np.int(initial_catalog[id]['id']),np.round(initial_catalog[id]['ra'], 6), np.round(initial_catalog[id]['dc'], 6), aspecs_lines[index]['rfreq'],
                                                   rest_ghz, matched_key, initial_catalog[id]['z_1'], initial_catalog[id]['z_1'] + delta_z, has_spec_z, delta_z, kms,
                                                   np.round(coords[index].separation(ra_dec[id]).arcsecond, 4), aspecs_lines[index]['rsnrrbin'],
                                                   aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3),
