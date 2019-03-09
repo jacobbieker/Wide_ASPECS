@@ -14,7 +14,7 @@ roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits",
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 aspecs_lines = load_table("line_search_P3_wa_crop.out")
 
-aspecs_table, aspecs_catalog = match_lines_to_catalog(aspecs_lines, combined_catalog, method='closest', max_sep=1., snr_limit=6.)
+aspecs_table, aspecs_catalog = match_lines_to_catalog(aspecs_lines, combined_catalog, method='all', max_sep=2., snr_limit=6., max_redshift=0.3)
 
 print(len(aspecs_table))
 print(aspecs_catalog)

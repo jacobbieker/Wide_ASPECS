@@ -195,7 +195,7 @@ def get_delta_z(z, rest_ghz, ghz=None):
     # First step is to convert to nm rom rest frame GHz
     set_zs = []
     for key, values in transitions.items():
-        if values[0] <= z <= values[1]:
+        if values[0] - 0.3 <= z <= values[1] + 0.3:
             sghz = values[2] * u.GHz # Gets the GHz of the CO line
             rest_ghz /= (z+1)
             set_z = np.round((sghz - rest_ghz)/ rest_ghz, 3) # (Freq_emitted - Freq_obs)/ Freq_obs = z
@@ -309,8 +309,8 @@ for index, id in enumerate(idx):
         rest_ghz = convert_to_rest_frame_ghz(initial_catalog[id]['z_1'], aspecs_lines[index]['rfreq'])
         matched_z = False
         for key, values in transitions.items():
-            if initial_catalog[id]['z_1'] < 0.4 or 1.1 <= initial_catalog[id]['z_1'] <= 1.8 or 2.2 < initial_catalog[id]['z_1'] < 4.4:
-                if values[0] < initial_catalog[id]['z_1'] < values[1]:
+            if initial_catalog[id]['z_1'] < 0.1 or 0.8 <= initial_catalog[id]['z_1'] <= 2.1 or 2.0 < initial_catalog[id]['z_1'] < 4.7:
+                if values[0] - 0.3 < initial_catalog[id]['z_1'] < values[1] + 0.3:
                     matched_z = True
                     diff_freq = values[2] * u.GHz - rest_ghz
                     delta_z, matched_key = get_delta_z(initial_catalog[id]['z_1'], rest_ghz, aspecs_lines[index]['rfreq'] * u.GHz)
@@ -391,7 +391,7 @@ print(aspecs_table)
 
 ascii.write(aspecs_table, "ASPECS_Line_Candidates_ECSV_arc2.0.csv", format='ecsv')
 
-ascii.write(aspecs_table, "ASPECS_Line_Candidates_arc2.0.txt", format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
+ascii.write(aspecs_table, "ASPECS_Line_Candidates.txt", format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
                                                                             'Delta Z': '%2.3f', 'Delta V (Km/s)': '%4.3f', 'Km/s': '%4.3f', 'Separation (Arcsecond)': '%2.4f', 'S/N': '%2.3f', 'Flux Density at Peak (Jy/beam)': '%2.4f',
                                                                               'Integrated Flux (Jy km/s)': '%2.4f', 'Cosmic Volume (Mpc^3)': '%8.0f', 'Log(M*)': '%2.4f', 'Error Log(M*)': '%2.4f', 'Log(SFR)': '%2.4f', 'Error Log(SFR)': '%2.4f'})
 #exit()
@@ -467,7 +467,7 @@ plt.show()
 
 print(np.unique(sub_arr, return_counts=True))
 
-catalog_ids_used = [i[1] for i in catalog_ids]
+catalog_ids_used = [i[0] for i in catalog_ids]
 print("Len catalog_ids: ", len(catalog_ids_used))
 print("Len Catalog Ids: ", len(catalog_ids))
 

@@ -49,23 +49,23 @@ def plot_mstar_vs_sfr(aspecs_catalog, matched_catalog, snr_limit, max_z=0.3, lab
         # Do it for the mid point of the range
         mid_range_z = (z_range[1] + z_range[0]) / 2.
         whitaker_dotted = False
-        '''
+        whitaker_mass, whitaker_sfr = whitaker_main_sequence(mid_range_z, 6., 12.)
+        schrieber_mass, schrieber_sfr = schrieber_main_sequence(mid_range_z, 6., 12.)
         if mid_range_z < 0.5 or mid_range_z > 2.5:
             whitaker_dotted = True
         if use_labels:
-            ax.plot(schrieber_main_sequence(mid_range_z, 8., 12.), color='green', label='S15', zorder=20)
+            ax.plot(schrieber_mass, schrieber_sfr, color='green', label='S15', zorder=20)
             if whitaker_dotted:
-                ax.plot(whitaker_main_sequence(mid_range_z, 8., 12.), color='orange', label='W14', linestyle='dashed',
+                ax.plot(whitaker_mass, whitaker_sfr, color='orange', label='W14', linestyle='dashed',
                         zorder=20)
             else:
-                ax.plot(whitaker_main_sequence(mid_range_z, 8., 12.), color='orange', label='W14', zorder=20)
+                ax.plot(whitaker_mass, whitaker_sfr, color='orange', label='W14', zorder=20)
 
-        ax.plot(schrieber_main_sequence(mid_range_z, 8., 12.), color='green', zorder=20)
+        ax.plot(schrieber_mass, schrieber_sfr, color='green', zorder=20)
         if whitaker_dotted:
-            ax.plot(whitaker_main_sequence(mid_range_z, 8., 12.), color='orange', linestyle='dashed', zorder=20)
+            ax.plot(whitaker_mass, whitaker_sfr, color='orange', linestyle='dashed', zorder=20)
         else:
-            ax.plot(whitaker_main_sequence(mid_range_z, 8., 12.), color='orange', zorder=20)
-        '''
+            ax.plot(whitaker_mass, whitaker_sfr, color='orange', zorder=20)
         sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", matched_catalog, z_range[0], z_range[1])
         mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", matched_catalog, z_range[0], z_range[1])
         if use_labels:
