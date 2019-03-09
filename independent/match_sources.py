@@ -8,7 +8,7 @@ import astropy.units as u
 from astropy.table import Table
 from astropy.coordinates import SkyCoord, Angle, SkyOffsetFrame, ICRS, Distance
 from astropy.coordinates import match_coordinates_sky, search_around_sky
-from .stats import comoving_volume, get_kms, has_spec_z, get_co_z, convert_deltaZ_to_kms
+from stats import comoving_volume, get_kms, has_spec_z, get_co_z, convert_deltaZ_to_kms
 
 transitions = {"1-0": [0.0030, 0.3694, 115.271, 0.2801, 89],
                "2-1": [1.0059, 1.7387, 230.538, 1.4277, 1920],
@@ -26,6 +26,7 @@ def calculate_delta_z():
 
 def estimate_redshift():
     return NotImplementedError
+
 
 def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_sep=1.0, method='closest'):
     aspecs_table = Table(names=('RA (J2000)', 'DEC (J2000)', 'Roberto ID', 'Roberto RA', 'Roberto DEC',  'Observed CO (GHz)', 'Restframe CO (GHz)', 'Transition', 'Z (Matched)', 'Z (CO)',
@@ -51,8 +52,14 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
 
     # first step is to do is get the SkyCoords
 
+    catalog_ra = 'ra_2'
+    catalog_dec = 'dc'
+
+    # Only choose ones above SN limit
+    lines = lines[lines['rsnrrbin'] >= snr_limit]
+
     line_skycoords = make_skycoords(lines, ra='rra', dec='rdc')
-    catalog_skycoords = make_skycoords(catalog, ra='ra', dec='dc')
+    catalog_skycoords = make_skycoords(catalog, ra=catalog_ra, dec=catalog_dec)
 
     catalog_ids = []
 
@@ -61,67 +68,67 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         # Do it where it goes through all matches within a given radius
         idxc, idxcatalog, d2d, d3d = search_around_sky(line_skycoords, catalog_skycoords, max_sep*u.deg)
 
+        # Many to many is way too large to work, so doing it one by one
+        print("Matching done")
+        print(len(idxc))
+
         for index, separation in enumerate(d2d):
             matched_line = lines[idxc[index]]
-
-            # Check if above the SNR limit
-            if matched_line['rsnrrbin'] >= snr_limit:
-                if separation.arcsecond < max_sep:
-                    # Could be a match!
-                    # Get the catalog match
-                    matched_galaxy = catalog[idxcatalog[index]]  # index is the index in line_skycoord matched
-                    # idx[index] is then the index into catalog that is matched to this one
-                    for key, values in transitions.items():
-                        if (values[0] - max_redshift) < matched_galaxy['z_1'] < (values[1] + max_redshift):
-                            # Now within range of this transition
-                            delta_z, matched_key = get_delta_z(matched_galaxy['z_1'], matched_line['rfreq'] * u.GHz)
-                            if np.abs(delta_z) < max_redshift:  # Checks that delta z within the range
-                                # Now check with offset if the z is within the range
-                                if matched_galaxy['z_1'] + delta_z < (0.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
-                                        1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
-                                    catalog_ids.append(catalog[idxcatalog[index]]['id'])
-                                    # so with offset, the galaxy is now within the range, is above SNR, and have a transition
-                                    # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
-                                    volume = comoving_volume(values[0], values[1], 52.5)
-                                    spec_z = has_spec_z(matched_galaxy)
-                                    kms = get_kms(matched_line['width'], matched_line['rfreq'])
-                                    rest_frame_ghz = convert_to_rest_frame_ghz(matched_galaxy['z_1'], matched_line['rfreq'] * u.GHz)
-                                    co_z = get_co_z(matched_line['rfreq'], matched_key)
-                                    delta_v = convert_deltaZ_to_kms(delta_z)
-                                    new_row = (np.round(matched_line['rra'], 6),
-                                               np.round(matched_line['rdc'], 6),
-                                               np.int(matched_galaxy['id']),
-                                               np.round(matched_galaxy['ra'], 6),
-                                               np.round(matched_galaxy['dc'], 6),
-                                               matched_line['rfreq'],
-                                               rest_frame_ghz,
-                                               matched_key,
-                                               matched_galaxy['z_1'],
-                                               co_z,
-                                               spec_z,
-                                               delta_z,
-                                               delta_v,
-                                               kms,
-                                               np.round(separation.arcsecond, 4),
-                                               matched_line['rsnrrbin'],
-                                               matched_line['rpeak'],
-                                               matched_line['rflux'],
-                                               matched_line['width'],
-                                               np.round(volume, 3),
-                                               matched_galaxy['Mstar_50_1'],
-                                               matched_galaxy['Mstar_84_1'] - matched_galaxy['Mstar_50_1'],
-                                               matched_galaxy['SFR_50_1'],
-                                               matched_galaxy['SFR_84_1'] - matched_galaxy['SFR_50_1'])
-                                    aspecs_table.add_row(new_row)
-                                else:  # The matched_galaxy + delta_z not within range so move on to trying to do the CO line matching
-                                    table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
-                                    aspecs_table.add_row(table_input)
-                        else:  # The matched_galaxy not within range so move on to trying to do the CO line matching
+            # Could be a match!
+            # Get the catalog match
+            matched_galaxy = catalog[idxcatalog[index]]  # index is the index in line_skycoord matched
+            # idx[index] is then the index into catalog that is matched to this one
+            for key, values in transitions.items():
+                if (values[0] - max_redshift) < matched_galaxy['z_1'] < (values[1] + max_redshift):
+                    # Now within range of this transition
+                    delta_z, matched_key = get_delta_z(matched_galaxy['z_1'], matched_line['rfreq'] * u.GHz)
+                    if np.abs(delta_z) <= max_redshift:  # Checks that delta z within the range
+                        # Now check with offset if the z is within the range
+                        if matched_galaxy['z_1'] + delta_z < (0.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
+                                1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
+                            catalog_ids.append(catalog[idxcatalog[index]]['id'])
+                            # so with offset, the galaxy is now within the range, is above SNR, and have a transition
+                            # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
+                            volume = comoving_volume(values[0], values[1], 52.5)
+                            spec_z = has_spec_z(matched_galaxy)
+                            kms = get_kms(matched_line['width'], matched_line['rfreq'])
+                            rest_frame_ghz = convert_to_rest_frame_ghz(matched_galaxy['z_1'], matched_line['rfreq'] * u.GHz)
+                            co_z = get_co_z(matched_line['rfreq'], matched_key)
+                            delta_v = convert_deltaZ_to_kms(delta_z)
+                            new_row = (np.round(matched_line['rra'], 6),
+                                       np.round(matched_line['rdc'], 6),
+                                       np.int(matched_galaxy['id']),
+                                       np.round(matched_galaxy[catalog_ra], 6),
+                                       np.round(matched_galaxy[catalog_dec], 6),
+                                       matched_line['rfreq'],
+                                       rest_frame_ghz,
+                                       matched_key,
+                                       matched_galaxy['z_1'],
+                                       co_z,
+                                       spec_z,
+                                       delta_z,
+                                       delta_v,
+                                       kms,
+                                       np.round(separation.arcsecond, 4),
+                                       matched_line['rsnrrbin'],
+                                       matched_line['rpeak'],
+                                       matched_line['rflux'],
+                                       matched_line['width'],
+                                       np.round(volume, 3),
+                                       matched_galaxy['Mstar_50_1'],
+                                       matched_galaxy['Mstar_84_1'] - matched_galaxy['Mstar_50_1'],
+                                       matched_galaxy['SFR_50_1'],
+                                       matched_galaxy['SFR_84_1'] - matched_galaxy['SFR_50_1'])
+                            aspecs_table.add_row(new_row)
+                        else:  # The matched_galaxy + delta_z not within range so move on to trying to do the CO line matching
                             table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
                             aspecs_table.add_row(table_input)
-                else:  # The separation is larger than the max allowed, so move on to trying to do the CO line matching
+                else:  # The matched_galaxy not within range so move on to trying to do the CO line matching
                     table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
                     aspecs_table.add_row(table_input)
+        else:  # The separation is larger than the max allowed, so move on to trying to do the CO line matching
+            table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
+            aspecs_table.add_row(table_input)
 
     if method == 'closest':
         idx, d2d, d3d = match_coordinates_sky(line_skycoords, catalog_skycoords)
@@ -132,67 +139,67 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         for index, separation in enumerate(d2d):
             matched_line = lines[index]
             # Check if above the SNR limit
-            if matched_line['rsnrrbin'] >= snr_limit:
-                if separation.arcsecond < max_sep:
-                    # Could be a match!
-                    # Get the catalog match
-                    matched_galaxy = catalog[idx[index]]  # index is the index in line_skycoord matched
-                    # idx[index] is then the index into catalog that is matched to this one
-                    for key, values in transitions.items():
-                        if (values[0] - max_redshift) < matched_galaxy['z_1'] < (values[1] + max_redshift):
-                            # Now within range of this transition
-                            delta_z, matched_key = get_delta_z(matched_galaxy['z_1'], matched_line['rfreq'] * u.GHz)
-                            if np.abs(delta_z) < max_redshift:  # Checks that delta z within the range
-                                # Now check with offset if the z is within the range
-                                if matched_galaxy['z_1'] + delta_z < (0.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
-                                1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
-                                    catalog_ids.append(catalog[idx[index]]['id'])
-                                    # so with offset, the galaxy is now within the range, is above SNR, and have a transition
-                                    # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
-                                    volume = comoving_volume(values[0], values[1], 52.5)
-                                    spec_z = has_spec_z(matched_galaxy)
-                                    kms = get_kms(matched_line['width'], matched_line['rfreq'])
-                                    rest_frame_ghz = convert_to_rest_frame_ghz(matched_galaxy['z_1'], matched_line['rfreq'] * u.GHz)
-                                    co_z = get_co_z(matched_line['rfreq'], matched_key)
-                                    delta_v = convert_deltaZ_to_kms(delta_z)
-                                    new_row = (np.round(matched_line['rra'], 6),
-                                               np.round(matched_line['rdc'], 6),
-                                               np.int(matched_galaxy['id']),
-                                               np.round(matched_galaxy['ra'], 6),
-                                               np.round(matched_galaxy['dc'], 6),
-                                               matched_line['rfreq'],
-                                               rest_frame_ghz,
-                                               matched_key,
-                                               matched_galaxy['z_1'],
-                                               co_z,
-                                               spec_z,
-                                               delta_z,
-                                               delta_v,
-                                               kms,
-                                               np.round(separation.arcsecond, 4),
-                                               matched_line['rsnrrbin'],
-                                               matched_line['rpeak'],
-                                               matched_line['rflux'],
-                                               matched_line['width'],
-                                               np.round(volume, 3),
-                                               matched_galaxy['Mstar_50_1'],
-                                               matched_galaxy['Mstar_84_1'] - matched_galaxy['Mstar_50_1'],
-                                               matched_galaxy['SFR_50_1'],
-                                               matched_galaxy['SFR_84_1'] - matched_galaxy['SFR_50_1'])
-                                    aspecs_table.add_row(new_row)
-                                else:  # The matched_galaxy + delta_z not within range so move on to trying to do the CO line matching
-                                    table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
-                                    aspecs_table.add_row(table_input)
-                        else:  # The matched_galaxy not within range so move on to trying to do the CO line matching
-                            table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
-                            aspecs_table.add_row(table_input)
-                else:  # The separation is larger than the max allowed, so move on to trying to do the CO line matching
-                    table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
-                    aspecs_table.add_row(table_input)
+            if separation.arcsecond < max_sep:
+                # Could be a match!
+                # Get the catalog match
+                matched_galaxy = catalog[idx[index]]  # index is the index in line_skycoord matched
+                # idx[index] is then the index into catalog that is matched to this one
+                for key, values in transitions.items():
+                    if (values[0] - max_redshift) < matched_galaxy['z_1'] < (values[1] + max_redshift):
+                        # Now within range of this transition
+                        delta_z, matched_key = get_delta_z(matched_galaxy['z_1'], matched_line['rfreq'] * u.GHz)
+                        if np.abs(delta_z) <= max_redshift:  # Checks that delta z within the range
+                            # Now check with offset if the z is within the range
+                            if matched_galaxy['z_1'] + delta_z < (0.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
+                            1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
+                                catalog_ids.append(catalog[idx[index]]['id'])
+                                # so with offset, the galaxy is now within the range, is above SNR, and have a transition
+                                # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
+                                volume = comoving_volume(values[0], values[1], 52.5)
+                                spec_z = has_spec_z(matched_galaxy)
+                                kms = get_kms(matched_line['width'], matched_line['rfreq'])
+                                rest_frame_ghz = convert_to_rest_frame_ghz(matched_galaxy['z_1'], matched_line['rfreq'] * u.GHz)
+                                co_z = get_co_z(matched_line['rfreq'], matched_key)
+                                delta_v = convert_deltaZ_to_kms(delta_z)
+                                new_row = (np.round(matched_line['rra'], 6),
+                                           np.round(matched_line['rdc'], 6),
+                                           np.int(matched_galaxy['id']),
+                                           np.round(matched_galaxy[catalog_ra], 6),
+                                           np.round(matched_galaxy[catalog_dec], 6),
+                                           matched_line['rfreq'],
+                                           rest_frame_ghz,
+                                           matched_key,
+                                           matched_galaxy['z_1'],
+                                           co_z,
+                                           spec_z,
+                                           delta_z,
+                                           delta_v,
+                                           kms,
+                                           np.round(separation.arcsecond, 4),
+                                           matched_line['rsnrrbin'],
+                                           matched_line['rpeak'],
+                                           matched_line['rflux'],
+                                           matched_line['width'],
+                                           np.round(volume, 3),
+                                           matched_galaxy['Mstar_50_1'],
+                                           matched_galaxy['Mstar_84_1'] - matched_galaxy['Mstar_50_1'],
+                                           matched_galaxy['SFR_50_1'],
+                                           matched_galaxy['SFR_84_1'] - matched_galaxy['SFR_50_1'])
+                                aspecs_table.add_row(new_row)
+                            else:  # The matched_galaxy + delta_z not within range so move on to trying to do the CO line matching
+                                table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
+                                aspecs_table.add_row(table_input)
+                    else:  # The matched_galaxy not within range so move on to trying to do the CO line matching
+                        table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
+                        aspecs_table.add_row(table_input)
+            else:  # The separation is larger than the max allowed, so move on to trying to do the CO line matching
+                table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
+                aspecs_table.add_row(table_input)
 
 
     # now have the catalog matches:
     aspecs_catalog = catalog[catalog_ids]
+
     return aspecs_table, aspecs_catalog
 
 

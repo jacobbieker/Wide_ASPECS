@@ -10,6 +10,11 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy import constants as const
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 
+transitions = {"1-0": [0.0030, 0.3694, 115.271, 0.2801, 89],
+               "2-1": [1.0059, 1.7387, 230.538, 1.4277, 1920],
+               "3-2": [2.0088, 3.1080, 345.796, 2.6129, 3363],
+               "4-3": [3.0115, 4.4771, 461.041, 3.8030, 4149], }
+
 def comoving_volume(start_z, end_z, sq_arcminutes):
     start_vol = cosmo.comoving_volume(start_z)
     end_vol = cosmo.comoving_volume(end_z)
@@ -45,7 +50,6 @@ def get_co_z(observed_ghz, transition):
     emitted_ghz = transitions[transition][2] * u.GHz
 
     z_co = np.round((emitted_ghz)/ observed_ghz - 1, 3)
-    print(z_co)
     return z_co
 
 def convert_deltaZ_to_kms(delta_z):

@@ -15,7 +15,7 @@ for i in range(len(cubes)):
     num_bins = 200
 
     # Now do it all!!!
-
+    '''
     sub_cube = cube.unitless.unmasked_data[:,:,:]
     rms_noise = np.nanstd(sub_cube)
 
@@ -128,6 +128,7 @@ for i in range(len(cubes)):
     plt.savefig("Feb_Output/Fidelity_{}_2chn_All.png".format(cubes[i]))
     print(fidelity)
     # TODO Fidelity
+    '''
     # Now go through each slice and do it for all of them
 
     sn_max = 0.0
@@ -207,8 +208,9 @@ for i in range(len(cubes)):
     #print(avg_fidelity_above_59 / count_59)
     print(count_53)
     #print(avg_fidelity_above_53 / count_53)
-    plt.hist(sn_summed, bins=number_sn_bins)
+    plt.hist(sn_summed)
     plt.title("S/N Summed Cube")
+    plt.yscale("log")
     plt.show()
     plt.cla()
     del sub_cube
