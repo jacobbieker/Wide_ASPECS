@@ -79,19 +79,17 @@ def get_observed_ghz_true(z, transition):
 print(get_observed_ghz(0.0030, "1-0"))
 print(get_observed_ghz_true(0.0030, "1-0"))
 
-#TODO Check Channel Width: ALTRVAL = 3.021582003656E+06 Hz
-
 def get_kms(channels, observed_ghz):
-    channel_width = 3.021582003656E+06 *u.Hz
+    channel_width = 7.813302339355E+06 *u.Hz
     #channel_width = 3.9025 * u.MHz
     channel_width = channel_width.to(u.GHz)
     observed_ghz = observed_ghz * u.GHz
     width = channels * channel_width
 
-    #299792.458 = speed of light
-    fwhm = (width * 299792.458) / observed_ghz
+    #299792.458 = speed of light in m/s
+    fwhm = (width * const.c.to('km/s')) / observed_ghz
 
-    fwhm = fwhm * (u.km / u.s)
+    #fwhm = fwhm * (u.km / u.s)
 
     return fwhm
 
@@ -225,10 +223,10 @@ aspecs_lines = Table.read("data/line_search_P3_wa_crop.out", format="ascii", hea
 # hdu_list = fits.open(os.path.join("data", "jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits"))
 # initial_catalog = Table.read(os.path.join("data", "jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits"), format='fits')#hdu_list[1].data
 initial_catalog = Table.read("magphys_catalog.fits", format='fits')  # hdu_list[1].data
-print(initial_catalog["Mstar_50"])
 roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')
-
 initial_catalog = join(initial_catalog, roberto_catalog, keys='id')
+print(initial_catalog['dc'])
+print(initial_catalog['ra_2'])
 #print(initial_catalog)
 spec_z_mask = (initial_catalog["z_spec_3dh"] > 0.0001) | (initial_catalog["zm_vds"] > 0.0001) | (
         initial_catalog["zm_coeS"] > 0.0001) \
@@ -244,27 +242,38 @@ def create_spec_z_mask(spec_catalog):
     #print(spec_z_mask)
     return spec_z_mask
 
-# initial_catalog['ra'] = np.zeros(len(initial_catalog['z']))
+# initial_catalog['ra_2'] = np.zeros(len(initial_catalog['z']))
 # initial_catalog['dec'] = np.zeros(len(initial_catalog['z']))
 
 # Now have that, match by skelton_id, then if id not zero, match by Sky
 # for index, row in enumerate(initial_catalog):
 #    skelton_id = row['id']
 #    muse_mask = (np.isclose(roberto_catalog['id'], skelton_id))
-#    if len(roberto_catalog[muse_mask]['ra']) == 1:
-#        initial_catalog[index]['ra'] = roberto_catalog[muse_mask]['ra']
+#    if len(roberto_catalog[muse_mask]['ra_2']) == 1:
+#        initial_catalog[index]['ra_2'] = roberto_catalog[muse_mask]['ra_2']
 #        initial_catalog[index]['dec'] = roberto_catalog[muse_mask]['dc']
 #    else:
 #        print(skelton_id)
-#        print(roberto_catalog[muse_mask]['ra'])
+#        print(roberto_catalog[muse_mask]['ra_2'])
 
 
 # initial_catalog.write("magphys_catalog.fits", format='fits')
 
 # Transitions
 
+def get_co_z(observed_ghz, transition):
+    observed_ghz = observed_ghz * u.GHz
+    emitted_ghz = transitions[transition][2] * u.GHz
 
-ra_dec = SkyCoord(initial_catalog['ra'] * u.deg, initial_catalog['dc'] * u.deg, frame='fk5')
+    z_co = np.round((emitted_ghz)/ observed_ghz - 1, 3)
+    print(z_co)
+    return z_co
+
+def convert_deltaZ_to_kms(delta_z):
+    delta_v = delta_z * const.c.to('km/s')
+    return delta_v
+
+ra_dec = SkyCoord(initial_catalog['ra_2'] * u.deg, initial_catalog['dc'] * u.deg, frame='fk5')
 
 coords = SkyCoord(aspecs_lines['rra'] * u.deg, aspecs_lines['rdc'] * u.deg, frame='fk5')
 
@@ -279,9 +288,9 @@ catalog_ids = []
 aspecs_redshifts = []
 aspecs_no_fit = []
 aspecs_table = Table(names=('RA (J2000)', 'DEC (J2000)', 'Roberto ID', 'Roberto RA', 'Roberto DEC',  'Observed CO (GHz)', 'Restframe CO (GHz)', 'Transition', 'Z (Matched)', 'Z (CO)',
-                            'Spec Z', 'Delta Z', 'Km/s', 'Separation (Arcsecond)', 'S/N', 'Flux Density at Peak (Jy/beam)',
+                            'Spec Z', 'Delta Z', 'Delta V (Km/s)', 'Km/s', 'Separation (Arcsecond)', 'S/N', 'Flux Density at Peak (Jy/beam)',
                             'Integrated Flux (Jy km/s)', 'Width (Channels)', 'Cosmic Volume (Mpc^3)', 'Log(M*)', 'Error Log(M*)', 'Log(SFR)', 'Error Log(SFR)'),
-                     dtype=('f8', 'f8', 'int32', 'f8', 'f8', 'f4', 'f4', 'U6', 'f4', 'f4', 'bool', 'f4', 'f8', 'f4', 'f4', 'f4', 'f4', 'int8', 'f4', 'f4', 'f4', 'f4', 'f4'))
+                     dtype=('f8', 'f8', 'int32', 'f8', 'f8', 'f4', 'f4', 'U6', 'f4', 'f4', 'bool', 'f4', 'f8', 'f8', 'f4', 'f4', 'f4', 'f4', 'int8', 'f4', 'f4', 'f4', 'f4', 'f4'))
 
 all_more_snr_5 = 0
 
@@ -295,7 +304,7 @@ print(len(aspecs_lines))
 
 for index, id in enumerate(idx):
     # print(coords[index].separation(ra_dec[id]).arcsecond)
-    if coords[index].separation(ra_dec[id]).arcsecond < 1.0:
+    if coords[index].separation(ra_dec[id]).arcsecond < 1.:
         num_in_close += 1
         rest_ghz = convert_to_rest_frame_ghz(initial_catalog[id]['z_1'], aspecs_lines[index]['rfreq'])
         matched_z = False
@@ -309,13 +318,16 @@ for index, id in enumerate(idx):
                         kms = get_kms(aspecs_lines[index]['width'], aspecs_lines[index]['rfreq'])
                         has_spec_z = create_spec_z_mask(initial_catalog[id])
                         comoving_volume = get_comoving_volume(values[0], values[1], 52.5)
+                        # Get the Z of the CO Emitter
+                        co_z = get_co_z(aspecs_lines[index]['rfreq'], matched_key)
+                        delta_v = convert_deltaZ_to_kms(delta_z)
                         if aspecs_lines[index]['rsnrrbin'] > snr_limit:
                             catalog_ids.append((initial_catalog[id]['id'], index))
                             aspecs_redshifts.append((initial_catalog[id]['id'], index, rest_ghz, diff_freq, matched_key, aspecs_lines[index]['rsnrrbin'],
                                                      delta_z, initial_catalog[id]['z_1'], kms, aspecs_lines[index]['rfreq']))
                             aspecs_table.add_row((np.round(aspecs_lines[index]['rra'], 6), np.round(aspecs_lines[index]['rdc'], 6),
-                                                  np.int(initial_catalog[id]['id']),np.round(initial_catalog[id]['ra'], 6), np.round(initial_catalog[id]['dc'], 6), aspecs_lines[index]['rfreq'],
-                                                  rest_ghz, matched_key, initial_catalog[id]['z_1'], initial_catalog[id]['z_1'] + delta_z, has_spec_z, delta_z, kms,
+                                                  np.int(initial_catalog[id]['id']),np.round(initial_catalog[id]['ra_2'], 6), np.round(initial_catalog[id]['dc'], 6), aspecs_lines[index]['rfreq'],
+                                                  rest_ghz, matched_key, initial_catalog[id]['z_1'], co_z, has_spec_z, delta_z, delta_v, kms,
                                                   np.round(coords[index].separation(ra_dec[id]).arcsecond, 4), aspecs_lines[index]['rsnrrbin'],
                                                   aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3),
                                                  initial_catalog['Mstar_50_1'][id], initial_catalog['Mstar_84_1'][id] - initial_catalog['Mstar_50_1'][id],
@@ -330,13 +342,14 @@ for index, id in enumerate(idx):
                 if np.abs(delta_z) < z_sep:
                     has_spec_z = False
                     comoving_volume = get_comoving_volume(transitions[estimated_transition][0], transitions[estimated_transition][1], 52.5)
-
+                    co_z = get_co_z(aspecs_lines[index]['rfreq'], matched_key)
+                    delta_v = convert_deltaZ_to_kms(delta_z)
                     if aspecs_lines[index]['rsnrrbin'] > snr_limit:
                         aspecs_no_fit.append((initial_catalog[id]['id'], index, rest_ghz, 0, matched_key, aspecs_lines[index]['rsnrrbin'],
                                               delta_z, initial_catalog[id]['z_1'], kms, aspecs_lines[index]['rfreq']))
                         aspecs_table.add_row((np.round(aspecs_lines[index]['rra'], 6), np.round(aspecs_lines[index]['rdc'], 6),
                                               -999, -999, -999, aspecs_lines[index]['rfreq'],
-                                              rest_ghz, matched_key, estimated_z, estimated_z+delta_z, has_spec_z, delta_z, kms,
+                                              rest_ghz, matched_key, estimated_z, co_z, has_spec_z, delta_z, delta_v, kms,
                                               -999, aspecs_lines[index]['rsnrrbin'],
                                               aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3),
                                               -999, -999, -999, -999))
@@ -357,13 +370,14 @@ for index, id in enumerate(idx):
             if np.abs(delta_z) < z_sep:
                 has_spec_z = False
                 comoving_volume = get_comoving_volume(transitions[estimated_transition][0], transitions[estimated_transition][1], 52.5)
-
+                co_z = get_co_z(aspecs_lines[index]['rfreq'], matched_key)
+                delta_v = convert_deltaZ_to_kms(delta_z)
                 if aspecs_lines[index]['rsnrrbin'] > snr_limit:
                     aspecs_no_fit.append((initial_catalog[id]['id'], index, rest_ghz, 0, matched_key, aspecs_lines[index]['rsnrrbin'],
                                              delta_z, initial_catalog[id]['z_1'], kms, aspecs_lines[index]['rfreq']))
                     aspecs_table.add_row((np.round(aspecs_lines[index]['rra'], 6), np.round(aspecs_lines[index]['rdc'], 6),
                                           -999, -999, -999, aspecs_lines[index]['rfreq'],
-                                          rest_ghz, matched_key, estimated_z, estimated_z+delta_z, has_spec_z, delta_z, kms,
+                                          rest_ghz, matched_key, estimated_z, co_z, has_spec_z, delta_z, delta_v, kms,
                                           -999, aspecs_lines[index]['rsnrrbin'],
                                           aspecs_lines[index]['rpeak'], aspecs_lines[index]['rflux'], aspecs_lines[index]['width'], np.round(comoving_volume, 3),
                                           -999, -999, -999, -999))
@@ -375,10 +389,10 @@ print(catalog_ids)
 print(aspecs_redshifts)
 print(aspecs_table)
 
-ascii.write(aspecs_table, "ASPECS_Line_Candidates_ECSV.csv", format='ecsv')
+ascii.write(aspecs_table, "ASPECS_Line_Candidates_ECSV_arc2.0.csv", format='ecsv')
 
-ascii.write(aspecs_table, "ASPECS_Line_Candidates.txt", format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
-                                                                            'Delta Z': '%2.3f', 'Km/s': '%4.3f', 'Separation (Arcsecond)': '%2.4f', 'S/N': '%2.3f', 'Flux Density at Peak (Jy/beam)': '%2.4f',
+ascii.write(aspecs_table, "ASPECS_Line_Candidates_arc2.0.txt", format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
+                                                                            'Delta Z': '%2.3f', 'Delta V (Km/s)': '%4.3f', 'Km/s': '%4.3f', 'Separation (Arcsecond)': '%2.4f', 'S/N': '%2.3f', 'Flux Density at Peak (Jy/beam)': '%2.4f',
                                                                               'Integrated Flux (Jy km/s)': '%2.4f', 'Cosmic Volume (Mpc^3)': '%8.0f', 'Log(M*)': '%2.4f', 'Error Log(M*)': '%2.4f', 'Log(SFR)': '%2.4f', 'Error Log(SFR)': '%2.4f'})
 #exit()
 
@@ -699,15 +713,15 @@ muse_z_mask = (initial_catalog['zm_ina'] > 0.001) | (initial_catalog['zm_her'] >
 muse_catalog = spec_catalog #initial_catalog[muse_z_mask]
 # ASPECS Ones
 
-aspecs_low_z_sfr, alow_z_sfr_error, low_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 0, 0.4)
-aspecs_mid_z_sfr, amid_z_sfr_error, mid_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 1.1, 1.8)
-aspecs_high_z_sfr, ahigh_z_sfr_error, high_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 2.2, 3)
-aspecs_vhigh_z_sfr, avhigh_z_sfr_error, vhigh_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 3, 4.4)
+aspecs_low_z_sfr, alow_z_sfr_error, low_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 0, 0.7)
+aspecs_mid_z_sfr, amid_z_sfr_error, mid_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 0.8, 2.0)
+aspecs_high_z_sfr, ahigh_z_sfr_error, high_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 2.0, 3)
+aspecs_vhigh_z_sfr, avhigh_z_sfr_error, vhigh_z_sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, 3, 4.7)
 
-aspecs_low_z_mass, alow_z_mass_error, low_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 0, 0.4)
-aspecs_mid_z_mass, amid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 1.1, 1.8)
-aspecs_high_z_mass, ahigh_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 2.2, 3)
-aspecs_vhigh_z_mass, avhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 3, 4.4)
+aspecs_low_z_mass, alow_z_mass_error, low_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 0, 0.7)
+aspecs_mid_z_mass, amid_z_mass_error, mid_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 0.8, 2.0)
+aspecs_high_z_mass, ahigh_z_mass_error, high_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 2.0, 3)
+aspecs_vhigh_z_mass, avhigh_z_mass_error, vhigh_z_mass_z = create_points_and_error_by_z("Mstar", aspecs_catalog, 3, 4.7)
 
 print("Lenghth of ASPECS VHigh: {}".format(len(aspecs_vhigh_z_sfr)))
 print("Lenghth of ASPECS High: {}".format(len(aspecs_high_z_sfr)))
@@ -763,8 +777,6 @@ print("SFR ASPECS Mean: {} Std: {} | All Mean: {} Std: {}".format(
 f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
 ax1.errorbar(low_z_mass, low_z_sfr, yerr=low_z_sfr_error, xerr=low_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='darkgrey', elinewidth=1)
-ax1.plot(np.unique(low_z_mass), np.poly1d(np.polyfit(low_z_mass, low_z_sfr, 1))(np.unique(low_z_mass)), label='All fit',
-         color='black', zorder=10)
 ax1.errorbar(aspecs_low_z_mass, aspecs_low_z_sfr, yerr=alow_z_sfr_error, xerr=alow_z_mass_error, ecolor='red', fmt='.',
             ms=5, mec='red', label='ASPECS', zorder=20)
 ax1.plot(whitaker_mass_05, whitaker_sfr_05, color='orange', zorder=20, label='W14', linestyle='dashed')
@@ -772,8 +784,6 @@ ax1.plot(schrieber_mass_05, schrieber_sfr_05, color='green', zorder=20, label='S
 ax1.set_title('0 < Z < 0.4')
 ax2.errorbar(mid_z_mass, mid_z_sfr, yerr=mid_z_sfr_error, xerr=mid_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='darkgrey', elinewidth=1)
-ax2.plot(np.unique(mid_z_mass), np.poly1d(np.polyfit(mid_z_mass, mid_z_sfr, 1))(np.unique(mid_z_mass)), color='black',
-         zorder=10)
 ax2.errorbar(aspecs_mid_z_mass, aspecs_mid_z_sfr, yerr=amid_z_sfr_error, xerr=amid_z_mass_error, ecolor='red', fmt='.',
              ms=5, mec='red', zorder=20)
 ax2.plot(whitaker_mass_15, whitaker_sfr_15, color='orange', zorder=20)
@@ -781,9 +791,6 @@ ax2.plot(schrieber_mass_15, schrieber_sfr_15, color='green', zorder=20)
 ax2.set_title('1.1 < Z < 1.8')
 ax3.errorbar(high_z_mass, high_z_sfr, yerr=high_z_sfr_error, xerr=high_z_mass_error, ecolor='lightgrey', fmt='.', ms=1,
              mec='darkgrey', elinewidth=1)
-ax3.plot(np.unique(high_z_mass), np.poly1d(np.polyfit(high_z_mass, high_z_sfr, 1))(np.unique(high_z_mass)),
-         color='black',
-         zorder=10)
 ax3.errorbar(aspecs_high_z_mass, aspecs_high_z_sfr, yerr=ahigh_z_sfr_error, xerr=ahigh_z_mass_error, ecolor='red', fmt='.',
              ms=5, mec='red', zorder=20)
 
@@ -792,8 +799,6 @@ ax3.plot(schrieber_mass_25, schrieber_sfr_25, color='green', zorder=20)
 ax3.set_title('2.2 < Z < 3')
 ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error, ecolor='lightgrey', fmt='.',
              ms=1, mec='darkgrey', elinewidth=1)
-ax4.plot(np.unique(vhigh_z_mass), np.poly1d(np.polyfit(vhigh_z_mass, vhigh_z_sfr, 1))(np.unique(vhigh_z_mass)),
-         color='black', zorder=10)
 ax4.errorbar(aspecs_vhigh_z_mass, aspecs_vhigh_z_sfr, yerr=avhigh_z_sfr_error, xerr=avhigh_z_mass_error, ecolor='red', fmt='.',
              ms=5, mec='red', zorder=20)
 # ax4.errorbar(vhigh_z_mass, vhigh_z_sfr, yerr=vhigh_z_sfr_error, xerr=vhigh_z_mass_error)

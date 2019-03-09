@@ -5,6 +5,8 @@ from spectral_cube import SpectralCube
 cubes = ["A1", "A2"]
 
 number_sn_bins = 100
+sn_summed = np.asarray([0. for i in range(number_sn_bins-1)])
+
 for i in range(len(cubes)):
     cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cubes[i]))
 
@@ -125,7 +127,6 @@ for i in range(len(cubes)):
     plt.yscale('log')
     plt.savefig("Feb_Output/Fidelity_{}_2chn_All.png".format(cubes[i]))
     print(fidelity)
-    exit()
     # TODO Fidelity
     # Now go through each slice and do it for all of them
 
@@ -171,6 +172,7 @@ for i in range(len(cubes)):
         bins = np.linspace(-6.5, 6.5, number_sn_bins)
 
         values, bins, _ = plt.hist(sub_cube, bins=bins)
+        sn_summed = sn_summed + np.asarray(values)
         plt.title("S/N")
         plt.xlabel("S/N")
         plt.ylabel("Count (Log)")
@@ -200,11 +202,14 @@ for i in range(len(cubes)):
     print(sn_max)
     print(sn_min)
     print(count_65)
-    print(avg_fidelity_above_65 / count_65)
+    #print(avg_fidelity_above_65 / count_65)
     print(count_59)
-    print(avg_fidelity_above_59 / count_59)
+    #print(avg_fidelity_above_59 / count_59)
     print(count_53)
-    print(avg_fidelity_above_53 / count_53)
+    #print(avg_fidelity_above_53 / count_53)
+    plt.hist(sn_summed, bins=number_sn_bins)
+    plt.title("S/N Summed Cube")
+    plt.show()
+    plt.cla()
     del sub_cube
-    exit()
 

@@ -5,6 +5,7 @@ This is focused on the plotting, both of cutouts, SN, and others
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from .data import create_points_and_error_by_z
 
 
 def plot_signal_to_noise():
@@ -19,8 +20,69 @@ def plot_multiple_cutouts():
     return NotImplementedError
 
 
-def plot_mstar_vs_sfr(type='square'):
-    return NotImplementedError
+def plot_mstar_vs_sfr(catalogs, snr_limit, labels=('All', 'ASPECS'), z_lows=(0.0, 1.1, 2.2, 3), z_highs=(0.4, 1.8, 3, 4.4), colors=('lightgrey', 'red', 'orange', 'green'), type='square'):
+    """
+    Given a set of catalogs, plot them with labels in a M* by SFR overlaid with best fits
+
+    Does perform cuts and errors on the catalogs
+
+
+    :param z_lows:
+    :param z_highs:
+    :param type:
+    :return:
+    """
+
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
+
+    for index, z_range in enumerate(zip(z_lows, z_highs)):
+        use_labels = False
+        if index == 0:
+            ax = ax1
+            use_labels = True
+        elif index == 1:
+            ax = ax2
+        elif index == 2:
+            ax = ax3
+        else:
+            ax = ax4
+        # Calculate and make the Main Sequence Plots
+        # Do it for the mid point of the range
+        mid_range_z = (z_range[1] + z_range[0]) / 2.
+        whitaker_dotted = False
+        if mid_range_z < 0.5 or mid_range_z > 2.5:
+            whitaker_dotted = True
+        if use_labels:
+            ax.plot(schrieber_main_sequence(mid_range_z, 8., 12.), color='green', labels='S15', zorder=20)
+            if whitaker_dotted:
+                ax.plot(whitaker_main_sequence(mid_range_z, 8., 12.), color='orange', labels='W14', linestyle='dashed',
+                        zorder=20)
+            else:
+                ax.plot(whitaker_main_sequence(mid_range_z, 8., 12.), color='orange', labels='W14', zorder=20)
+
+        ax.plot(schrieber_main_sequence(mid_range_z, 8., 12.), color='green', zorder=20)
+        if whitaker_dotted:
+            ax.plot(whitaker_main_sequence(mid_range_z, 8., 12.), color='orange', linestyle='dashed', zorder=20)
+        else:
+            ax.plot(whitaker_main_sequence(mid_range_z, 8., 12.), color='orange', zorder=20)
+
+        for cat_index, catalog in enumerate(catalogs):
+            sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", catalog, z_range[0], z_range[1])
+            mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", catalog, z_range[0], z_range[1])
+            if use_labels:
+                ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[cat_index], label=labels[cat_index], fmt='.', ms=1, elinewidth=1)
+            else:
+                ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[cat_index], fmt='.', ms=1, elinewidth=1)
+
+        ax.set_title(str(np.round(z_range[0], 1)) + ' < Z < ' + str(np.round(z_range[1], 1)))
+
+        if use_labels:
+            handles, ax_labels = ax.get_legend_handles_labels()
+            f.legend(loc='best', handles=handles, labels=ax_labels, prop={'size': 6})
+    f.text(0.5, 0.01, 'Log(M*)', ha='center')
+    f.text(0.01, 0.5, 'Log(SFR)', va='center', rotation='vertical')
+    f.savefig("Wide_ASPECS_MstarVsSFR_Limit_SN" + str(np.round(snr_limit,3)) + ".png", bbox_inches='tight', dpi=300)
+    f.show()
 
 
 def plot_leinerdt():

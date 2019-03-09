@@ -33,3 +33,35 @@ def save_ascii(catalog):
 
 def combine_catalogs(catalog_one, catalog_two):
     return NotImplementedError
+
+def create_points_and_error(column_base_name, initial_catalog):
+    centerpoints = initial_catalog[str(column_base_name + "_50_1")]
+    lower_error = initial_catalog[str(column_base_name + "_16_1")]
+    upper_error = initial_catalog[str(column_base_name + "_84_1")]
+    centerpoints = np.nan_to_num(centerpoints)
+    zero_mask = centerpoints != 0.0
+    centerpoints = centerpoints[zero_mask]
+    lower_error = centerpoints - lower_error[zero_mask]
+    upper_error = upper_error[zero_mask] - centerpoints
+    error_bars = [lower_error, upper_error]
+    print(error_bars[0].shape)
+
+    return centerpoints, error_bars
+
+
+def create_points_and_error_by_z(column_base_name, initial_catalog, low_z, high_z):
+    z_mask = (initial_catalog["z_1"] >= low_z) & (initial_catalog["z_1"] <= high_z)
+    centerpoints = initial_catalog[z_mask][str(column_base_name + "_50_1")]
+    lower_error = initial_catalog[z_mask][str(column_base_name + "_16_1")]
+    upper_error = initial_catalog[z_mask][str(column_base_name + "_84_1")]
+    z_values = initial_catalog[z_mask]["z_1"]
+    centerpoints = np.nan_to_num(centerpoints)
+    lower_error = np.nan_to_num(lower_error)
+    upper_error = np.nan_to_num(upper_error)
+    zero_mask = centerpoints != 0.0
+    centerpoints = centerpoints[zero_mask]
+    lower_error = centerpoints - lower_error[zero_mask]
+    upper_error = upper_error[zero_mask] - centerpoints
+    z_values = z_values[zero_mask]
+    error_bars = [lower_error, upper_error]
+    return centerpoints, error_bars, z_values
