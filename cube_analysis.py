@@ -5,11 +5,11 @@ from spectral_cube import SpectralCube
 cubes = ["A1", "A2"]
 
 number_sn_bins = 100
-sn_summed = np.asarray([0. for i in range(number_sn_bins-1)])
 
 for i in range(len(cubes)):
     cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cubes[i]))
-
+    sn_summed = np.asarray([0. for i in range(number_sn_bins-1)])
+    sn_bins = None
     print(cube)
 
     num_bins = 200
@@ -174,6 +174,7 @@ for i in range(len(cubes)):
 
         values, bins, _ = plt.hist(sub_cube, bins=bins)
         sn_summed = sn_summed + np.asarray(values)
+        sn_bins = bins
         plt.title("S/N")
         plt.xlabel("S/N")
         plt.ylabel("Count (Log)")
@@ -208,9 +209,28 @@ for i in range(len(cubes)):
     #print(avg_fidelity_above_59 / count_59)
     print(count_53)
     #print(avg_fidelity_above_53 / count_53)
-    plt.hist(sn_summed)
-    plt.title("S/N Summed Cube")
+    sn_summed = sn_summed
+    print(sn_summed)
+    plt.hist(np.linspace(-6.5, 6.5, number_sn_bins-1), weights=sn_summed, bins=sn_bins)
+    plt.title("S/N Summed Cube {}".format(cubes[i]))
     plt.yscale("log")
+    plt.xlabel("S/N")
+    plt.ylabel("Count")
+    plt.savefig("SN_Summed_Cube_{}.png".format(cubes[i]), dpi=300)
+    plt.show()
+    plt.cla()
+    fid = []
+    for j in range(int(len(sn_summed)/2.)):
+        if np.isclose(sn_summed[int(len(sn_summed))-j-1], 0.0):
+            fidel = 0.0
+        else:
+            fidel = sn_summed[j] / sn_summed[int(len(sn_summed))-j-1]
+        fid.append(fidel)
+    plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):])
+    plt.title("Fidelity Summed Cube {}".format(cubes[i]))
+    plt.xlabel("SN")
+    plt.ylabel("False/True")
+    plt.savefig("Fidelity_Summed_Cube_{}.png".format(cubes[i]), dpi=300)
     plt.show()
     plt.cla()
     del sub_cube

@@ -34,9 +34,8 @@ def load_catalog(catalog):
     return NotImplementedError
 
 
-def save_catalog(catalog):
-    return NotImplementedError
-
+def save_catalog(catalog, filename):
+    catalog.write(filename+".fits", format='fits', overwrite=True)
 
 def save_ascii(catalog):
     return NotImplementedError
