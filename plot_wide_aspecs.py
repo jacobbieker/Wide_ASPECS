@@ -283,7 +283,7 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=r
     other_centers = []
     for coord in matches:
         other_centers.append(ra_dec[coord])
-    size = 2
+    size = 3
     cutouts = []
     for row_center in other_centers:
         # then make an array cutout
@@ -363,7 +363,7 @@ def convert_to_rest_frame_ghz(z, ghz):
 
 #aspecs_lines = Table.read("ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format="ascii", header_start=0, data_start=1)
 
-aspecs_lines = Table.read("ASPECS_Line_Candidates_ECSV", format='ascii.ecsv')
+aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/independent/ASPECS_Line_Candidates_all_closest_Sep_1.5_SN_6.0.ecsv", format='ascii.ecsv')
 
 transitions = {"1-0": [0.0030, 0.3694, 115.271],
                "2-1": [1.0059, 1.7387, 230.538],
@@ -377,8 +377,8 @@ transitions = {"1-0": [0.0030, 0.3694, 115.271],
 
 coords = SkyCoord(aspecs_lines['RA (J2000)'] * u.deg, aspecs_lines['DEC (J2000)'] * u.deg, frame='fk5')
 freqs = aspecs_lines['Observed CO (GHz)']
-z_s = aspecs_lines['Z'] + aspecs_lines['Delta Z']
-rob_z = aspecs_lines['Z']
+z_s = aspecs_lines['Z (CO)']
+rob_z = aspecs_lines['Z (Matched)']
 
 # Now plot all Radio Sources and see what is around them for all ones without a match
 
@@ -392,7 +392,7 @@ for index, row in enumerate(aspecs_lines):
         freq_valus = [np.round(row['Observed CO (GHz)'], 3)]
         rest_frame_ghz = [np.round(row['Restframe CO (GHz)'], 3)]
         f.suptitle(
-            " Z: " + str(row['Z']) + " Delta_Z: " + str(
+            " Z: " + str(row['Z (CO)']) + " Delta_Z: " + str(
                 row['Delta Z']) +
             " Observed: " + str(freq_valus) + "\n Spec Z: " + str(
                 row['Spec Z'])
@@ -402,33 +402,36 @@ for index, row in enumerate(aspecs_lines):
             create_multi_overlap_ax_cutout(ax, fits_names[third_index], image,
                                            catalog_coordinate=coords[index],
                                            matches=[index], ra_dec=coords)
-        f.savefig(str("Feb_Output/ASPECS_Cutout_NoCounter" + str(index) + ".png"), dpi=300)
+        f.savefig(str("March_Output/ASPECS_Cutout_NoCounter_Sep1.5_SN6.0_" + str(index) + ".png"), dpi=300)
         f.clf()
         plt.close()
 
 
 
 idx, d2d, d3d = coords.match_to_catalog_sky(roberto_ra_dec)
+from astropy.coordinates import match_coordinates_sky, search_around_sky
+
+idxc, idxcatalog, d2d, d3d = search_around_sky(coords, roberto_ra_dec, 2.0 * u.arcsecond)
 
 aspecs_matches = [[] for _ in range(len(aspecs_lines))]
 back_match = {}
 z_specs = {}
 
-for index, id in enumerate(idx):
-    if coords[index].separation(roberto_ra_dec[id]).arcsecond < 1.0:
-        test_mask = (roberto_muse['id'] == roberto_muse[id]['id'])
+for index, id in enumerate(idxc):
+    if coords[idxc[index]].separation(roberto_ra_dec[idxcatalog[index]]).arcsecond < 1.5 and np.abs(aspecs_lines[idxc[index]]['Z (CO)'] - roberto_muse[idxcatalog[index]]['z_1']) < 0.3:
+        test_mask = (roberto_muse['id'] == roberto_muse[idxcatalog[index]]['id'])
         test_rob = roberto_muse[test_mask]
         spec_z_mask = (test_rob["z_spec_3dh"] > 0.001) | (test_rob["zm_vds"] > 0.001) | (
                 test_rob["zm_coeS"] > 0.001) | (test_rob['muse_wide_z'] > 0.0001) \
                       | (test_rob["zs_mor"] > 0.001) | (test_rob["zm_ina"] > 0.001) | (test_rob["zm_her"] > 0.001)
-        if int(aspecs_lines[index]["Roberto ID"]) == int(roberto_muse[id]['id']):
-            aspecs_matches[index].append(roberto_muse[id]['id'])
-            if roberto_muse[id]['id'] in back_match.keys():
-                back_match[roberto_muse[id]['id']].append(index)
-                z_specs[roberto_muse[id]['id']].append(len(test_rob[spec_z_mask]))
+        if int(aspecs_lines[idxc[index]]["Roberto ID"]) == int(roberto_muse[idxcatalog[index]]['id']):
+            aspecs_matches[idxc[index]].append(roberto_muse[idxcatalog[index]]['id'])
+            if roberto_muse[idxcatalog[index]]['id'] in back_match.keys():
+                back_match[roberto_muse[idxcatalog[index]]['id']].append(idxc[index])
+                z_specs[roberto_muse[idxcatalog[index]]['id']].append(len(test_rob[spec_z_mask]))
             else:
-                back_match[roberto_muse[id]['id']] = [index]
-                z_specs[roberto_muse[id]['id']] = [len(test_rob[spec_z_mask])]
+                back_match[roberto_muse[idxcatalog[index]]['id']] = [idxc[index]]
+                z_specs[roberto_muse[idxcatalog[index]]['id']] = [len(test_rob[spec_z_mask])]
 # exit()
 # Now have the matches, plot them on the sky
 
@@ -456,7 +459,7 @@ for fits_index in range(len(fits_files)):
                                                matches=values, ra_dec=coords, rob_z=rob_z[values[0]])
         image_index += 1
     # plt.show()
-    f.savefig(str("Feb_Output/ASPECS_Cutout_Matched_Galaxies_{}.png".format(fits_names[fits_index])), dpi=300)
+    f.savefig(str("March_Output/ASPECS_Cutout_Matched_Galaxies_Sep1.5_SN6.0_{}.png".format(fits_names[fits_index])), dpi=300)
     f.clf()
     plt.close()
 
@@ -503,7 +506,7 @@ for key, values in back_match.items():
                                            catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
                                            matches=values, index=idx, ra_dec=coords)
         # plt.show()
-        f.savefig(str("Feb_Output/ASPECS_Cutout_" + str(key) + ".png"), dpi=300)
+        f.savefig(str("March_Output/ASPECS_Cutout_" + str(key) + ".png"), dpi=300)
         f.clf()
         plt.close()
 
@@ -547,7 +550,7 @@ for key, values in enumerate(aspecs_matches):
                                            catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
                                            matches=values, index=idx, ra_dec=coords)
         # plt.show()
-        f.savefig(str("Feb_Output/ASPECS_Cutout_" + str(key) + ".png"), dpi=300)
+        f.savefig(str("March_Output/ASPECS_Cutout_" + str(key) + ".png"), dpi=300)
         f.clf()
         plt.close()
 

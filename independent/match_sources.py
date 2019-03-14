@@ -57,7 +57,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
 
     # first step is to do is get the SkyCoords
 
-    catalog_ra = 'ra_2'
+    catalog_ra = 'ra'
     catalog_dec = 'dc'
 
     # Only choose ones above SN limit
@@ -88,6 +88,8 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         for index, separation in enumerate(d2d):
             matched_line = lines[idxc[index]]
             matched_to_galaxy = False
+            # In order of lines, so then need to keep only best match here:
+            # Also need to keep it so that match to CO is only called once, and only after matched_line changes
             if separation.arcsecond < max_sep:
                 # Could be a match!
                 # Get the catalog match
@@ -103,25 +105,26 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                             # Now check with offset if the z is within the range
                             if matched_galaxy['z_1'] + delta_z < (0.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
                                     1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
-                                catalog_ids.append((matched_galaxy['id'], idxcatalog[index]))
                                 matched_to_galaxy = True
-                                if np.abs(closest_redshift_and_catalog_id[idxc[index]][0]) > np.abs(delta_z):
-                                    closest_redshift_and_catalog_id[idxc[index]] = (
-                                        delta_z, separation.arcsecond, idxcatalog[index])
-                                elif np.isclose(np.abs(closest_redshift_and_catalog_id[idxc[index]][0]),
-                                                np.abs(delta_z)):
+                                print("Matched Galaxy: {} Catalog ID: {}".format(matched_galaxy['id'], catalog[idxcatalog[index]]))
+                                closest_redshift_and_catalog_id.append((delta_z, separation.arcsecond, idxcatalog[index]))
+                                #if np.abs(closest_redshift_and_catalog_id[idxc[index]][0]) > np.abs(delta_z):
+                                #    closest_redshift_and_catalog_id[idxc[index]] = (
+                                #        delta_z, separation.arcsecond, idxcatalog[index])
+                                #elif np.isclose(np.abs(closest_redshift_and_catalog_id[idxc[index]][0]),
+                                #                np.abs(delta_z)):
                                     # Closest so based off separation
-                                    if closest_redshift_and_catalog_id[idxc[index]][1] > separation.arcsecond:
-                                        closest_redshift_and_catalog_id[idxc[index]] = (
-                                            delta_z, separation.arcsecond, idxcatalog[index])
+                                #    if closest_redshift_and_catalog_id[idxc[index]][1] > separation.arcsecond:
+                                #        closest_redshift_and_catalog_id[idxc[index]] = (
+                                #            delta_z, separation.arcsecond, idxcatalog[index])
                                 # so with offset, the galaxy is now within the range, is above SNR, and have a transition
                                 # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
-                                volume = comoving_volume(values[0], values[1], 52.5)
+                                volume = comoving_volume(values[0], values[1], 42.6036)
                                 spec_z = has_spec_z(matched_galaxy)
                                 kms = get_kms(matched_line['width'], matched_line['rfreq'])
 
                                 co_z = get_co_z(matched_line['rfreq'], matched_key)
-                                delta_v = convert_deltaZ_to_kms(delta_z)
+                                delta_v = convert_deltaZ_to_kms(delta_z, co_z)
                                 new_row = (np.round(matched_line['rra'], 6),
                                            np.round(matched_line['rdc'], 6),
                                            np.int(matched_galaxy['id']),
@@ -157,6 +160,54 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
             table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
             aspecs_table.add_row(table_input)
 
+        # Now need to clean up table, removing any inadvertently added rows
+        prev_row_ra_dec = None
+        prev_row_matched = None
+        indicies_to_remove = []
+        for index, row in enumerate(aspecs_table):
+            if prev_row_ra_dec is not None:
+                if np.isclose(row['RA (J2000)'],prev_row_ra_dec[0]) and np.isclose(row['DEC (J2000)'], prev_row_ra_dec[1]):
+                    # Same one as before, check if galaxy, then check delta Z
+                    if prev_row_matched[0] > 0. and row['Roberto ID'] > 0.:
+                        # Matched to galaxy
+                        continue
+                        '''
+                        if np.isclose(np.abs(row['Delta Z']), np.abs(prev_row_matched[1])):
+                            if row['Separation (Arcsecond)'] < prev_row_ra_dec[2]:
+                                indicies_to_remove.append(index - 1)
+                                prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)'], row['Separation (Arcsecond)']]
+                                prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+                            else:
+                                indicies_to_remove.append(index)
+                        if np.abs(row['Delta Z']) < np.abs(prev_row_matched[1]):
+                            #indicies_to_remove.append(index-1)
+                            prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)'], row['Separation (Arcsecond)']]
+                            prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+                        #else: # Not better delta Z, so not add to prev
+                            #indicies_to_remove.append(index)
+                        '''
+                    else: # Not matched to a galaxy
+                        if row['Roberto ID'] > 0.: # Row is matched to one
+                            indicies_to_remove.append(index-1)
+                            prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)'], row['Separation (Arcsecond)']]
+                            prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+                        else: # Not add to prev since current one is worse
+                            if np.abs(row['Delta Z']) < np.abs(prev_row_matched[1]):
+                                indicies_to_remove.append(index-1)
+                                prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)'], row['Separation (Arcsecond)']]
+                                prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+                            else:
+                                indicies_to_remove.append(index)
+                else: # Not same galaxy
+                    prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)'], row['Separation (Arcsecond)']]
+                    prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+
+            else: # No previous one
+                prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)'], row['Separation (Arcsecond)']]
+                prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+
+        # Remove from the catalog
+        aspecs_table.remove_rows(indicies_to_remove)
         # Now need to only get the catalog ids that are relevant, so not -99999
         catalog_ids = [i[2] for i in closest_redshift_and_catalog_id if i[2] > -999]
         print(catalog_ids)
@@ -196,12 +247,12 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                                 matched_to_galaxy = True
                                 # so with offset, the galaxy is now within the range, is above SNR, and have a transition
                                 # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
-                                volume = comoving_volume(values[0], values[1], 52.5)
+                                volume = comoving_volume(values[0], values[1], 42.6036)
                                 spec_z = has_spec_z(matched_galaxy)
                                 kms = get_kms(matched_line['width'], matched_line['rfreq'])
 
                                 co_z = get_co_z(matched_line['rfreq'], matched_key)
-                                delta_v = convert_deltaZ_to_kms(delta_z)
+                                delta_v = convert_deltaZ_to_kms(delta_z, co_z)
                                 new_row = (np.round(matched_line['rra'], 6),
                                            np.round(matched_line['rdc'], 6),
                                            np.int(matched_galaxy['id']),
@@ -270,11 +321,11 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                                 print(matched_galaxy['id'])
                                 # so with offset, the galaxy is now within the range, is above SNR, and have a transition
                                 # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
-                                volume = comoving_volume(values[0], values[1], 52.5)
+                                volume = comoving_volume(values[0], values[1], 42.6036)
                                 spec_z = has_spec_z(matched_galaxy)
                                 kms = get_kms(matched_line['width'], matched_line['rfreq'])
                                 co_z = get_co_z(matched_line['rfreq'], matched_key)
-                                delta_v = convert_deltaZ_to_kms(delta_z)
+                                delta_v = convert_deltaZ_to_kms(delta_z, co_z)
                                 new_row = (np.round(matched_line['rra'], 6),
                                            np.round(matched_line['rdc'], 6),
                                            np.int(matched_galaxy['id']),
@@ -304,6 +355,45 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                 table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
                 if table_input is not None:
                     aspecs_table.add_row(table_input)
+        # Now need to clean up table, removing any inadvertently added rows
+        prev_row_ra_dec = None
+        prev_row_matched = None
+        indicies_to_remove = []
+        for index, row in enumerate(aspecs_table):
+            if prev_row_ra_dec is not None:
+                if row['RA (J2000)'] == prev_row_ra_dec[0] and row['DEC (J2000)'] == prev_row_ra_dec[1]:
+                    # Same one as before, check if galaxy, then check delta Z
+                    if prev_row_matched[0] > 0. and row['Roberto ID'] > 0.:
+                        # Matched to galaxy
+                        if np.abs(row['Delta Z']) < np.abs(prev_row_matched[1]):
+                            indicies_to_remove.append(index-1)
+                            prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)']]
+                            prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+                        else: # Not better delta Z, so not add to prev
+                            indicies_to_remove.append(index)
+                    else: # Not matched to a galaxy
+                        if row['Roberto ID'] > 0.: # Row is matched to one
+                            indicies_to_remove.append(index-1)
+                            prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)']]
+                            prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+                        else: # Not add to prev since current one is worse
+                            if np.abs(row['Delta Z']) < np.abs(prev_row_matched[1]):
+                                indicies_to_remove.append(index-1)
+                                prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)']]
+                                prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+                            else:
+                                indicies_to_remove.append(index)
+                else: # Not same galaxy
+                    prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)']]
+                    prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+
+            else: # No previous one
+                prev_row_ra_dec = [row['RA (J2000)'], row['DEC (J2000)']]
+                prev_row_matched = [row['Roberto ID'], row['Delta Z']]
+
+        # Remove from the catalog
+        aspecs_table.remove_rows(indicies_to_remove)
+
         catalog_ids = [i[1] for i in catalog_ids]
 
     # now have the catalog matches:
@@ -312,7 +402,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
     # Add CO Z
     for line in aspecs_table:
         for index, row in enumerate(aspecs_catalog):
-            if line['Roberto ID'] == row['id']:
+            if int(line['Roberto ID']) == int(row['id']):
                 aspecs_catalog[index]['z_co'] = line["Z (CO)"]
 
     return aspecs_table, aspecs_catalog
@@ -334,7 +424,7 @@ def match_to_co_line(single_line, max_redshift=0.3):
             volume = comoving_volume(transitions[estimated_transition][0], transitions[estimated_transition][1], 52.5)
             kms = get_kms(single_line['width'], single_line['rfreq'])
             co_z = get_co_z(single_line['rfreq'], matched_key)
-            delta_v = convert_deltaZ_to_kms(delta_z)
+            delta_v = convert_deltaZ_to_kms(delta_z, co_z)
             new_row = (np.round(single_line['rra'], 6),
                        np.round(single_line['rdc'], 6),
                        -999,

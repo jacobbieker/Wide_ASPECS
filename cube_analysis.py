@@ -1,134 +1,25 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from spectral_cube import SpectralCube
+from scipy.optimize import curve_fit
 
 cubes = ["A1", "A2"]
 
-number_sn_bins = 100
+number_sn_bins = 130
 
+def gaussian(x, mu, sig, height):
+    return (np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.))))
+
+all_sn_summed = np.asarray([0. for i in range(number_sn_bins-1)])
+all_fids = []
 for i in range(len(cubes)):
+    total_rms = 0.0
     cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cubes[i]))
     sn_summed = np.asarray([0. for i in range(number_sn_bins-1)])
     sn_bins = None
     print(cube)
 
     num_bins = 200
-
-    # Now do it all!!!
-    '''
-    sub_cube = cube.unitless.unmasked_data[:,:,:]
-    rms_noise = np.nanstd(sub_cube)
-
-    #print(np.unique(sub_cube[~np.isnan(sub_cube)], return_counts=True))
-
-    #print(sub_cube)
-
-    sub_cube = sub_cube[~np.isnan(sub_cube)].flatten()
-
-    print(sub_cube)
-
-    _, bins, _ = plt.hist(sub_cube, bins=num_bins)
-    plt.xlabel("Jy/beam")
-    plt.yscale("log")
-    plt.ylabel("Count (Log)")
-    plt.savefig("Feb_Output/Fluxes_{}_2chn_All.png".format(cubes[i]))
-    plt.cla()
-
-    # Now flip the axis by splitting into < 0 and > 0 and subtracting one from other
-
-    neg_sub_cube = sub_cube[sub_cube < 0]
-    pos_sub_cube = sub_cube[sub_cube > 0]
-
-    neg_sub_cube *= -1
-
-    # Now digitize it and subtract sum of each bin together
-
-    neg_bins = np.digitize(neg_sub_cube, bins)
-    pos_bins = np.digitize(pos_sub_cube, bins)
-
-    _, bins, _ = plt.hist(pos_bins, bins=num_bins)
-    plt.hist(neg_bins, bins=bins)
-    plt.title("Pos vs Neg Flux")
-    plt.xlabel("S/N")
-    plt.ylabel("Count (Log)")
-    plt.yscale("log")
-    plt.savefig("Feb_Output/Pos_Vs_Neg_{}_2chn_All.png".format(cubes[i]))
-    plt.cla()
-
-    _, bins, _ = plt.hist(pos_sub_cube, bins=num_bins)
-    plt.hist(neg_sub_cube, bins=bins)
-    plt.title("Pos vs Neg Flux")
-    plt.xlabel("Flux (Jy/beam)")
-    plt.ylabel("Count (Log)")
-    plt.yscale("log")
-    plt.savefig("Feb_Output/Pos_Vs_Neg_Values_{}_2chn_All.png".format(cubes[i]))
-    plt.cla()
-
-    # Now calculate S/N by making a few bins and dividing it out
-
-    num_bins = 10
-
-    sub_cube /= rms_noise
-    print(np.min(sub_cube))
-    print(np.max(sub_cube))
-    print(len(sub_cube[sub_cube < -5.5]))
-    print(len(sub_cube[sub_cube > 5.5]))
-
-    # Divide the false by the true to get the fidelity, do the on its own
-
-
-    # Bins
-    bins = np.linspace(-6.5, 6.5, number_sn_bins)
-    #bins = [-6.5,-5.5,-4.5,-3.5-2.5,-1.5,-0.5,0.5,1.5,2.5,3.5,4.5,5.5,6.5]
-
-    values, bins, _ = plt.hist(sub_cube, bins=bins)
-    plt.title("S/N")
-    plt.xlabel("S/N")
-    plt.ylabel("Count (Log)")
-    plt.yscale("log")
-    plt.savefig("Feb_Output/SN_{}_2chn_All.png".format(cubes[i]))
-    plt.cla()
-
-    # Now do the Fidelity
-    # First by working backwards
-    fid = []
-    for j in range(int(len(values)/2.)):
-        fidel = values[j] / values[int(len(values))-j-1]
-        fid.append((bins[j], fidel))
-
-    # So goes in reverse order, False / Pos from -6.5 to 0
-    fid = list(reversed(fid))
-    print("Fidelity Fractions")
-    print(fid)
-
-    # Divide positive by false
-    neg_bins = values[0:int(number_sn_bins/2.)-1]
-    neg_bins = list(reversed(neg_bins))
-    pos_bins = values[int(number_sn_bins/2.):]
-
-    print(len(neg_bins))
-    print(len(pos_bins))
-    print(neg_bins)
-    print(pos_bins)
-    print(bins)
-
-    fidelity = np.asarray(neg_bins) / pos_bins
-
-    fidelity = list(fidelity)
-
-    fidelity = fidelity[0:int(len(fidelity)/2.)] + [1] + fidelity[int(len(fidelity)/2.):]
-
-    # Get from
-
-    plt.hist(fidelity, bins=number_sn_bins)
-    plt.title("Fidelity (False/Positive)")
-    plt.xlabel("Fraction of False/True")
-    plt.ylabel("Count (Log)")
-    plt.yscale('log')
-    plt.savefig("Feb_Output/Fidelity_{}_2chn_All.png".format(cubes[i]))
-    print(fidelity)
-    # TODO Fidelity
-    '''
     # Now go through each slice and do it for all of them
 
     sn_max = 0.0
@@ -143,19 +34,24 @@ for i in range(len(cubes)):
     for slice in range(480):
         sub_cube = cube.unitless.unmasked_data[slice,:,:]
         rms_noise = np.nanstd(sub_cube)
+        total_rms += rms_noise
+        print(rms_noise)
 
         #print(np.unique(sub_cube[~np.isnan(sub_cube)], return_counts=True))
 
         #print(sub_cube)
 
         sub_cube = sub_cube[~np.isnan(sub_cube)].flatten()
+        print((len(sub_cube)*0.09)/3600)
+        # Fideltiy is 1 - Neg(SN)/Pos(SN)
+        # Walter 2016
 
-        _, bins, _ = plt.hist(sub_cube, bins=num_bins)
-        plt.xlabel("Jy/beam")
-        plt.yscale("log")
-        plt.ylabel("Count (Log)")
-        plt.savefig("Feb_Output/Fluxes/Fluxes_{}_2chn_slice{}.png".format(cubes[i],slice))
-        plt.cla()
+        #_, bins, _ = plt.hist(sub_cube, bins=num_bins)
+        #plt.xlabel("Jy/beam")
+        #plt.yscale("log")
+        #plt.ylabel("Count (Log)")
+        #plt.savefig("Feb_Output/Fluxes/Fluxes_{}_2chn_slice{}_65.png".format(cubes[i],slice))
+        #plt.cla()
 
         # Now flip the axis by splitting into < 0 and > 0 and subtracting one from other
 
@@ -173,33 +69,34 @@ for i in range(len(cubes)):
         bins = np.linspace(-6.5, 6.5, number_sn_bins)
 
         values, bins, _ = plt.hist(sub_cube, bins=bins)
-        sn_summed = sn_summed + np.asarray(values)
-        sn_bins = bins
-        plt.title("S/N")
-        plt.xlabel("S/N")
-        plt.ylabel("Count (Log)")
-        plt.yscale("log")
-        plt.savefig("Feb_Output/Noise/SN_{}_2chn_slice{}.png".format(cubes[i],slice))
         plt.cla()
+        sn_summed = sn_summed + np.asarray(values)
+        all_sn_summed = all_sn_summed + np.asarray(values)
+        sn_bins = bins
+        #plt.title("S/N")
+        #plt.xlabel("S/N")
+        #plt.ylabel("Count (Log)")
+        #plt.yscale("log")
+        #plt.savefig("Feb_Output/Noise/SN_{}_2chn_slice{}.png".format(cubes[i],slice))
+        #plt.cla()
 
-        fid = []
-        for j in range(int(len(values)/2.)):
-            if np.isclose(values[int(len(values))-j-1], 0.0):
-                fidel = np.nan
-            else:
-                fidel = values[j] / values[int(len(values))-j-1]
-            fid.append(fidel)
+        neg_summed = np.asarray(list(reversed(values[0:int(len(values)/2)])))
+        pos_summed = np.asarray(values[int(len(values)/2)+1:])
+        fid = 1. - neg_summed / pos_summed
+        all_fids.append(fid)
+        #plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):])
+        #plt.title("Fidelity Summed Cube {} Slice {}".format(cubes[i], slice))
+        #plt.xlabel("SN")
+        #plt.ylabel("1- Neg(S/N)/Pos(S/N)")
+        #plt.savefig("Feb_Output/Fidelity/Fidelity_Summed_Cube_Hist_{}_Slice_{}.png".format(cubes[i], slice), dpi=300)
+        #plt.cla()
 
-        print(fid[0])
-        if fid[2] is not np.nan:
-            avg_fidelity_above_53 += fid[2]
-            count_53 += 1
-        if fid[1] is not np.nan:
-            avg_fidelity_above_59 += fid[1]
-            count_59 += 1
-        if fid[0] is not np.nan:
-            avg_fidelity_above_65 += fid[0]
-            count_65 += 1
+        #plt.plot(np.linspace(0., 6.5, len(fid)), fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
+        #plt.title("Fidelity Summed Cube {} Slice {}".format(cubes[i], slice))
+        #plt.xlabel("SN")
+        #plt.ylabel("1- Neg(S/N)/Pos(S/N)")
+        #plt.savefig("Feb_Output/Fidelity/Fidelity_Summed_Cube_{}_Slice_{}.png".format(cubes[i], slice), dpi=300)
+        #plt.cla()
 
     print(sn_max)
     print(sn_min)
@@ -211,27 +108,101 @@ for i in range(len(cubes)):
     #print(avg_fidelity_above_53 / count_53)
     sn_summed = sn_summed
     print(sn_summed)
-    plt.hist(np.linspace(-6.5, 6.5, number_sn_bins-1), weights=sn_summed, bins=sn_bins)
+    n = len(sn_summed)                          #the number of data
+    mean = np.mean(sn_summed)                   #note this correction
+    sigma = 1.        #note this correction
+
+    def gaus(x,a,x0,sigma):
+        return a*np.exp(-(x-x0)**2/(2*sigma**2))
+
+    popt,pcov = curve_fit(gaus,np.linspace(-6.5, 6.5, 129),sn_summed,p0=[1,mean,sigma])
+    plt.hist(np.linspace(-6.5, 6.5, number_sn_bins-1), weights=sn_summed, bins=sn_bins, histtype='step')
+    plt.plot(np.linspace(-6.5, 6.5, 129),gaus(np.linspace(-6.5, 6.5, 129),*popt),c='r',label='fit')
     plt.title("S/N Summed Cube {}".format(cubes[i]))
     plt.yscale("log")
     plt.xlabel("S/N")
     plt.ylabel("Count")
-    plt.savefig("SN_Summed_Cube_{}.png".format(cubes[i]), dpi=300)
+    plt.savefig("SN_Summed_Cube_{}_stepped.png".format(cubes[i]), dpi=300)
     plt.show()
     plt.cla()
     fid = []
-    for j in range(int(len(sn_summed)/2.)):
-        if np.isclose(sn_summed[int(len(sn_summed))-j-1], 0.0):
-            fidel = 0.0
-        else:
-            fidel = sn_summed[j] / sn_summed[int(len(sn_summed))-j-1]
-        fid.append(fidel)
-    plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):])
+    neg_summed = np.asarray(list(reversed(sn_summed[0:int(len(sn_summed)/2)])))
+    pos_summed = np.asarray(sn_summed[int(len(sn_summed)/2)+1:])
+    fid = 1. - neg_summed / pos_summed
+    print(fid)
+    print(sn_summed)
+    print(fid)
+    plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):], histtype='step')
     plt.title("Fidelity Summed Cube {}".format(cubes[i]))
     plt.xlabel("SN")
-    plt.ylabel("False/True")
-    plt.savefig("Fidelity_Summed_Cube_{}.png".format(cubes[i]), dpi=300)
+    plt.ylabel("1- Neg(S/N)/Pos(S/N)")
+    plt.savefig("Fidelity_Summed_Cube_Hist_{}_stepped.png".format(cubes[i]), dpi=300)
     plt.show()
     plt.cla()
     del sub_cube
 
+n = len(all_sn_summed)                          #the number of data
+mean = np.mean(all_sn_summed)                   #note this correction
+sigma = 1.        #note this correction
+
+def gaus(x,a,x0,sigma):
+    return a*np.exp(-(x-x0)**2/(2*sigma**2))
+
+popt,pcov = curve_fit(gaus,np.linspace(-6.5, 6.5, 129),all_sn_summed,p0=[1,mean,sigma])
+plt.hist(np.linspace(-6.5, 6.5, number_sn_bins-1), weights=all_sn_summed, bins=sn_bins, histtype='step')
+plt.plot(np.linspace(-6.5, 6.5, 129), gaus(np.linspace(-6.5, 6.5, 129),*popt), c='r')
+plt.title("S/N Summed Cube Both Cubes")
+plt.yscale("log")
+plt.xlabel("S/N")
+plt.ylabel("Count")
+plt.savefig("SN_Summed_Cube_Both_Cubes_stepped.png", dpi=300)
+plt.show()
+plt.cla()
+fid = []
+neg_summed = np.asarray(list(reversed(all_sn_summed[0:int(len(all_sn_summed)/2)])))
+pos_summed = np.asarray(all_sn_summed[int(len(all_sn_summed)/2)+1:])
+fid = 1. - neg_summed / pos_summed
+print(fid)
+print(all_sn_summed)
+print(fid)
+plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):], histtype='step')
+plt.title("Fidelity Summed Cube Both")
+plt.xlabel("SN")
+plt.ylabel("1- Neg(S/N)/Pos(S/N)")
+plt.savefig("Fidelity_Summed_Cube_Hist_Both_stepped.png", dpi=300)
+plt.show()
+plt.cla()
+plt.plot(np.linspace(0., 6.5, len(fid)), fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
+plt.title("Fidelity Summed Cube Both")
+plt.xlabel("SN")
+plt.ylabel("1- Neg(S/N)/Pos(S/N)")
+plt.savefig("Fidelity_Summed_Cube_Both_stepped.png", dpi=300)
+plt.show()
+plt.cla()
+
+# Now go through the full fidelity
+all_fids = np.asarray(all_fids)
+print(all_fids.shape)
+mean_fid = np.nanmean(all_fids, axis=0, dtype=np.float128)
+median_fid = np.nanmedian(all_fids, axis=0)
+
+print("Median")
+print(median_fid)
+print("Mean")
+print(mean_fid)
+
+plt.plot(np.linspace(0., 6.5, len(mean_fid)), mean_fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
+plt.title("Fidelity Mean Summed Cube")
+plt.xlabel("SN")
+plt.ylabel("1- Neg(S/N)/Pos(S/N)")
+plt.savefig("Fidelity_Summed_Cube_Mean_Both_stepped.png", dpi=300)
+plt.show()
+plt.cla()
+
+plt.plot(np.linspace(0., 6.5, len(median_fid)), median_fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
+plt.title("Fidelity Median Summed Cube")
+plt.xlabel("SN")
+plt.ylabel("1- Neg(S/N)/Pos(S/N)")
+plt.savefig("Fidelity_Summed_Cube_Median_Both_stepped.png", dpi=300)
+plt.show()
+plt.cla()

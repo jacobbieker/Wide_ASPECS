@@ -19,7 +19,7 @@ def plot_multiple_cutouts():
     return NotImplementedError
 
 
-def plot_mstar_vs_sfr_third(aspecs_catalog, only_aspecs_match_catalog, matched_catalog, snr_limit, max_z=0.3, labels=('All', 'ASPECS', 'ASPECS CO Magphys'), z_lows=(0.0, 1.1, 2.2, 3), z_highs=(0.4, 1.8, 3, 4.4), colors=('lightgrey', 'red', 'orange', 'green'), filename="", z_name="z_co", added_thing="", type='square'):
+def plot_mstar_vs_sfr_third(aspecs_catalog, only_aspecs_match_catalog, matched_catalog, snr_limit, max_z=0.3, labels=('All', 'ASPECS', 'ASPECS CO\n Magphys'), z_lows=(0.0, 1.1, 2.2, 3), z_highs=(0.4, 1.8, 3, 4.4), colors=('lightgrey', 'red', 'orange', 'green'), filename="", z_name="z_co", added_thing="", type='square'):
     """
     Given a set of catalogs, plot them with labels in a M* by SFR overlaid with best fits
 
@@ -69,15 +69,15 @@ def plot_mstar_vs_sfr_third(aspecs_catalog, only_aspecs_match_catalog, matched_c
             ax.plot(whitaker_mass, whitaker_sfr, color='orange', linestyle='dashed', zorder=20)
         else:
             ax.plot(whitaker_mass, whitaker_sfr, color='orange', zorder=20)
-        sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", matched_catalog, z_range[0], z_range[1])
-        mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", matched_catalog, z_range[0], z_range[1])
+        sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", matched_catalog, z_range[0], z_range[1], added="_1")
+        mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", matched_catalog, z_range[0], z_range[1], added="_1")
         if use_labels:
             ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[0], label=labels[0],  mec='darkgrey',  fmt='.', ms=1, elinewidth=1)
         else:
             ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[0], fmt='.', mec='darkgrey', ms=1, elinewidth=1)
 
-        sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, z_range[0]-max_z, z_range[1]+max_z)
-        mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", aspecs_catalog, z_range[0]-max_z, z_range[1]+max_z)
+        sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", aspecs_catalog, z_range[0], z_range[1], z=z_name, added="_1")
+        mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", aspecs_catalog, z_range[0], z_range[1], z=z_name, added="_1")
         if use_labels:
             ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[1], label=labels[1], fmt='.', ms=5, mec='red', zorder=20, elinewidth=1)
         else:
