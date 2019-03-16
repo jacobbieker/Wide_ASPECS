@@ -15,6 +15,16 @@ transitions = {"1-0": [0.0030, 0.3694, 115.271, 0.2801, 89],
                "3-2": [2.0088, 3.1080, 345.796, 2.6129, 3363],
                "4-3": [3.0115, 4.4771, 461.041, 3.8030, 4149], }
 
+transitions = {"1-0": [0.0030, 0.3694, 115.271, 0.2801, 89],
+               "2-1": [1.0059, 1.7387, 230.538, 1.4277, 1920],
+               "3-2": [2.0088, 3.1080, 345.796, 2.6129, 3363],
+               "4-3": [3.0115, 4.4771, 461.041, 3.8030, 4149],
+               "5-4": [4.0142, 5.8460, 576.268, 4.9933, 4571],
+               "6-5": [5.0166, 7.2146, 691.473, 6.1843, 4809],
+               "7-6": [6.0188, 8.5829, 806.652, 7.3750, 4935],
+               "C1 1-0": [3.2823, 4.8468, 492.161, 4.1242, 4287],
+               "C1 2-1": [6.0422, 8.6148, 809.342, 7.4031, 4936]}
+
 
 def convert_observed_line_to_restframe():
     return NotImplementedError
@@ -36,7 +46,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
     'Integrated Flux (Jy km/s)', 'Width (Channels)', 'Cosmic Volume (Mpc^3)', 'Log(M*)', 'Error Log(M*)', 'Log(SFR)',
     'Error Log(SFR)'),
                          dtype=(
-                         'f8', 'f8', 'int32', 'f8', 'f8', 'f4', 'f4', 'U6', 'f4', 'f4', 'bool', 'f4', 'f8', 'f8', 'f4',
+                         'str', 'str', 'int32', 'f8', 'f8', 'f4', 'f4', 'U6', 'f4', 'f4', 'bool', 'f4', 'f8', 'f8', 'f4',
                          'f4', 'f4', 'f4', 'int8', 'f4', 'f4', 'f4', 'f4', 'f4'))
 
     """
@@ -61,7 +71,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
     catalog_dec = 'dc'
 
     # Only choose ones above SN limit
-    lines = lines[lines['rsnrrbin'] >= snr_limit]
+    #lines = lines[lines['rsnrrbin'] >= snr_limit]
 
     line_skycoords = make_skycoords(lines, ra='rra', dec='rdc')
     catalog_skycoords = make_skycoords(catalog, ra=catalog_ra, dec=catalog_dec)
@@ -106,7 +116,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                             if matched_galaxy['z_1'] + delta_z < (0.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
                                     1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
                                 matched_to_galaxy = True
-                                print("Matched Galaxy: {} Catalog ID: {}".format(matched_galaxy['id'], catalog[idxcatalog[index]]))
+                                print("Matched Galaxy: {} Catalog ID: {}".format(matched_galaxy['id'], catalog[idxcatalog[index]]['id']))
                                 closest_redshift_and_catalog_id.append((delta_z, separation.arcsecond, idxcatalog[index]))
                                 #if np.abs(closest_redshift_and_catalog_id[idxc[index]][0]) > np.abs(delta_z):
                                 #    closest_redshift_and_catalog_id[idxc[index]] = (
@@ -121,12 +131,12 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                                 # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
                                 volume = comoving_volume(values[0], values[1], 42.6036)
                                 spec_z = has_spec_z(matched_galaxy)
-                                kms = get_kms(matched_line['width'], matched_line['rfreq'])
+                                kms = 0#get_kms(matched_line['width'], matched_line['rfreq'])
 
                                 co_z = get_co_z(matched_line['rfreq'], matched_key)
                                 delta_v = convert_deltaZ_to_kms(delta_z, co_z)
-                                new_row = (np.round(matched_line['rra'], 6),
-                                           np.round(matched_line['rdc'], 6),
+                                new_row = (matched_line['rra'],#np.round(matched_line['rra'], 6),
+                                           matched_line['rdc'],#np.round(matched_line['rdc'], 6),
                                            np.int(matched_galaxy['id']),
                                            np.round(matched_galaxy[catalog_ra], 6),
                                            np.round(matched_galaxy[catalog_dec], 6),
@@ -140,10 +150,10 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                                            delta_v,
                                            kms,
                                            np.round(separation.arcsecond, 4),
-                                           matched_line['rsnrrbin'],
-                                           matched_line['rpeak'],
-                                           matched_line['rflux'],
-                                           matched_line['width'],
+                                           0,#matched_line['rsnrrbin'],
+                                           0,#matched_line['rpeak'],
+                                           0,#matched_line['rflux'],
+                                           0,#matched_line['width'],
                                            np.round(volume, 3),
                                            matched_galaxy['Mstar_50_1'],
                                            matched_galaxy['Mstar_84_1'] - matched_galaxy['Mstar_50_1'],
@@ -164,6 +174,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         prev_row_ra_dec = None
         prev_row_matched = None
         indicies_to_remove = []
+        '''
         for index, row in enumerate(aspecs_table):
             if prev_row_ra_dec is not None:
                 if np.isclose(row['RA (J2000)'],prev_row_ra_dec[0]) and np.isclose(row['DEC (J2000)'], prev_row_ra_dec[1]):
@@ -171,7 +182,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                     if prev_row_matched[0] > 0. and row['Roberto ID'] > 0.:
                         # Matched to galaxy
                         continue
-                        '''
+                        
                         if np.isclose(np.abs(row['Delta Z']), np.abs(prev_row_matched[1])):
                             if row['Separation (Arcsecond)'] < prev_row_ra_dec[2]:
                                 indicies_to_remove.append(index - 1)
@@ -185,7 +196,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                             prev_row_matched = [row['Roberto ID'], row['Delta Z']]
                         #else: # Not better delta Z, so not add to prev
                             #indicies_to_remove.append(index)
-                        '''
+                        
                     else: # Not matched to a galaxy
                         if row['Roberto ID'] > 0.: # Row is matched to one
                             indicies_to_remove.append(index-1)
@@ -208,9 +219,11 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
 
         # Remove from the catalog
         aspecs_table.remove_rows(indicies_to_remove)
+        '''
         # Now need to only get the catalog ids that are relevant, so not -99999
         catalog_ids = [i[2] for i in closest_redshift_and_catalog_id if i[2] > -999]
-        print(catalog_ids)
+        aspecs_table['Roberto ID'].pprint(max_lines=-1)
+        print(catalog[catalog_ids]['id', 'Mstar_50_1', 'SFR_50_1', 'z_1'])
 
     if method == 'all':
         # Do it where it goes through all matches within a given radius
@@ -422,11 +435,11 @@ def match_to_co_line(single_line, max_redshift=0.3):
         if np.abs(delta_z) <= max_redshift:
             spec_z = False
             volume = comoving_volume(transitions[estimated_transition][0], transitions[estimated_transition][1], 52.5)
-            kms = get_kms(single_line['width'], single_line['rfreq'])
+            kms = 0#get_kms(single_line['width'], single_line['rfreq'])
             co_z = get_co_z(single_line['rfreq'], matched_key)
             delta_v = convert_deltaZ_to_kms(delta_z, co_z)
-            new_row = (np.round(single_line['rra'], 6),
-                       np.round(single_line['rdc'], 6),
+            new_row = (single_line['rra'],#np.round(single_line['rra'], 6),
+                       single_line['rdc'],#np.round(single_line['rdc'], 6),
                        -999,
                        -999,
                        -999,
@@ -440,10 +453,10 @@ def match_to_co_line(single_line, max_redshift=0.3):
                        delta_v,
                        kms,
                        -999,
-                       single_line['rsnrrbin'],
-                       single_line['rpeak'],
-                       single_line['rflux'],
-                       single_line['width'],
+                       0,#single_line['rsnrrbin'],
+                       0,#single_line['rpeak'],
+                       0,#single_line['rflux'],
+                       0,#single_line['width'],
                        np.round(volume, 3),
                        -999,
                        -999,
@@ -465,11 +478,18 @@ def make_skycoords(source, ra='ra', dec='dec', distance=None):
     :param dec: Key for Dec
     :return: SkyCoord list
     """
-    if distance is None:
-        skycoords = SkyCoord(source[ra] * u.deg, source[dec] * u.deg, frame='fk5')
-    else:
-        distances = Distance(z=source[distance])
-        skycoords = SkyCoord(source[ra] * u.deg, source[dec] * u.deg, distance=distances, frame='fk5')
+    try:
+        if distance is None:
+            skycoords = SkyCoord(source[ra] * u.deg, source[dec] * u.deg, frame='fk5')
+        else:
+            distances = Distance(z=source[distance])
+            skycoords = SkyCoord(source[ra] * u.deg, source[dec] * u.deg, distance=distances, frame='fk5')
+    except:
+        if distance is None:
+            skycoords = SkyCoord(source[ra], source[dec], unit=(u.hour, u.deg), frame='fk5')
+        else:
+            distances = Distance(z=source[distance])
+            skycoords = SkyCoord(source[ra], source[dec], unit=(u.hour, u.deg), distance=distances, frame='fk5')
 
     return skycoords
 
