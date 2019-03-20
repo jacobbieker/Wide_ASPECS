@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from spectral_cube import SpectralCube
 from scipy.optimize import curve_fit
 
-cubes = ["A1", "A2"]
+cubes = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
 number_sn_bins = 130
 
@@ -117,7 +117,7 @@ for i in range(len(cubes)):
 
     popt,pcov = curve_fit(gaus,np.linspace(-6.5, 6.5, 129),sn_summed,p0=[1,mean,sigma])
     plt.hist(np.linspace(-6.5, 6.5, number_sn_bins-1), weights=sn_summed, bins=sn_bins, histtype='step')
-    plt.plot(np.linspace(-6.5, 6.5, 129),gaus(np.linspace(-6.5, 6.5, 129),*popt),c='r',label='fit')
+    #plt.plot(np.linspace(-6.5, 6.5, 129),gaus(np.linspace(-6.5, 6.5, 129),*popt),c='r',label='fit')
     plt.title("S/N Summed Cube {}".format(cubes[i]))
     plt.yscale("log")
     plt.xlabel("S/N")
@@ -139,7 +139,7 @@ for i in range(len(cubes)):
     plt.savefig("Fidelity_Summed_Cube_Hist_{}_stepped.png".format(cubes[i]), dpi=300)
     plt.show()
     plt.cla()
-    del sub_cube
+    del cube
 
 n = len(all_sn_summed)                          #the number of data
 mean = np.mean(all_sn_summed)                   #note this correction
@@ -150,7 +150,7 @@ def gaus(x,a,x0,sigma):
 
 popt,pcov = curve_fit(gaus,np.linspace(-6.5, 6.5, 129),all_sn_summed,p0=[1,mean,sigma])
 plt.hist(np.linspace(-6.5, 6.5, number_sn_bins-1), weights=all_sn_summed, bins=sn_bins, histtype='step')
-plt.plot(np.linspace(-6.5, 6.5, 129), gaus(np.linspace(-6.5, 6.5, 129),*popt), c='r')
+#plt.plot(np.linspace(-6.5, 6.5, 129), gaus(np.linspace(-6.5, 6.5, 129),*popt), c='r')
 plt.title("S/N Summed Cube Both Cubes")
 plt.yscale("log")
 plt.xlabel("S/N")
@@ -169,14 +169,14 @@ plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bi
 plt.title("Fidelity Summed Cube Both")
 plt.xlabel("SN")
 plt.ylabel("1- Neg(S/N)/Pos(S/N)")
-plt.savefig("Fidelity_Summed_Cube_Hist_Both_stepped.png", dpi=300)
+plt.savefig("Fidelity_Summed_Cube_Hist_All_stepped.png", dpi=300)
 plt.show()
 plt.cla()
 plt.plot(np.linspace(0., 6.5, len(fid)), fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
 plt.title("Fidelity Summed Cube Both")
 plt.xlabel("SN")
 plt.ylabel("1- Neg(S/N)/Pos(S/N)")
-plt.savefig("Fidelity_Summed_Cube_Both_stepped.png", dpi=300)
+plt.savefig("Fidelity_Summed_Cube_All_stepped.png", dpi=300)
 plt.show()
 plt.cla()
 
@@ -195,7 +195,7 @@ plt.plot(np.linspace(0., 6.5, len(mean_fid)), mean_fid)#, bins=sn_bins[int(len(s
 plt.title("Fidelity Mean Summed Cube")
 plt.xlabel("SN")
 plt.ylabel("1- Neg(S/N)/Pos(S/N)")
-plt.savefig("Fidelity_Summed_Cube_Mean_Both_stepped.png", dpi=300)
+plt.savefig("Fidelity_Summed_Cube_Mean_All_stepped.png", dpi=300)
 plt.show()
 plt.cla()
 
@@ -203,6 +203,6 @@ plt.plot(np.linspace(0., 6.5, len(median_fid)), median_fid)#, bins=sn_bins[int(l
 plt.title("Fidelity Median Summed Cube")
 plt.xlabel("SN")
 plt.ylabel("1- Neg(S/N)/Pos(S/N)")
-plt.savefig("Fidelity_Summed_Cube_Median_Both_stepped.png", dpi=300)
+plt.savefig("Fidelity_Summed_Cube_Median_All_stepped.png", dpi=300)
 plt.show()
 plt.cla()
