@@ -85,7 +85,7 @@ def convert_deltaZ_to_kms(delta_z, z):
 def has_spec_z(source):
     spec_z_mask = (source["z_spec_3dh"] > 0.0001) | (source["zm_vds"] > 0.0001) | (
             source["zm_coeS"] > 0.0001) \
-                  | (source["zs_mor"] > 0.0001) | (source["zm_ina"] > 0.0001) | (source["zm_her"] > 0.0001) \
-                  | (source['muse_wide_z'] > 0.0001)
+                  | (source["zs_mor"] > 0.0001) | (source["zm_ina"] > 0.0001) | (source["zm_her"] > 0.0001)
+                  #| (source['muse_wide_z'] > 0.0001)
     return spec_z_mask
 

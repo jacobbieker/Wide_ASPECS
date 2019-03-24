@@ -12,7 +12,7 @@ from astropy.table import Table, hstack, join
 initial_catalog = Table.read(
     "/home/jacob/Development/Wide_ASPECS/independent/jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits",
     format='fits')  # hdu_list[1].data
-roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')
+roberto_catalog = Table.read("/home/jacob/Development/Wide_ASPECS/data/jacob_aspecs_catalog_fixed_magphys_jcb2.fits", format='fits')
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 
 aspecs_lines = load_table("ASPECS_pilot.txt")

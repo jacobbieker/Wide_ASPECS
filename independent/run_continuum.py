@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from astropy.table import Table, hstack, join
 
 initial_catalog = Table.read("/home/jacob/Development/Wide_ASPECS/independent/jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits", format='fits')  # hdu_list[1].data
-roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')
+roberto_catalog = Table.read("/home/jacob/Development/Wide_ASPECS/data/jacob_aspecs_catalog_fixed_magphys_jcb2.fits", format='fits')
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 
 aspecs_lines = load_table("ASPECS_Pilot_C_Matches.txt")
@@ -28,8 +28,8 @@ matches = {}
 matches_2 = {}
 
 for element in properties:
-    matches[element['name']] = (0,0,-1)
-    matches_2[element['name']] = (0,0,-1)
+    matches[element['name']] = (0,0,-1,0,0,0,0)
+    matches_2[element['name']] = (0,0,-1,0,0,0,0)
 
 for index, row in enumerate(aspecs_lines[idxcatalog]):
     print("\nID: {} \nZ: {} \nMstar_1: {} SFR_1: {} \n Mstar_2: {} SFR_2: {}".format(row['name'], np.round(combined_catalog[idxc[index]]['z_2'], 3), (combined_catalog[idxc[index]]['Mstar_50_1']),
@@ -39,32 +39,58 @@ for index, row in enumerate(aspecs_lines[idxcatalog]):
         if prop['name'] == row['name']:
             if np.abs(prop['sfr'] - combined_catalog[idxc[index]]['SFR_50_1']) < np.abs(prop['sfr'] - matches[row['name']][1]):
                 if np.abs(prop['mstar'] - combined_catalog[idxc[index]]['Mstar_50_1']) < np.abs(prop['mstar'] - matches[row['name']][0]):
-                    matches[row['name']] = (combined_catalog[idxc[index]]['Mstar_50_1'], combined_catalog[idxc[index]]['SFR_50_1'], idxc[index])
+                    matches[row['name']] = (combined_catalog[idxc[index]]['Mstar_50_1'], combined_catalog[idxc[index]]['SFR_50_1'], idxc[index],
+                                            (combined_catalog[idxc[index]]['SFR_50_1']-combined_catalog[idxc[index]]['SFR_16_1']),
+                                            (combined_catalog[idxc[index]]['SFR_84_1']-combined_catalog[idxc[index]]['SFR_50_1']),
+                                            (combined_catalog[idxc[index]]['Mstar_50_1']-combined_catalog[idxc[index]]['Mstar_16_1']),
+                                            (combined_catalog[idxc[index]]['Mstar_84_1']-combined_catalog[idxc[index]]['Mstar_50_1']))
             if np.abs(prop['sfr'] - combined_catalog[idxc[index]]['SFR_50_2']) < np.abs(prop['sfr'] - matches_2[row['name']][1]):
                 if np.abs(prop['mstar'] - combined_catalog[idxc[index]]['Mstar_50_2']) < np.abs(prop['mstar'] - matches_2[row['name']][0]):
-                    matches_2[row['name']] = (combined_catalog[idxc[index]]['Mstar_50_2'], combined_catalog[idxc[index]]['SFR_50_2'], idxc[index])
+                    matches_2[row['name']] = (combined_catalog[idxc[index]]['Mstar_50_2'], combined_catalog[idxc[index]]['SFR_50_2'], idxc[index],
+                                              (combined_catalog[idxc[index]]['SFR_50_2']-combined_catalog[idxc[index]]['SFR_16_2']),
+                                              (combined_catalog[idxc[index]]['SFR_84_2']-combined_catalog[idxc[index]]['SFR_50_2']),
+                                              (combined_catalog[idxc[index]]['Mstar_50_2']-combined_catalog[idxc[index]]['Mstar_16_2']),
+                                              (combined_catalog[idxc[index]]['Mstar_84_2']-combined_catalog[idxc[index]]['Mstar_50_2']))
 
 # Get the closest matches to those values and the closest ones
 
 # now have them together
 one_sfr = []
 one_mstar = []
+one_mu_error = []
+one_ml_error = []
+one_su_error = []
+one_sl_error = []
 two_sfr = []
 two_mstar = []
+t_mu_error = []
+t_ml_error = []
+t_su_error = []
+t_sl_error = []
 labels = []
 
 for key in matches.keys():
     labels.append(key)
     one_sfr.append(matches[key][1])
     one_mstar.append(matches[key][0])
+    one_sl_error.append(matches[key][3])
+    one_su_error.append(matches[key][4])
+    one_ml_error.append(matches[key][5])
+    one_mu_error.append(matches[key][6])
     two_sfr.append(matches_2[key][1])
     two_mstar.append(matches_2[key][0])
+    t_sl_error.append(matches_2[key][3])
+    t_su_error.append(matches_2[key][4])
+    t_ml_error.append(matches_2[key][5])
+    t_mu_error.append(matches_2[key][6])
 
 
 plt.errorbar(properties['mstar'], properties['sfr'], yerr=(properties['sl_error'],properties['su_error']),
              xerr=(properties['ml_error'],properties['mu_error']), fmt='.', label='Pilot', c='g')
-plt.scatter(one_mstar, one_sfr, label='MAGPHYS (Original)')
-plt.scatter(two_mstar, two_sfr, label='MAGPHYS (MUSE)')
+plt.errorbar(two_mstar, two_sfr, yerr=(t_sl_error,t_su_error),
+             xerr=(t_ml_error,t_mu_error), fmt='.', label='MAGPHYS (MUSE)', c='b')
+plt.errorbar(one_mstar, one_sfr, yerr=(one_sl_error,one_su_error),
+             xerr=(one_ml_error,one_mu_error), fmt='.', label='MAGPHYS (Original)', c='orange')
 plt.xlabel("Log(Mstar)")
 plt.ylabel("Log(SFR)")
 plt.title("Mstar vs SFR Continuum ASPECS Pilot")
@@ -76,7 +102,7 @@ for i, element in enumerate(labels):
     plt.annotate(element, (one_mstar[i], one_sfr[i]))
     plt.annotate(element, (two_mstar[i], two_sfr[i]))
 plt.legend(loc='best')
-plt.savefig("Comparison_Continuum_Pilot_Sources.png", dpi=300)
+#plt.savefig("Comparison_Continuum_Pilot_Sources.png", dpi=300)
 plt.show()
 exit()
 #special_ones = ["/home/jacob/Development/Wide_ASPECS/independent/matches/sn59_sep15.fits", "/home/jacob/Development/Wide_ASPECS/independent/matches/sn6_sep15.fits"]
