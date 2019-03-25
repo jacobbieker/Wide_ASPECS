@@ -16,19 +16,18 @@ roberto_catalog = Table.read("/home/jacob/Development/Wide_ASPECS/data/jacob_asp
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 
 aspecs_lines = load_table("ASPECS_pilot.txt")
-# matched_locs = load_table("ASPECS_Pilot_Matches.txt")
-matched_coords = make_skycoords(combined_catalog, ra='ra', dec='dc')
+matched_locs = load_table("ASPECS_Pilot_Matches.txt")
+matched_coords = make_skycoords(matched_locs, ra='rra', dec='rdc')
 aspecs_coords = make_skycoords(aspecs_lines, ra='rra', dec='rdc')
-idxc, idxcatalog, d2d, d3d = search_around_sky(matched_coords, aspecs_coords, 1.0 * u.arcsecond)
+#idxc, idxcatalog, d2d, d3d = search_around_sky(matched_coords, aspecs_coords, 1.0 * u.arcsecond)
 # special_ones = ["/home/jacob/Development/Wide_ASPECS/independent/matches/sn59_sep15.fits", "/home/jacob/Development/Wide_ASPECS/independent/matches/sn6_sep15.fits"]
 
-combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 for option_name in ["all_closest"]:
     for separation in [2.0]:
-        for snrlimit in [6.0, ]:
+        for snrlimit in [0.0, ]:
             aspecs_table, aspecs_catalog = match_lines_to_catalog_pilot(aspecs_lines, combined_catalog,
                                                                         method=option_name, max_sep=separation,
-                                                                        snr_limit=snrlimit, max_redshift=0.3)
+                                                                        max_redshift=0.3)
             save_catalog(aspecs_catalog,
                          "/home/jacob/Development/Wide_ASPECS/Pilot/aspecs_pilot_zco_3mm_catalog_SN{}_method_{}_Sep_{}".format(
                              snrlimit, option_name, separation))
@@ -49,6 +48,10 @@ for option_name in ["all_closest"]:
                         "/home/jacob/Development/Wide_ASPECS/Pilot/ASPECS_Pilot_Line_3mm_Candidates_{}_Sep_{}_SN_{}.ecsv".format(
                             option_name, separation, snrlimit), format='ecsv', overwrite=True)
             # Check if matched in the aspecs catalog
+            new_cat = make_skycoords(aspecs_catalog, ra='ra', dec='dc')
+            # Get the new ones
+            idx, d2d, d3d = match_coordinates_sky(matched_coords, new_cat)
+            aspecs_catalog = aspecs_catalog[idx]
             #
             # Do the new plotting
             plt.errorbar(aspecs_lines['mstar'], aspecs_lines['sfr'],
@@ -69,12 +72,12 @@ for option_name in ["all_closest"]:
                                ), fmt='.',
                          label='MAGPHYS')
             '''
-            plt.errorbar(10**aspecs_catalog['Mstar_50_1']/(10**9), 10**aspecs_catalog['SFR_50_1'], yerr=(
-                (10**aspecs_catalog['SFR_50_1'] - 10**aspecs_catalog['SFR_16_1']),
-                (10**aspecs_catalog['SFR_84_1'] - 10**aspecs_catalog['SFR_50_1'])
+            plt.errorbar(10**aspecs_catalog['Mstar_50_2']/(10**9), 10**aspecs_catalog['SFR_50_2'], yerr=(
+                (10**aspecs_catalog['SFR_50_2'] - 10**aspecs_catalog['SFR_16_2']),
+                (10**aspecs_catalog['SFR_84_2'] - 10**aspecs_catalog['SFR_50_2'])
             ),
-                         xerr=((10**aspecs_catalog['Mstar_50_1']/(10**9) - 10**aspecs_catalog['Mstar_16_1']/(10**9)),
-                               (10**aspecs_catalog['Mstar_84_1']/(10**9) - 10**aspecs_catalog['Mstar_50_1']/(10**9))
+                         xerr=((10**aspecs_catalog['Mstar_50_2']/(10**9) - 10**aspecs_catalog['Mstar_16_2']/(10**9)),
+                               (10**aspecs_catalog['Mstar_84_2']/(10**9) - 10**aspecs_catalog['Mstar_50_2']/(10**9))
                                ), fmt='.',
                          label='MAGPHYS')
             #plt.errorbar(aspecs_catalog['Mstar_50_2'], aspecs_catalog['SFR_50_2'], yerr=(
@@ -92,19 +95,21 @@ for option_name in ["all_closest"]:
             # plt.xlim(8.0,12.)
             for i, element in enumerate(aspecs_lines):
                 plt.annotate(element['name'], (aspecs_lines[i]['mstar'], aspecs_lines[i]['sfr']))
-            for row in aspecs_catalog:
+            names = ["31","32","33","35"]
+            for i, row in enumerate(aspecs_catalog):
+                plt.annotate(names[i], (10**row['Mstar_50_1']/(10**9), 10**row['SFR_50_1']))
                 print("Mstar: {} SFR: {} Z: {}".format(10**row['Mstar_50_1']/(10**9), 10**row['SFR_50_1'], row['z_1']))
                 print("Mstar2: {} SF2: {} Z2: {}".format(10**row['Mstar_50_2']/(10**9), 10**row['SFR_50_2'], row['z_2']))
             #plt.annotate("34", (33.113,16.8655))
             #plt.annotate("32", (407.3802, 135.5189))
             #plt.annotate("31", (2.79898, 32.885))
             #plt.annotate("33", (0.00238, 0.010046))
-            new_cat = make_skycoords(aspecs_catalog, ra='ra', dec='dc')
-            for index, line in enumerate(aspecs_lines):
-                print("\nLine: {} RA: {} DEC: {}".format(line['name'], aspecs_coords[index].ra.to_string(unit=u.hour, sep=':'), aspecs_coords[index].dec.to_string(unit=u.degree, sep=':')))
-                print("Matched Line: RA: {} DEC: {}\n".format(new_cat[index].ra.to_string(unit=u.hour, sep=':'), new_cat[index].dec.to_string(unit=u.degree, sep=':')))
+
+            for index, line in enumerate(idx):
+                #print("\nLine: {} RA: {} DEC: {}".format(line['name'], aspecs_coords[index].ra.to_string(unit=u.hour, sep=':'), aspecs_coords[index].dec.to_string(unit=u.degree, sep=':')))
+                print("Matched Line: RA: {} DEC: {}\n".format(new_cat[idx[index]].ra.to_string(unit=u.hour, sep=':'), new_cat[idx[index]].dec.to_string(unit=u.degree, sep=':')))
             plt.legend(loc='best')
-            plt.show()
-            plt.savefig("Comparison_Blind_Pilot_Sources.png", dpi=300)
+            #plt.show()
+            plt.savefig("Comparison_Blind_Pilot_Sources_2.png", dpi=300)
             # combined_catalog = perform_cuts(combined_catalog)
             # plot_mstar_vs_sfr(aspecs_catalog, combined_catalog, snr_limit=6.,z_lows=(0.0, 1.0, 2.0, 4), z_highs=(1.0, 2., 4, 9.), filename="/home/jacob/Development/Wide_ASPECS/Pilot/Pilot_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))

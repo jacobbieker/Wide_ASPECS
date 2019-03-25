@@ -48,7 +48,7 @@ def estimate_redshift():
     return NotImplementedError
 
 
-def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6., max_sep=1.0, method='closest'):
+def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, max_sep=1.0, method='closest'):
     aspecs_table = Table(names=(
     'RA (J2000)', 'DEC (J2000)', 'Roberto ID', 'Roberto RA', 'Roberto DEC', 'Observed CO (GHz)', 'Restframe CO (GHz)',
     'Transition', 'Z (Matched)', 'Z (CO)',
@@ -120,7 +120,7 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
                         delta_z, matched_key = get_delta_z(matched_galaxy['z_1'], rest_frame_ghz)
                         if np.abs(delta_z) <= max_redshift:  # Checks that delta z within the range
                             # Now check with offset if the z is within the range
-                            if matched_galaxy['z_1'] + delta_z < (10.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
+                            if matched_galaxy['z_1'] + delta_z < (120.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
                                     1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
                                 matched_to_galaxy = True
                                 # so with offset, the galaxy is now within the range, is above SNR, and have a transition
@@ -131,9 +131,11 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
                                 kms = 0#get_kms(matched_line['width'], matched_line['rfreq'])
                                 delta_v = convert_deltaZ_to_kms(delta_z, co_z)
                                 add_row = False
-                                try:
-                                    prev_match_mask = (np.isclose(np.round(aspecs_table['RA (J2000)'], 6), np.round(line_skycoords[idxc[index]].ra.degree, 6)) & np.isclose(np.round(aspecs_table['DEC (J2000)'], 6), np.round(line_skycoords[idxc[index]].dec.degree, 6)))
-                                    matched_rows = aspecs_table[prev_match_mask]
+                                prev_match_mask = (np.isclose(np.round(aspecs_table['RA (J2000)'], 10), np.round(line_skycoords[idxc[index]].ra.degree, 10)) & np.isclose(np.round(aspecs_table['DEC (J2000)'], 10), np.round(line_skycoords[idxc[index]].dec.degree, 10)))
+                                matched_rows = aspecs_table[prev_match_mask]
+                                print(matched_galaxy['z_1'])
+                                print(len(matched_rows))
+                                if len(matched_rows) > 0:
                                     if len(matched_rows) > 1:
                                         print("Extra Rows")
                                         print(matched_rows)
@@ -144,9 +146,14 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
                                         else:
                                             add_row = True
                                             # Now need to remove the current row and get the other row
-                                            aspecs_table.remove_rows(np.nonzero(prev_match_mask))
-                                except:
+                                            print("Removing: ")
+                                            print(matched_rows['Catalog Index', 'Z (Matched)', 'Delta Z'])
+                                            print("Adding:")
+                                            print("Catalog Index: {} Z: {} Delta Z: {}".format(idxcatalog[index], matched_galaxy['z_1'], delta_z))
+                                            #aspecs_table.remove_rows(np.nonzero(prev_match_mask))
+                                else:
                                     add_row = True
+                                add_row = True
                                 if add_row:
                                     new_row = (line_skycoords[idxc[index]].ra.degree,#np.round(matched_line['rra'], 6),
                                                line_skycoords[idxc[index]].dec.degree,#np.round(matched_line['rdc'], 6),
@@ -168,10 +175,10 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
                                                0,#matched_line['rflux'],
                                                0,#matched_line['width'],
                                                np.round(volume, 3),
-                                               matched_galaxy['Mstar_50_2'],
-                                               matched_galaxy['Mstar_84_2'] - matched_galaxy['Mstar_50_2'],
-                                               matched_galaxy['SFR_50_2'],
-                                               matched_galaxy['SFR_84_2'] - matched_galaxy['SFR_50_2'],
+                                               matched_galaxy['Mstar_50_1'],
+                                               matched_galaxy['Mstar_84_1'] - matched_galaxy['Mstar_50_1'],
+                                               matched_galaxy['SFR_50_1'],
+                                               matched_galaxy['SFR_84_1'] - matched_galaxy['SFR_50_1'],
                                                idxcatalog[index])
                                     aspecs_table.add_row(new_row)
             else:
@@ -229,7 +236,7 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
         prev_row_ra_dec = None
         prev_row_matched = None
         indicies_to_remove = []
-
+        '''
         for index, row in enumerate(aspecs_table):
             if prev_row_ra_dec is not None:
                 if np.isclose(np.round(row['RA (J2000)'],6),np.round(prev_row_ra_dec[0],6)) and np.isclose(np.round(row['DEC (J2000)'],6), np.round(prev_row_ra_dec[1],6)):
@@ -272,7 +279,7 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
 
         # Remove from the catalog
         aspecs_table.remove_rows(indicies_to_remove)
-
+        '''
         # Now need to only get the catalog ids that are relevant, so not -99999
         catalog_ids = [i['Catalog Index'] for i in aspecs_table if i['Catalog Index'] > 0]
         aspecs_table['Roberto ID'].pprint(max_lines=-1)

@@ -105,7 +105,7 @@ for i, element in enumerate(labels):
     plt.annotate(element, (one_mstar[i], one_sfr[i]))
     #plt.annotate(element, (two_mstar[i], two_sfr[i]))
 plt.legend(loc='best')
-#plt.savefig("Comparison_Continuum_Pilot_Sources.png", dpi=300)
+plt.savefig("Comparison_Continuum_Pilot_Sources.png", dpi=300)
 plt.show()
 exit()
 #special_ones = ["/home/jacob/Development/Wide_ASPECS/independent/matches/sn59_sep15.fits", "/home/jacob/Development/Wide_ASPECS/independent/matches/sn6_sep15.fits"]
