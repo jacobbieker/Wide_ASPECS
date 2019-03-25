@@ -54,10 +54,10 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
     'Transition', 'Z (Matched)', 'Z (CO)',
     'Spec Z', 'Delta Z', 'Delta V (Km/s)', 'Km/s', 'Separation (Arcsecond)', 'S/N', 'Flux Density at Peak (Jy/beam)',
     'Integrated Flux (Jy km/s)', 'Width (Channels)', 'Cosmic Volume (Mpc^3)', 'Log(M*)', 'Error Log(M*)', 'Log(SFR)',
-    'Error Log(SFR)'),
+    'Error Log(SFR)', 'Catalog Index'),
                          dtype=(
                          'f8', 'f8', 'int32', 'f8', 'f8', 'f4', 'f4', 'U6', 'f4', 'f4', 'bool', 'f4', 'f8', 'f8', 'f4',
-                         'f4', 'f4', 'f4', 'int8', 'f4', 'f4', 'f4', 'f4', 'f4'))
+                         'f4', 'f4', 'f4', 'int8', 'f4', 'f4', 'f4', 'f4', 'f4', 'int32'))
 
     """
     Steps to do so:
@@ -102,8 +102,6 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
         full_set = set([i for i in range(len(lines))])
         non_matched_set_indexes = full_set - chosen_lines
 
-        closest_redshift_and_catalog_id = [(-9999, -9999, -99999) for i in range(len(full_set))]
-
         for index, separation in enumerate(d2d):
             matched_line = lines[idxc[index]]
             matched_to_galaxy = False
@@ -125,16 +123,6 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
                             if matched_galaxy['z_1'] + delta_z < (10.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
                                     1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
                                 matched_to_galaxy = True
-                                #print("Matched Galaxy: {} Catalog ID: {}".format(matched_galaxy['id'], catalog[idxcatalog[index]]['id']))
-                                if np.abs(closest_redshift_and_catalog_id[idxc[index]][0]) > np.abs(delta_z):
-                                    closest_redshift_and_catalog_id[idxc[index]] = (
-                                        delta_z, separation.arcsecond, idxcatalog[index])
-                                elif np.isclose(np.abs(closest_redshift_and_catalog_id[idxc[index]][0]),
-                                                np.abs(delta_z)):
-                                    # Closest so based off separation
-                                    if closest_redshift_and_catalog_id[idxc[index]][1] > separation.arcsecond:
-                                        closest_redshift_and_catalog_id[idxc[index]] = (
-                                            delta_z, separation.arcsecond, idxcatalog[index])
                                 # so with offset, the galaxy is now within the range, is above SNR, and have a transition
                                 # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
                                 volume = comoving_volume(values[0], values[1], 42.6036)
@@ -183,7 +171,8 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
                                                matched_galaxy['Mstar_50_2'],
                                                matched_galaxy['Mstar_84_2'] - matched_galaxy['Mstar_50_2'],
                                                matched_galaxy['SFR_50_2'],
-                                               matched_galaxy['SFR_84_2'] - matched_galaxy['SFR_50_2'])
+                                               matched_galaxy['SFR_84_2'] - matched_galaxy['SFR_50_2'],
+                                               idxcatalog[index])
                                     aspecs_table.add_row(new_row)
             else:
                 print("Outside of Max Separation (Shouldn't Happen)")
@@ -285,8 +274,11 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, snr_limit=6.,
         aspecs_table.remove_rows(indicies_to_remove)
 
         # Now need to only get the catalog ids that are relevant, so not -99999
-        catalog_ids = [i[2] for i in closest_redshift_and_catalog_id if i[2] > -999]
+        catalog_ids = [i['Catalog Index'] for i in aspecs_table if i['Catalog Index'] > 0]
         aspecs_table['Roberto ID'].pprint(max_lines=-1)
+        print("Catalog IDS: {}".format(catalog_ids))
+        for id in catalog_ids:
+            print(catalog[id]['id'])
         print(catalog[catalog_ids]['id', 'Mstar_50_1', 'Mstar_50_2', 'SFR_50_1', 'SFR_50_2', 'z_1', 'z_2'])
 
     if method == 'all':
@@ -525,6 +517,7 @@ def match_to_co_line(single_line, max_redshift=0.3, line_coords=None):
                        -999,
                        -999,
                        -999,
+                       -999,
                        -999)
 
             return new_row
@@ -637,10 +630,10 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         'Transition', 'Z (Matched)', 'Z (CO)',
         'Spec Z', 'Delta Z', 'Delta V (Km/s)', 'Km/s', 'Separation (Arcsecond)', 'S/N', 'Flux Density at Peak (Jy/beam)',
         'Integrated Flux (Jy km/s)', 'Width (Channels)', 'Cosmic Volume (Mpc^3)', 'Log(M*)', 'Error Log(M*)', 'Log(SFR)',
-        'Error Log(SFR)'),
+        'Error Log(SFR)', 'Catalog Index'),
         dtype=(
             'f8', 'f8', 'int32', 'f8', 'f8', 'f4', 'f4', 'U6', 'f4', 'f4', 'bool', 'f4', 'f8', 'f8', 'f4',
-            'f4', 'f4', 'f4', 'int8', 'f4', 'f4', 'f4', 'f4', 'f4'))
+            'f4', 'f4', 'f4', 'int8', 'f4', 'f4', 'f4', 'f4', 'f4', 'int32'))
 
     """
     Steps to do so:
@@ -684,8 +677,6 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         full_set = set([i for i in range(len(lines))])
         non_matched_set_indexes = full_set - chosen_lines
 
-        closest_redshift_and_catalog_id = [(-9999, -9999, -99999) for i in range(len(full_set))]
-
         for index, separation in enumerate(d2d):
             matched_line = lines[idxc[index]]
             matched_to_galaxy = False
@@ -707,16 +698,6 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                             if matched_galaxy['z_1'] + delta_z < (10.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
                                     1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
                                 matched_to_galaxy = True
-                                #print("Matched Galaxy: {} Catalog ID: {}".format(matched_galaxy['id'], catalog[idxcatalog[index]]['id']))
-                                if np.abs(closest_redshift_and_catalog_id[idxc[index]][0]) > np.abs(delta_z):
-                                    closest_redshift_and_catalog_id[idxc[index]] = (
-                                        delta_z, separation.arcsecond, idxcatalog[index])
-                                elif np.isclose(np.abs(closest_redshift_and_catalog_id[idxc[index]][0]),
-                                                np.abs(delta_z)):
-                                    # Closest so based off separation
-                                    if closest_redshift_and_catalog_id[idxc[index]][1] > separation.arcsecond:
-                                        closest_redshift_and_catalog_id[idxc[index]] = (
-                                            delta_z, separation.arcsecond, idxcatalog[index])
                                 # so with offset, the galaxy is now within the range, is above SNR, and have a transition
                                 # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
                                 volume = comoving_volume(values[0], values[1], 42.6036)
@@ -765,7 +746,8 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                                                matched_galaxy['Mstar_50_2'],
                                                matched_galaxy['Mstar_84_2'] - matched_galaxy['Mstar_50_2'],
                                                matched_galaxy['SFR_50_2'],
-                                               matched_galaxy['SFR_84_2'] - matched_galaxy['SFR_50_2'])
+                                               matched_galaxy['SFR_84_2'] - matched_galaxy['SFR_50_2'],
+                                               idxcatalog[index])
                                     aspecs_table.add_row(new_row)
             else:
                 print("Outside of Max Separation (Shouldn't Happen)")
@@ -868,7 +850,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
             aspecs_table.remove_rows(indicies_to_remove)
 
         # Now need to only get the catalog ids that are relevant, so not -99999
-        catalog_ids = [i[2] for i in closest_redshift_and_catalog_id if i[2] > -999]
+        catalog_ids = [i['Catalog Index'] for i in aspecs_table if i['Catalog Index'] > 0]
         aspecs_table['Roberto ID'].pprint(max_lines=-1)
         print(catalog[catalog_ids]['id', 'Mstar_50_1', 'Mstar_50_2', 'SFR_50_1', 'SFR_50_2', 'z_1', 'z_2'])
 

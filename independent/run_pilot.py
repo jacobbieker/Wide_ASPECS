@@ -12,7 +12,7 @@ from astropy.table import Table, hstack, join
 initial_catalog = Table.read(
     "/home/jacob/Development/Wide_ASPECS/independent/jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits",
     format='fits')  # hdu_list[1].data
-roberto_catalog = Table.read("/home/jacob/Development/Wide_ASPECS/data/jacob_aspecs_catalog_fixed_magphys_jcb2.fits", format='fits')
+roberto_catalog = Table.read("/home/jacob/Development/Wide_ASPECS/data/jacob_aspecs_catalog_fixed_magphys_jcb3.fits", format='fits')
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 
 aspecs_lines = load_table("ASPECS_pilot.txt")
@@ -24,7 +24,7 @@ idxc, idxcatalog, d2d, d3d = search_around_sky(matched_coords, aspecs_coords, 1.
 
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 for option_name in ["all_closest"]:
-    for separation in [1.6]:
+    for separation in [2.0]:
         for snrlimit in [6.0, ]:
             aspecs_table, aspecs_catalog = match_lines_to_catalog_pilot(aspecs_lines, combined_catalog,
                                                                         method=option_name, max_sep=separation,
@@ -51,9 +51,14 @@ for option_name in ["all_closest"]:
             # Check if matched in the aspecs catalog
             #
             # Do the new plotting
-            plt.errorbar(np.log(aspecs_lines['mstar']*9), np.log(aspecs_lines['sfr']),
-                         yerr=(np.log(aspecs_lines['sl_error']), np.log(aspecs_lines['su_error'])),
-                         xerr=(np.log(aspecs_lines['ml_error']*9), np.log(aspecs_lines['mu_error']*9)), fmt='.',
+            plt.errorbar(aspecs_lines['mstar'], aspecs_lines['sfr'],
+                         yerr=(aspecs_lines['sl_error'], aspecs_lines['su_error']),
+                         xerr=(aspecs_lines['ml_error'], aspecs_lines['mu_error']), fmt='.',
+                         label='Pilot', c='g')
+            '''
+                        plt.errorbar(np.log10(aspecs_lines['mstar'])+9, np.log10(aspecs_lines['sfr']),
+                         yerr=(np.log10(aspecs_lines['sl_error']), np.log10(aspecs_lines['su_error'])),
+                         xerr=(np.log10(aspecs_lines['ml_error']), np.log10(aspecs_lines['mu_error'])), fmt='.',
                          label='Pilot', c='g')
             plt.errorbar(aspecs_catalog['Mstar_50_1'], aspecs_catalog['SFR_50_1'], yerr=(
                 (aspecs_catalog['SFR_50_1'] - aspecs_catalog['SFR_16_1']),
@@ -62,24 +67,44 @@ for option_name in ["all_closest"]:
                          xerr=((aspecs_catalog['Mstar_50_1'] - aspecs_catalog['Mstar_16_1']),
                                (aspecs_catalog['Mstar_84_1'] - aspecs_catalog['Mstar_50_1'])
                                ), fmt='.',
-                         label='MAGPHYS (Original)')
-            plt.errorbar(aspecs_catalog['Mstar_50_2'], aspecs_catalog['SFR_50_2'], yerr=(
-                (aspecs_catalog['SFR_50_2'] - aspecs_catalog['SFR_16_2']),
-            (aspecs_catalog['SFR_84_2'] - aspecs_catalog['SFR_50_2'])
+                         label='MAGPHYS')
+            '''
+            plt.errorbar(10**aspecs_catalog['Mstar_50_1']/(10**9), 10**aspecs_catalog['SFR_50_1'], yerr=(
+                (10**aspecs_catalog['SFR_50_1'] - 10**aspecs_catalog['SFR_16_1']),
+                (10**aspecs_catalog['SFR_84_1'] - 10**aspecs_catalog['SFR_50_1'])
             ),
-                         xerr=((aspecs_catalog['Mstar_50_2'] - aspecs_catalog['Mstar_16_2']),
-                               (aspecs_catalog['Mstar_84_2'] - aspecs_catalog['Mstar_50_2'])
+                         xerr=((10**aspecs_catalog['Mstar_50_1']/(10**9) - 10**aspecs_catalog['Mstar_16_1']/(10**9)),
+                               (10**aspecs_catalog['Mstar_84_1']/(10**9) - 10**aspecs_catalog['Mstar_50_1']/(10**9))
                                ), fmt='.',
-                         label='MAGPHYS (MUSE)')
-            plt.xlabel("Log(Mstar)")
-            plt.ylabel("Log(SFR)")
+                         label='MAGPHYS')
+            #plt.errorbar(aspecs_catalog['Mstar_50_2'], aspecs_catalog['SFR_50_2'], yerr=(
+            #    (aspecs_catalog['SFR_50_2'] - aspecs_catalog['SFR_16_2']),
+            #(aspecs_catalog['SFR_84_2'] - aspecs_catalog['SFR_50_2'])
+            #),
+            #             xerr=((aspecs_catalog['Mstar_50_2'] - aspecs_catalog['Mstar_16_2']),
+            #                   (aspecs_catalog['Mstar_84_2'] - aspecs_catalog['Mstar_50_2'])
+            #                   ), fmt='.',
+            #             label='MAGPHYS (Original)')
+            plt.xlabel("Mstar (x10^9 Msun)")
+            plt.ylabel("SFR")
             plt.title("Mstar vs SFR Blind ASPECS Pilot")
             # plt.ylim(0.0,3.2)
             # plt.xlim(8.0,12.)
             for i, element in enumerate(aspecs_lines):
                 plt.annotate(element['name'], (aspecs_lines[i]['mstar'], aspecs_lines[i]['sfr']))
+            for row in aspecs_catalog:
+                print("Mstar: {} SFR: {} Z: {}".format(10**row['Mstar_50_1']/(10**9), 10**row['SFR_50_1'], row['z_1']))
+                print("Mstar2: {} SF2: {} Z2: {}".format(10**row['Mstar_50_2']/(10**9), 10**row['SFR_50_2'], row['z_2']))
+            #plt.annotate("34", (33.113,16.8655))
+            #plt.annotate("32", (407.3802, 135.5189))
+            #plt.annotate("31", (2.79898, 32.885))
+            #plt.annotate("33", (0.00238, 0.010046))
+            new_cat = make_skycoords(aspecs_catalog, ra='ra', dec='dc')
+            for index, line in enumerate(aspecs_lines):
+                print("\nLine: {} RA: {} DEC: {}".format(line['name'], aspecs_coords[index].ra.to_string(unit=u.hour, sep=':'), aspecs_coords[index].dec.to_string(unit=u.degree, sep=':')))
+                print("Matched Line: RA: {} DEC: {}\n".format(new_cat[index].ra.to_string(unit=u.hour, sep=':'), new_cat[index].dec.to_string(unit=u.degree, sep=':')))
             plt.legend(loc='best')
-            plt.savefig("Comparison_Blind_Pilot_Sources.png", dpi=300)
             plt.show()
+            plt.savefig("Comparison_Blind_Pilot_Sources.png", dpi=300)
             # combined_catalog = perform_cuts(combined_catalog)
             # plot_mstar_vs_sfr(aspecs_catalog, combined_catalog, snr_limit=6.,z_lows=(0.0, 1.0, 2.0, 4), z_highs=(1.0, 2., 4, 9.), filename="/home/jacob/Development/Wide_ASPECS/Pilot/Pilot_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
