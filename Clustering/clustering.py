@@ -20,6 +20,17 @@ def generate_random_catalog(number_of_points, mask):
 
 
 def angular_correlation_function(data_catalog, random_catalog):
+    """
+    Calculates the arrays for the data, random, and data_random for w(theta)
+
+    :param data_catalog:
+    :param random_catalog:
+    :return:
+    """
+    distance_bins = np.logspace(0,np.log10(50), 10)
+
+
+
     raise NotImplementedError
 
 
