@@ -275,6 +275,7 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=r
     :param dec: DEC coordinates for center in J2000
     :param size: Size, in degrees, of the cutout
     :return:
+    :return:
     """
 
     w = wcs.WCS(wcs_header)
@@ -283,13 +284,13 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=r
     other_centers = []
     for coord in matches:
         other_centers.append(ra_dec[coord])
-    size = 3
+    size = 10
     cutouts = []
     for row_center in other_centers:
         # then make an array cutout
         cutouts.append(Cutout2D(image, row_center, size=size * u.arcsec, wcs=w))
     co = Cutout2D(image, center, size=size * u.arcsec, wcs=w)
-    ax.imshow(co.data, origin='lower', cmap='gray')
+    ax.imshow(co.data, origin='lower', cmap='gray_r')
     center_image = Circle((co.center_cutout[0], co.center_cutout[1]), 3, fill=False, color='r')
     ax.add_patch(center_image)
     if rob_z > 0:
@@ -300,10 +301,10 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=r
         aspecs_loc_x, aspecs_loc_y = co.to_cutout_position(cutout.center_original)
         first_image = Circle((aspecs_loc_x, aspecs_loc_y), 3, fill=False, color='g')
         ax.add_patch(first_image)
-        ax.annotate(freqs[matches[idx]], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(5, 20),
-                    color='g')
-        ax.annotate(np.round(z_s[matches[idx]],3), xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(5, -20),
-                    color='orange')
+        #ax.annotate(freqs[matches[idx]], xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(5, 20),
+        #            color='g')
+        #ax.annotate(np.round(z_s[matches[idx]],3), xy=(aspecs_loc_x, aspecs_loc_y), textcoords='offset pixels', xytext=(5, -20),
+        #            color='orange')
 
     return ax
 
@@ -363,6 +364,7 @@ def convert_to_rest_frame_ghz(z, ghz):
 
 #aspecs_lines = Table.read("ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format="ascii", header_start=0, data_start=1)
 
+"""
 aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/independent/ASPECS_Line_Candidates_all_closest_Sep_1.5_SN_6.0.ecsv", format='ascii.ecsv')
 
 transitions = {"1-0": [0.0030, 0.3694, 115.271],
@@ -409,29 +411,84 @@ for index, row in enumerate(aspecs_lines):
 
 
 idx, d2d, d3d = coords.match_to_catalog_sky(roberto_ra_dec)
+"""
 from astropy.coordinates import match_coordinates_sky, search_around_sky
 
-idxc, idxcatalog, d2d, d3d = search_around_sky(coords, roberto_ra_dec, 2.0 * u.arcsecond)
+# idxc, idxcatalog, d2d, d3d = search_around_sky(coords, roberto_ra_dec, 2.0 * u.arcsecond)
+
+def make_skycoords(source, ra='ra', dec='dec', distance=None):
+    """
+    Makes and returns a SkyCoord array from given source
+    :param source: Source with information
+    :param ra: Key for RA
+    :param dec: Key for Dec
+    :return: SkyCoord list
+    """
+    try:
+        skycoords = SkyCoord(source[ra] * u.deg, source[dec] * u.deg, frame='icrs')
+    except:
+        skycoords = SkyCoord(source[ra], source[dec], unit=(u.hour, u.deg), frame='icrs')
+
+    return skycoords
+
+def load_table(ascii_table, header=0, start=1):
+    ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
+    return ascii_table_data
+
+aspecs_lines = load_table("ASPECS_Pilot_C_Matches.txt")
+
+coords = make_skycoords(aspecs_lines,  ra='rra', dec='rdc')
+
+idxc, idxcatalog, d2d, d3d = search_around_sky(coords, roberto_ra_dec, 1.0 * u.arcsecond)
 
 aspecs_matches = [[] for _ in range(len(aspecs_lines))]
 back_match = {}
 z_specs = {}
 
 for index, id in enumerate(idxc):
-    if coords[idxc[index]].separation(roberto_ra_dec[idxcatalog[index]]).arcsecond < 1.5 and np.abs(aspecs_lines[idxc[index]]['Z (CO)'] - roberto_muse[idxcatalog[index]]['z_1']) < 0.3:
+    if coords[idxc[index]].separation(roberto_ra_dec[idxcatalog[index]]).arcsecond < 1.0:# and np.abs(aspecs_lines[idxc[index]]['Z (CO)'] - roberto_muse[idxcatalog[index]]['z_1']) < 0.3:
         test_mask = (roberto_muse['id'] == roberto_muse[idxcatalog[index]]['id'])
         test_rob = roberto_muse[test_mask]
         spec_z_mask = (test_rob["z_spec_3dh"] > 0.001) | (test_rob["zm_vds"] > 0.001) | (
                 test_rob["zm_coeS"] > 0.001) | (test_rob['muse_wide_z'] > 0.0001) \
                       | (test_rob["zs_mor"] > 0.001) | (test_rob["zm_ina"] > 0.001) | (test_rob["zm_her"] > 0.001)
-        if int(aspecs_lines[idxc[index]]["Roberto ID"]) == int(roberto_muse[idxcatalog[index]]['id']):
-            aspecs_matches[idxc[index]].append(roberto_muse[idxcatalog[index]]['id'])
-            if roberto_muse[idxcatalog[index]]['id'] in back_match.keys():
-                back_match[roberto_muse[idxcatalog[index]]['id']].append(idxc[index])
-                z_specs[roberto_muse[idxcatalog[index]]['id']].append(len(test_rob[spec_z_mask]))
-            else:
-                back_match[roberto_muse[idxcatalog[index]]['id']] = [idxc[index]]
-                z_specs[roberto_muse[idxcatalog[index]]['id']] = [len(test_rob[spec_z_mask])]
+        #if int(aspecs_lines[idxc[index]]["Roberto ID"]) == int(roberto_muse[idxcatalog[index]]['id']):
+        aspecs_matches[idxc[index]].append(roberto_muse[idxcatalog[index]]['id'])
+        if roberto_muse[idxcatalog[index]]['id'] in back_match.keys():
+            back_match[roberto_muse[idxcatalog[index]]['id']].append(idxc[index])
+            z_specs[roberto_muse[idxcatalog[index]]['id']].append(len(test_rob[spec_z_mask]))
+        else:
+            back_match[roberto_muse[idxcatalog[index]]['id']] = [idxc[index]]
+            z_specs[roberto_muse[idxcatalog[index]]['id']] = [len(test_rob[spec_z_mask])]
+
+
+for fits_index in range(len(fits_files)):
+    f = plt.figure(figsize=(20, 20))
+    f.suptitle(
+        'Continuum Lines Matched To Galaxies')
+    image_index = 0
+    for key, values in back_match.items():
+        if len(values) > 0:
+            # Make the cutouts
+            shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+            test_mask = (roberto_muse['id'] == key)
+            roberto_ra_dec_index = 1e30
+            for index, i in enumerate(roberto_muse):
+                if i['id'] == key:
+                    roberto_ra_dec_index = index
+            for third_index, image in enumerate([fits_files[fits_index]]):
+                ax = f.add_subplot(shape_file, shape_file, image_index + 1, projection=w)
+                create_multi_overlap_ax_cutout(ax, fits_names[fits_index], image,
+                                               catalog_coordinate=roberto_ra_dec[roberto_ra_dec_index],
+                                               matches=values, ra_dec=coords, rob_z=0)
+                ax.set_title(aspecs_lines[values]['name'])
+        image_index += 1
+    # plt.show()
+    f.savefig(str("Continuum/ASPECS_Continuum_{}.png".format(fits_names[fits_index])), dpi=300)
+    f.clf()
+    plt.close()
+
+exit()
 # exit()
 # Now have the matches, plot them on the sky
 
@@ -463,7 +520,6 @@ for fits_index in range(len(fits_files)):
     f.clf()
     plt.close()
 
-exit()
 
 all_restframe_ghz = {}
 

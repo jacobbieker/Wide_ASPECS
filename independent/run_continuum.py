@@ -32,9 +32,9 @@ for element in properties:
     matches_2[element['name']] = (0,0,-1,0,0,0,0,0)
 
 for index, row in enumerate(aspecs_lines[idxcatalog]):
-    print("\nID: {} \nZ: {} \nMstar_1: {} SFR_1: {} \n Mstar_2: {} SFR_2: {}".format(row['name'], np.round(combined_catalog[idxc[index]]['z_1'], 3), (combined_catalog[idxc[index]]['Mstar_50_1']),
+    print("\nID: {} \nZ: {} \nMstar_1: {} SFR_1: {} \n Mstar_2: {} SFR_2: {}\n RA: {} DEC: {}".format(row['name'], np.round(combined_catalog[idxc[index]]['z_1'], 3), (combined_catalog[idxc[index]]['Mstar_50_1']),
                                                                                      combined_catalog[idxc[index]]['SFR_50_1'], (combined_catalog[idxc[index]]['Mstar_50_2']),
-                                                                                     combined_catalog[idxc[index]]['SFR_50_2']))
+                                                                                     combined_catalog[idxc[index]]['SFR_50_2'], matched_coords[idxcatalog[index]].ra.to_string(unit=u.hour, sep=':'),matched_coords[idxcatalog[index]].dec.to_string(unit=u.deg, sep=':')))
     for prop in properties:
         if prop['name'] == row['name']:
             if (np.abs(prop['sfr'] - combined_catalog[idxc[index]]['SFR_50_1']) +  np.abs(prop['mstar'] - combined_catalog[idxc[index]]['Mstar_50_1'])) \
