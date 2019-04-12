@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from spectral_cube import SpectralCube
 from scipy.optimize import curve_fit
+import pickle
 
 cubes = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
@@ -14,7 +15,7 @@ all_sn_summed = np.asarray([0. for i in range(number_sn_bins-1)])
 all_fids = []
 for i in range(len(cubes)):
     total_rms = 0.0
-    cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cubes[i]))
+    cube = SpectralCube.read("/media/jacob/WDRed8Tb1/gs_{}_2chn.fits".format(cubes[i]))
     sn_summed = np.asarray([0. for i in range(number_sn_bins-1)])
     sn_bins = None
     print(cube)
@@ -37,21 +38,10 @@ for i in range(len(cubes)):
         total_rms += rms_noise
         print(rms_noise)
 
-        #print(np.unique(sub_cube[~np.isnan(sub_cube)], return_counts=True))
-
-        #print(sub_cube)
-
         sub_cube = sub_cube[~np.isnan(sub_cube)].flatten()
         print((len(sub_cube)*0.09)/3600)
         # Fideltiy is 1 - Neg(SN)/Pos(SN)
         # Walter 2016
-
-        #_, bins, _ = plt.hist(sub_cube, bins=num_bins)
-        #plt.xlabel("Jy/beam")
-        #plt.yscale("log")
-        #plt.ylabel("Count (Log)")
-        #plt.savefig("Feb_Output/Fluxes/Fluxes_{}_2chn_slice{}_65.png".format(cubes[i],slice))
-        #plt.cla()
 
         # Now flip the axis by splitting into < 0 and > 0 and subtracting one from other
 
@@ -73,30 +63,11 @@ for i in range(len(cubes)):
         sn_summed = sn_summed + np.asarray(values)
         all_sn_summed = all_sn_summed + np.asarray(values)
         sn_bins = bins
-        #plt.title("S/N")
-        #plt.xlabel("S/N")
-        #plt.ylabel("Count (Log)")
-        #plt.yscale("log")
-        #plt.savefig("Feb_Output/Noise/SN_{}_2chn_slice{}.png".format(cubes[i],slice))
-        #plt.cla()
 
         neg_summed = np.asarray(list(reversed(values[0:int(len(values)/2)])))
         pos_summed = np.asarray(values[int(len(values)/2)+1:])
         fid = 1. - neg_summed / pos_summed
         all_fids.append(fid)
-        #plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):])
-        #plt.title("Fidelity Summed Cube {} Slice {}".format(cubes[i], slice))
-        #plt.xlabel("SN")
-        #plt.ylabel("1- Neg(S/N)/Pos(S/N)")
-        #plt.savefig("Feb_Output/Fidelity/Fidelity_Summed_Cube_Hist_{}_Slice_{}.png".format(cubes[i], slice), dpi=300)
-        #plt.cla()
-
-        #plt.plot(np.linspace(0., 6.5, len(fid)), fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
-        #plt.title("Fidelity Summed Cube {} Slice {}".format(cubes[i], slice))
-        #plt.xlabel("SN")
-        #plt.ylabel("1- Neg(S/N)/Pos(S/N)")
-        #plt.savefig("Feb_Output/Fidelity/Fidelity_Summed_Cube_{}_Slice_{}.png".format(cubes[i], slice), dpi=300)
-        #plt.cla()
 
     print(sn_max)
     print(sn_min)
@@ -139,6 +110,15 @@ for i in range(len(cubes)):
     plt.savefig("Fidelity_Summed_Cube_Hist_{}_stepped.png".format(cubes[i]), dpi=300)
     plt.show()
     plt.cla()
+    with open("Fidelity_Summed_Cube_{}.p", "wb") as pickle_fle:
+        pickle.dump(fid, pickle_fle)
+    with open("All_Fidelity_Summed_Cube_{}.p", "wb") as pickle_fle:
+        pickle.dump(all_fids, pickle_fle)
+    with open("SN_Summed_Cube_{}.p", "wb") as pickle_fle:
+        pickle.dump(sn_summed, pickle_fle)
+    with open("All_SN_Summed_Cube_{}.p", "wb") as pickle_fle:
+        pickle.dump(all_sn_summed, pickle_fle)
+
     del cube
 
 n = len(all_sn_summed)                          #the number of data

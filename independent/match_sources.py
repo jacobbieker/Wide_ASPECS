@@ -440,6 +440,7 @@ def match_lines_to_catalog_pilot(lines, catalog, max_redshift=0.3, max_sep=1.0, 
                 if row['RA (J2000)'] == prev_row_ra_dec[0] and row['DEC (J2000)'] == prev_row_ra_dec[1]:
                     # Same one as before, check if galaxy, then check delta Z
                     if prev_row_matched[0] > 0. and row['Roberto ID'] > 0.:
+                        continue
                         # Matched to galaxy
                         if np.abs(row['Delta Z']) < np.abs(prev_row_matched[1]):
                             indicies_to_remove.append(index-1)
@@ -501,8 +502,8 @@ def match_to_co_line(single_line, max_redshift=0.3, line_coords=None):
             kms = 0#get_kms(single_line['width'], single_line['rfreq'])
             co_z = get_co_z(single_line['rfreq'], matched_key)
             delta_v = convert_deltaZ_to_kms(delta_z, co_z)
-            new_row = (line_coords.ra.degree,#np.round(matched_line['rra'], 6),
-                       line_coords.dec.degree,#np.round(matched_line['rdc'], 6),
+            new_row = (np.round(single_line['rra'], 6),
+                       np.round(single_line['rdc'], 6),
                        -999,
                        -999,
                        -999,
@@ -516,10 +517,10 @@ def match_to_co_line(single_line, max_redshift=0.3, line_coords=None):
                        delta_v,
                        kms,
                        -999,
-                       0,#single_line['rsnrrbin'],
-                       0,#single_line['rpeak'],
-                       0,#single_line['rflux'],
-                       0,#single_line['width'],
+                       single_line['rsnrrbin'],
+                       single_line['rpeak'],
+                       single_line['rflux'],
+                       single_line['width'],
                        np.round(volume, 3),
                        -999,
                        -999,

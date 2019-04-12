@@ -81,8 +81,8 @@ def generate_random_catalog(number_of_points, filename):
     return random_catalog_coords
 
 
-random_catalog = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
-random_catalog2 = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog = generate_random_catalog(100, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog2 = generate_random_catalog(100, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 real_catalog = load_table("line_search_P3_wa_crop.out")
 real_catalog = real_catalog[real_catalog['rsnrrbin'] > 5.8]
 real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
@@ -96,7 +96,7 @@ def angular_correlation_function(data_catalog, random_catalog):
     :param random_catalog:
     :return:
     """
-    distance_bins = np.logspace(0,np.log10(1000), 21)
+    distance_bins = np.logspace(0,np.log10(3000), 51)
     # First create the data data one
     data_data = np.zeros(len(data_catalog)*(len(data_catalog)-1))
 
@@ -134,6 +134,7 @@ def angular_correlation_function(data_catalog, random_catalog):
 def xi_r(data_array, data_random_array, random_array):
     """
 
+    (DD/RR - 2 DR/RR +1)
     :param data_array:
     :param data_random_array:
     :param random_array:
@@ -142,7 +143,10 @@ def xi_r(data_array, data_random_array, random_array):
     data_array = data_array/np.sum(data_array)
     data_random_array = data_random_array/np.sum(data_random_array)
     random_array = random_array/np.sum(random_array)
-    return data_array / random_array - 2 * data_random_array / random_array + 1
+    print(sum(random_array))
+    print(sum(data_random_array))
+    print(sum(data_array))
+    return data_array / random_array - ((2 * data_random_array / random_array) + 1)
 
 
 def xi_r_error(omega_theta, data_array):
@@ -160,7 +164,7 @@ dd, dr, rr = angular_correlation_function(real_catalog, random_catalog)
 
 omega_w = xi_r(dd, dr, rr)
 e_omega_w = xi_r_error(omega_w, dd)
-distance_bins = np.logspace(0,np.log10(1000), len(omega_w))
+distance_bins = np.logspace(0,np.log10(3000), len(omega_w))
 
 plt.cla()
 plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
@@ -168,16 +172,16 @@ plt.xscale("log")
 plt.title("Data vs Random")
 plt.xlabel("Angular Distance (arcseconds)")
 plt.ylabel("$\omega(\\theta)$")
-plt.yscale("log")
+#plt.yscale("log")
 plt.tight_layout()
-plt.savefig("Data_vs_Random.png", dpi=300)
+#plt.savefig("Data_vs_Random.png", dpi=300)
 plt.show()
 
 dd, dr, rr = angular_correlation_function(random_catalog2, random_catalog)
 
 omega_w = xi_r(dd, dr, rr)
 e_omega_w = xi_r_error(omega_w, dd)
-distance_bins = np.logspace(0,np.log10(1000), len(omega_w))
+distance_bins = np.logspace(0,np.log10(3000), len(omega_w))
 
 plt.cla()
 plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
@@ -185,7 +189,7 @@ plt.xscale("log")
 plt.title("Random vs Random")
 plt.xlabel("Angular Distance (arcseconds)")
 plt.ylabel("$\omega(\\theta)$")
-plt.yscale("log")
+#plt.yscale("log")
 plt.tight_layout()
-plt.savefig("Random_vs_Random.png", dpi=300)
+#plt.savefig("Random_vs_Random.png", dpi=300)
 plt.show()
