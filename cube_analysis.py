@@ -6,7 +6,7 @@ import pickle
 
 cubes = ["A1", "A2", "B1", "B2", "C1", "C2"]
 
-number_sn_bins = 130
+number_sn_bins = 260
 
 def gaussian(x, mu, sig, height):
     return (np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.))))
@@ -56,7 +56,7 @@ for i in range(len(cubes)):
         if np.max(sub_cube) > sn_max:
             sn_max = np.max(sub_cube)
         num_bins = 10
-        bins = np.linspace(-6.5, 6.5, number_sn_bins)
+        bins = np.linspace(-12, 12, number_sn_bins)
 
         values, bins, _ = plt.hist(sub_cube, bins=bins)
         plt.cla()
@@ -86,8 +86,8 @@ for i in range(len(cubes)):
     def gaus(x,a,x0,sigma):
         return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
-    popt,pcov = curve_fit(gaus,np.linspace(-6.5, 6.5, 129),sn_summed,p0=[1,mean,sigma])
-    plt.hist(np.linspace(-6.5, 6.5, number_sn_bins-1), weights=sn_summed, bins=sn_bins, histtype='step')
+    #popt,pcov = curve_fit(gaus,np.linspace(-6.5, 6.5, 129),sn_summed,p0=[1,mean,sigma])
+    plt.hist(np.linspace(-12, 12, number_sn_bins-1), weights=sn_summed, bins=sn_bins, histtype='step')
     #plt.plot(np.linspace(-6.5, 6.5, 129),gaus(np.linspace(-6.5, 6.5, 129),*popt),c='r',label='fit')
     plt.title("S/N Summed Cube {}".format(cubes[i]))
     plt.yscale("log")
@@ -103,7 +103,7 @@ for i in range(len(cubes)):
     print(fid)
     print(sn_summed)
     print(fid)
-    plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):], histtype='step')
+    plt.hist(np.linspace(0., 12., len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):], histtype='step')
     plt.title("Fidelity Summed Cube {}".format(cubes[i]))
     plt.xlabel("SN")
     plt.ylabel("1- Neg(S/N)/Pos(S/N)")
@@ -128,8 +128,8 @@ sigma = 1.        #note this correction
 def gaus(x,a,x0,sigma):
     return a*np.exp(-(x-x0)**2/(2*sigma**2))
 
-popt,pcov = curve_fit(gaus,np.linspace(-6.5, 6.5, 129),all_sn_summed,p0=[1,mean,sigma])
-plt.hist(np.linspace(-6.5, 6.5, number_sn_bins-1), weights=all_sn_summed, bins=sn_bins, histtype='step')
+#popt,pcov = curve_fit(gaus,np.linspace(-6.5, 6.5, 129),all_sn_summed,p0=[1,mean,sigma])
+plt.hist(np.linspace(-12, 12, number_sn_bins-1), weights=all_sn_summed, bins=sn_bins, histtype='step')
 #plt.plot(np.linspace(-6.5, 6.5, 129), gaus(np.linspace(-6.5, 6.5, 129),*popt), c='r')
 plt.title("S/N Summed Cube Both Cubes")
 plt.yscale("log")
@@ -145,14 +145,14 @@ fid = 1. - neg_summed / pos_summed
 print(fid)
 print(all_sn_summed)
 print(fid)
-plt.hist(np.linspace(0., 6.5, len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):], histtype='step')
+plt.hist(np.linspace(0., 12., len(fid)), weights=fid, bins=sn_bins[int(len(sn_bins)/2.):], histtype='step')
 plt.title("Fidelity Summed Cube Both")
 plt.xlabel("SN")
 plt.ylabel("1- Neg(S/N)/Pos(S/N)")
 plt.savefig("Fidelity_Summed_Cube_Hist_All_stepped.png", dpi=300)
 plt.show()
 plt.cla()
-plt.plot(np.linspace(0., 6.5, len(fid)), fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
+plt.plot(np.linspace(0., 12., len(fid)), fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
 plt.title("Fidelity Summed Cube Both")
 plt.xlabel("SN")
 plt.ylabel("1- Neg(S/N)/Pos(S/N)")
@@ -171,7 +171,7 @@ print(median_fid)
 print("Mean")
 print(mean_fid)
 
-plt.plot(np.linspace(0., 6.5, len(mean_fid)), mean_fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
+plt.plot(np.linspace(0., 12., len(mean_fid)), mean_fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
 plt.title("Fidelity Mean Summed Cube")
 plt.xlabel("SN")
 plt.ylabel("1- Neg(S/N)/Pos(S/N)")
@@ -179,7 +179,7 @@ plt.savefig("Fidelity_Summed_Cube_Mean_All_stepped.png", dpi=300)
 plt.show()
 plt.cla()
 
-plt.plot(np.linspace(0., 6.5, len(median_fid)), median_fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
+plt.plot(np.linspace(0., 12., len(median_fid)), median_fid)#, bins=sn_bins[int(len(sn_bins)/2.):])
 plt.title("Fidelity Median Summed Cube")
 plt.xlabel("SN")
 plt.ylabel("1- Neg(S/N)/Pos(S/N)")
