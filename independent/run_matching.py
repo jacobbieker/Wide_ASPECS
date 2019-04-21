@@ -18,7 +18,7 @@ special_ones = ["/home/jacob/Development/Wide_ASPECS/independent/matches/sn59_se
 
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 for option_name in ["all_closest"]:
-    for separation in [1.6, 1.0]:
+    for separation in [1.5, 1.0]:
         for snrlimit in [10., 9.5, 9.0, 8.5, 8.0, 7.5, 7.0]:
             aspecs_table, aspecs_catalog = match_lines_to_catalog(aspecs_lines, combined_catalog, method=option_name, max_sep=separation, snr_limit=snrlimit, max_redshift=0.3)
             save_catalog(aspecs_catalog, "/home/jacob/Development/Wide_ASPECS/March_Output/aspecs_zco_catalog_SN{}_method_{}_Sep_{}".format(snrlimit, option_name, separation))

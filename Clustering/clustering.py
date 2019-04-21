@@ -81,10 +81,10 @@ def generate_random_catalog(number_of_points, filename):
     return random_catalog_coords
 
 
-random_catalog = generate_random_catalog(100, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
-random_catalog2 = generate_random_catalog(100, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog2 = generate_random_catalog(346, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 real_catalog = load_table("line_search_P3_wa_crop.out")
-real_catalog = real_catalog[real_catalog['rsnrrbin'] > 5.8]
+real_catalog = real_catalog[real_catalog['rsnrrbin'] > 8.5]
 real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
 print(real_catalog.shape)
 
