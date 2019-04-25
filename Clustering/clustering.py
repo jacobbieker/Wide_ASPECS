@@ -3,9 +3,11 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 from spectral_cube import SpectralCube
 from astropy.coordinates import match_coordinates_sky, search_around_sky
+from astropy.coordinates.matching import _get_cartesian_kdtree
 from astropy.coordinates import SkyCoord, Angle, SkyOffsetFrame, ICRS, Distance
 from astropy.table import Table, hstack, join
 import astropy.io.fits as fits
+from astropy.stats import histogram
 
 
 def load_table(ascii_table, header=0, start=1):
@@ -54,9 +56,9 @@ def generate_random_catalog(number_of_points, filename):
     cube = SpectralCube.read(filename)
     cube[0,:,:].quicklook() # uses aplpy
     # using wcsaxes
-    fig = plt.figure()
-    ax = fig.add_axes([0.1,0.1,0.8,0.8], projection=cube[0,:,:].wcs)
-    ax.imshow(cube.unitless[0,:,:]) # you may need cube[5,:,:].value depending on mpl version
+    #fig = plt.figure()
+    #ax = fig.add_axes([0.1,0.1,0.8,0.8], projection=cube[0,:,:].wcs)
+    #ax.imshow(cube.unitless[0,:,:]) # you may need cube[5,:,:].value depending on mpl version
     #fig.show()
 
     # Have the mask now, so can create from random pixel coordinates, generate SkyCoord
@@ -76,13 +78,13 @@ def generate_random_catalog(number_of_points, filename):
                 random_catalog_coords = SkyCoord(random_catalog_coords)
                 break
 
-    ax.scatter(random_catalog_coords.ra.hour, random_catalog_coords.dec.degree, c='r')
-    fig.show()
+    #ax.scatter(random_catalog_coords.ra.hour, random_catalog_coords.dec.degree, c='r')
+    #fig.show()
     return random_catalog_coords
 
 
 random_catalog = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
-random_catalog2 = generate_random_catalog(346, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog2 = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 real_catalog = load_table("line_search_P3_wa_crop.out")
 real_catalog = real_catalog[real_catalog['rsnrrbin'] > 8.5]
 real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
@@ -96,34 +98,50 @@ def angular_correlation_function(data_catalog, random_catalog):
     :param random_catalog:
     :return:
     """
-    distance_bins = np.logspace(0,np.log10(3000), 51)
+    distance_bins = np.logspace(0,np.log10(3000), 51) * u.arcsecond
     # First create the data data one
-    data_data = np.zeros(len(data_catalog)*(len(data_catalog)-1))
+    seps = None
 
+
+    # Get it for each one that is not the current ones
     for i, element in enumerate(data_catalog):
-        for j in range(i+1, len(data_catalog)):
-            separation = element.separation(data_catalog[j]).arcsecond
-            data_data[i+j-1] = separation
+        #print(element)
+        sep2d = element.separation(data_catalog[i+1:]).arcsecond
+        #print(sep2d)
+        if seps is None:
+            seps = sep2d
+        else:
+            seps = np.concatenate((seps, sep2d))
+    print(seps.shape)
+    data_data, _ = histogram(seps, bins=distance_bins)
+    print(data_data.shape)
     print(data_data)
-    data_data, _ = np.histogram(data_data[np.nonzero(data_data)], bins=distance_bins)
 
     print("Done with Data Data")
 
-    random_random = np.zeros(len(random_catalog)*(len(random_catalog)-1))
+    seps = None
+
+    # Get it for each one that is not the current ones
     for i, element in enumerate(random_catalog):
-        for j in range(i+1, len(random_catalog)):
-            separation = element.separation(random_catalog[j]).arcsecond
-            random_random[i+j-1] = separation
-    random_random, _ = np.histogram(random_random[np.nonzero(random_random)], bins=distance_bins)
+        sep2d = element.separation(random_catalog[i+1:]).arcsecond
+        if seps is None:
+            seps = sep2d
+        else:
+            seps = np.concatenate((seps, sep2d))
+    random_random, _ = np.histogram(seps, bins=distance_bins)
 
     print("Done with Random Random")
 
-    data_random = np.zeros(len(data_catalog)*len(random_catalog))
+    seps = None
+
+    # Get it for each one that is not the current ones
     for i, element in enumerate(data_catalog):
-        for j, rand_element in enumerate(random_catalog):
-            separation = element.separation(rand_element).arcsecond
-            data_random[i+j] = separation
-    data_random, _ = np.histogram(data_random[np.nonzero(data_random)], bins=distance_bins)
+        sep2d = element.separation(random_catalog).arcsecond
+        if seps is None:
+            seps = sep2d
+        else:
+            seps = np.concatenate((seps, sep2d))
+    data_random, _ = np.histogram(seps, bins=distance_bins)
 
     print("Done with Data Random")
 
@@ -140,13 +158,18 @@ def xi_r(data_array, data_random_array, random_array):
     :param random_array:
     :return:
     """
-    data_array = data_array/np.sum(data_array)
-    data_random_array = data_random_array/np.sum(data_random_array)
-    random_array = random_array/np.sum(random_array)
+    data_array_norm = (np.sum(data_array)*(np.sum(data_array)-1))/2.
+    data_random_array_norm = (np.sum(data_array)*(np.sum(random_array)-1))/2.
+    random_array_norm = (np.sum(random_array)*(np.sum(random_array)-1))/2.
+
+    data_array = data_array / data_array_norm
+    data_random_array =  data_random_array / data_random_array_norm
+    random_array = random_array / random_array_norm
+
     print(sum(random_array))
     print(sum(data_random_array))
     print(sum(data_array))
-    return data_array / random_array - ((2 * data_random_array / random_array) + 1)
+    return data_array / random_array - ((2 * (data_random_array / random_array)) + 1)
 
 
 def xi_r_error(omega_theta, data_array):
