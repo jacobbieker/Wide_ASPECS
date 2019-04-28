@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from spectral_cube import SpectralCube
-from scipy.optimize import curve_fit
 import pickle
 
 cubes = ["A1", "A2", "B1", "B2", "C1", "C2"]
