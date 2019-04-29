@@ -98,7 +98,7 @@ def generate_random_catalog(number_of_points, filename):
 
 #exit()
 
-def angular_correlation_function(data_catalog, random_catalog, number_of_bins=20):
+def angular_correlation_function(data_catalog, random_catalog):
     """
     Calculates the arrays for the data, random, and data_random for w(theta)
     :param data_catalog:
@@ -106,7 +106,7 @@ def angular_correlation_function(data_catalog, random_catalog, number_of_bins=20
     :return:
     """
     # First create the data data one
-    seps = None
+    data_data = None
 
 
     # Get it for each one that is not the current ones
@@ -114,43 +114,38 @@ def angular_correlation_function(data_catalog, random_catalog, number_of_bins=20
         #print(element)
         sep2d = element.separation(data_catalog[i+1:]).arcsecond
         #print(sep2d)
-        if seps is None:
-            seps = sep2d
+        if data_data is None:
+            data_data = sep2d
         else:
-            seps = np.concatenate((seps, sep2d))
-    print(seps.shape)
-    min_dist = np.min(seps)
-    max_dist = np.max(seps)
-    distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), number_of_bins+1) * u.arcsecond
-    data_data, _ = histogram(seps, bins=distance_bins)
-    print(data_data.shape)
-    print(data_data)
+            data_data = np.concatenate((data_data, sep2d))
+    min_dist = np.min(data_data)
+    if min_dist <= 0:
+        min_dist = 0.00001
+    max_dist = np.max(data_data)
 
     print("Done with Data Data")
 
-    seps = None
+    random_random = None
 
     # Get it for each one that is not the current ones
     for i, element in enumerate(random_catalog):
         sep2d = element.separation(random_catalog[i+1:]).arcsecond
-        if seps is None:
-            seps = sep2d
+        if random_random is None:
+            random_random = sep2d
         else:
-            seps = np.concatenate((seps, sep2d))
-    random_random, _ = np.histogram(seps, bins=distance_bins)
+            random_random = np.concatenate((random_random, sep2d))
 
     print("Done with Random Random")
 
-    seps = None
+    data_random = None
 
     # Get it for each one that is not the current ones
     for i, element in enumerate(data_catalog):
         sep2d = element.separation(random_catalog).arcsecond
-        if seps is None:
-            seps = sep2d
+        if data_random is None:
+            data_random = sep2d
         else:
-            seps = np.concatenate((seps, sep2d))
-    data_random, _ = np.histogram(seps, bins=distance_bins)
+            data_random = np.concatenate((data_random, sep2d))
 
     print("Done with Data Random")
 
@@ -174,10 +169,6 @@ def xi_r(data_array, data_random_array, random_array, real_catalog, random_catal
     data_array = data_array / data_array_norm
     data_random_array =  data_random_array / data_random_array_norm
     random_array = random_array / random_array_norm
-
-    print(sum(random_array))
-    print(sum(data_random_array))
-    print(sum(data_array))
 
     # return 2 * (5000/real_catalog.shape[0])*(data_array/data_random_array) - 1
 
@@ -205,12 +196,16 @@ def xi_r_error(omega_theta, data_array):
 
     return (1 + omega_theta) / np.sqrt(data_array)
 
-random_catalog = generate_random_catalog(50000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
-random_catalog2 = generate_random_catalog(50000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog2 = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+
+data_data, data_random, random_random, min_dist, max_dist = angular_correlation_function(random_catalog2, random_catalog)
 
 for bin_num in [5,10,15,20,25,30,35,40,45]:
-    dd, dr, rr, min_dist, max_dist = angular_correlation_function(random_catalog2, random_catalog, number_of_bins=bin_num)
-
+    distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), bin_num+1)
+    dd, _ = histogram(data_data, bins=distance_bins)
+    dr, _ = histogram(data_random, bins=distance_bins)
+    rr, _ = histogram(random_random, bins=distance_bins)
     omega_w = xi_r(dd, dr, rr,  random_catalog2, random_catalog)
     e_omega_w = xi_r_error(omega_w, dd)
     distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
@@ -222,17 +217,21 @@ for bin_num in [5,10,15,20,25,30,35,40,45]:
     plt.xlabel("Angular Distance (arcseconds)")
     plt.ylabel("$\omega(\\theta)$")
     plt.yscale("log")
-    plt.tight_layout()
+    #plt.tight_layout()
     plt.savefig("Random_vs_Random_bin{}.png".format(bin_num), dpi=300)
 
 
-for sn_cut in [10.,9.5,9.,8.5,8.,7.5,7.,6.5,6.,5.5,5.,4.5,4.,3.5,3.]:
+for sn_cut in [8.5,8.,7.5,7.,6.5,6.,5.5,5.,4.5,4.,3.5,3.]:
     real_catalog = load_table("line_search_P3_wa_crop.out")
     real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
     print(real_catalog.shape)
+    data_data, data_random, random_random, min_dist, max_dist = angular_correlation_function(real_catalog, random_catalog)
     for bin_num in [5,10,15,20,25,30,35,40,45]:
-        dd, dr, rr, min_dist, max_dist = angular_correlation_function(real_catalog, random_catalog, number_of_bins=bin_num)
+        distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), bin_num+1)
+        dd, _ = histogram(data_data, bins=distance_bins)
+        dr, _ = histogram(data_random, bins=distance_bins)
+        rr, _ = histogram(random_random, bins=distance_bins)
         omega_w = xi_r(dd, dr, rr, real_catalog, random_catalog)
         e_omega_w = xi_r_error(omega_w, dd)
         distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
@@ -244,8 +243,9 @@ for sn_cut in [10.,9.5,9.,8.5,8.,7.5,7.,6.5,6.,5.5,5.,4.5,4.,3.5,3.]:
         plt.xlabel("Angular Distance (arcseconds)")
         plt.ylabel("$\omega(\\theta)$")
         plt.yscale("log")
-        plt.tight_layout()
-        plt.savefig("Data_vs_Data_{}_bin{}.png".format(sn_cut, bin_num), dpi=300)
+        #plt.tight_layout()
+        plt.savefig("Data_vs_Random_bin{}_sn{}.png".format(bin_num, sn_cut), dpi=300)
+        plt.show()
 
 """
         dd, dr, rr, min_dist, max_dist = angular_correlation_function(real_catalog, real_catalog, number_of_bins=bin_num)

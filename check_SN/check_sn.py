@@ -68,7 +68,7 @@ for cube_name in cubes:
     region_list = regions.read_ds9('line_search_P3_wa_crop.reg')
     #sub_cube = cube.subcube_from_regions(region_list)
     real_catalog = load_table("line_search_P3_wa_crop.out")
-    sn_cut = 10.
+    sn_cut = 11.
     real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     real_catalog_coords = make_skycoords(real_catalog, ra='rra', dec='rdc')
     real_catalog_freq = real_catalog['rfreq'] * u.GHz
