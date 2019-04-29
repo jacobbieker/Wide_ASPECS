@@ -97,11 +97,11 @@ def generate_random_catalog(number_of_points, filename):
     return random_catalog_coords
 
 real_catalog = load_table("line_search_P3_wa_crop.out")
-sn_cut = 8.5
+sn_cut = 9.0
 real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
 real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
-random_catalog = generate_random_catalog(10000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
-random_catalog2 = generate_random_catalog(10000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog2 = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 print(real_catalog.shape)
 #exit()
 
@@ -188,7 +188,7 @@ def xi_r(data_array, data_random_array, random_array, real_catalog, random_catal
 
     # return 4 * (data_array*random_array)/(data_random_array)**2 - 1
 
-    return data_array / random_array - ((2 * (data_array / random_array)) + 1)
+    return data_array / random_array - (2 * (data_random_array / random_array)) + 1
 
 
 def xi_r_error(omega_theta, data_array):
