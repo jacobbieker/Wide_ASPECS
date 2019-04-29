@@ -92,27 +92,19 @@ def generate_random_catalog(number_of_points, filename):
     #ax.scatter(x,y, c='b')
 
     ax.scatter(random_catalog_coords.ra.hour, random_catalog_coords.dec.degree, c='r')
-    ax.scatter(real_catalog.ra.hour, real_catalog.dec.degree, c='b')
+    #ax.scatter(real_catalog.ra.hour, real_catalog.dec.degree, c='b')
     fig.show()
     return random_catalog_coords
 
-real_catalog = load_table("line_search_P3_wa_crop.out")
-sn_cut = 9.0
-real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
-real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
-random_catalog = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
-random_catalog2 = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
-print(real_catalog.shape)
 #exit()
 
-def angular_correlation_function(data_catalog, random_catalog):
+def angular_correlation_function(data_catalog, random_catalog, number_of_bins=20):
     """
     Calculates the arrays for the data, random, and data_random for w(theta)
     :param data_catalog:
     :param random_catalog:
     :return:
     """
-    distance_bins = np.logspace(0,np.log10(3000), 51) * u.arcsecond
     # First create the data data one
     seps = None
 
@@ -127,6 +119,9 @@ def angular_correlation_function(data_catalog, random_catalog):
         else:
             seps = np.concatenate((seps, sep2d))
     print(seps.shape)
+    min_dist = np.min(seps)
+    max_dist = np.max(seps)
+    distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), number_of_bins+1) * u.arcsecond
     data_data, _ = histogram(seps, bins=distance_bins)
     print(data_data.shape)
     print(data_data)
@@ -159,7 +154,7 @@ def angular_correlation_function(data_catalog, random_catalog):
 
     print("Done with Data Random")
 
-    return data_data, data_random, random_random
+    return data_data, data_random, random_random, min_dist, max_dist
 
 
 
@@ -194,6 +189,15 @@ def xi_r(data_array, data_random_array, random_array, real_catalog, random_catal
 def xi_r_error(omega_theta, data_array):
     """
     Data array is not normalized
+
+    w(theta) = A*theta^-beta with beta = 0.8
+
+    cross correlation with the galaxy ones
+
+    Plot for multiple SN and compare the slopes
+
+    Same binning for all of them
+
     :param omega_theta:
     :param data_array:
     :return:
@@ -201,54 +205,63 @@ def xi_r_error(omega_theta, data_array):
 
     return (1 + omega_theta) / np.sqrt(data_array)
 
+random_catalog = generate_random_catalog(50000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
+random_catalog2 = generate_random_catalog(50000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 
-dd, dr, rr = angular_correlation_function(real_catalog, real_catalog)
+for bin_num in [5,10,15,20,25,30,35,40,45]:
+    dd, dr, rr, min_dist, max_dist = angular_correlation_function(random_catalog2, random_catalog, number_of_bins=bin_num)
 
-omega_w = xi_r(dd, dr, rr, real_catalog, real_catalog)
-e_omega_w = xi_r_error(omega_w, dd)
-distance_bins = np.logspace(0,np.log10(3000), len(omega_w))
+    omega_w = xi_r(dd, dr, rr,  random_catalog2, random_catalog)
+    e_omega_w = xi_r_error(omega_w, dd)
+    distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
 
-plt.cla()
-plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
-plt.xscale("log")
-plt.title("Data vs Data")
-plt.xlabel("Angular Distance (arcseconds)")
-plt.ylabel("$\omega(\\theta)$")
-#plt.yscale("log")
-plt.tight_layout()
-plt.savefig("Data_vs_Data_{}.png".format(sn_cut), dpi=300)
-plt.show()
+    plt.cla()
+    plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
+    plt.xscale("log")
+    plt.title("Random vs Random")
+    plt.xlabel("Angular Distance (arcseconds)")
+    plt.ylabel("$\omega(\\theta)$")
+    plt.yscale("log")
+    plt.tight_layout()
+    plt.savefig("Random_vs_Random_bin{}.png".format(bin_num), dpi=300)
 
-dd, dr, rr = angular_correlation_function(real_catalog, random_catalog)
 
-omega_w = xi_r(dd, dr, rr, real_catalog, random_catalog)
-e_omega_w = xi_r_error(omega_w, dd)
-distance_bins = np.logspace(0,np.log10(3000), len(omega_w))
+for sn_cut in [10.,9.5,9.,8.5,8.,7.5,7.,6.5,6.,5.5,5.,4.5,4.,3.5,3.]:
+    real_catalog = load_table("line_search_P3_wa_crop.out")
+    real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
+    real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
+    print(real_catalog.shape)
+    for bin_num in [5,10,15,20,25,30,35,40,45]:
+        dd, dr, rr, min_dist, max_dist = angular_correlation_function(real_catalog, random_catalog, number_of_bins=bin_num)
+        omega_w = xi_r(dd, dr, rr, real_catalog, random_catalog)
+        e_omega_w = xi_r_error(omega_w, dd)
+        distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
 
-plt.cla()
-plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
-plt.xscale("log")
-plt.title("Data vs Random")
-plt.xlabel("Angular Distance (arcseconds)")
-plt.ylabel("$\omega(\\theta)$")
-#plt.yscale("log")
-plt.tight_layout()
-plt.savefig("Data_vs_Random_{}.png".format(sn_cut), dpi=300)
-plt.show()
+        plt.cla()
+        plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
+        plt.xscale("log")
+        plt.title("Data vs Random")
+        plt.xlabel("Angular Distance (arcseconds)")
+        plt.ylabel("$\omega(\\theta)$")
+        plt.yscale("log")
+        plt.tight_layout()
+        plt.savefig("Data_vs_Data_{}_bin{}.png".format(sn_cut, bin_num), dpi=300)
 
-dd, dr, rr = angular_correlation_function(random_catalog2, random_catalog)
-
-omega_w = xi_r(dd, dr, rr,  random_catalog2, random_catalog)
-e_omega_w = xi_r_error(omega_w, dd)
-distance_bins = np.logspace(0,np.log10(3000), len(omega_w))
-
-plt.cla()
-plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
-plt.xscale("log")
-plt.title("Random vs Random")
-plt.xlabel("Angular Distance (arcseconds)")
-plt.ylabel("$\omega(\\theta)$")
-#plt.yscale("log")
-plt.tight_layout()
-plt.savefig("Random_vs_Random_{}.png".format(sn_cut), dpi=300)
-plt.show()
+"""
+        dd, dr, rr, min_dist, max_dist = angular_correlation_function(real_catalog, real_catalog, number_of_bins=bin_num)
+    
+        omega_w = xi_r(dd, dr, rr, real_catalog, real_catalog)
+        e_omega_w = xi_r_error(omega_w, dd)
+        distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
+    
+        plt.cla()
+        plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
+        plt.xscale("log")
+        plt.title("Data vs Data")
+        plt.xlabel("Angular Distance (arcseconds)")
+        plt.ylabel("$\omega(\\theta)$")
+        plt.yscale("log")
+        plt.tight_layout()
+        plt.savefig("Data_vs_Data_{}_bin{}.png".format(sn_cut, bin_num), dpi=300)
+        plt.show()
+"""
