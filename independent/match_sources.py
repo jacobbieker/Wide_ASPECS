@@ -632,6 +632,7 @@ def get_estimated_z(ghz):
         if np.isclose(np.abs(element[1]), min_diff):
             return element[0], transitions[element[0]][3]
 
+
 def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_sep=1.0, method='closest'):
     aspecs_table = Table(names=(
         'RA (J2000)', 'DEC (J2000)', 'Roberto ID', 'Roberto RA', 'Roberto DEC', 'Observed CO (GHz)', 'Restframe CO (GHz)',
@@ -858,6 +859,8 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
             aspecs_table.remove_rows(indicies_to_remove)
 
         # Now need to only get the catalog ids that are relevant, so not -99999
+        spec_z_catalog_ids = [i['Catalog Index'] for i in aspecs_table if i['Catalog Index'] > 0 and i['Spec Z'] == True]
+        no_spec_z_catalog_ids = [i['Catalog Index'] for i in aspecs_table if i['Catalog Index'] > 0 and i['Spec Z'] == False]
         catalog_ids = [i['Catalog Index'] for i in aspecs_table if i['Catalog Index'] > 0]
         aspecs_table['Roberto ID'].pprint(max_lines=-1)
         print(catalog[catalog_ids]['id', 'Mstar_50_1', 'Mstar_50_2', 'SFR_50_1', 'SFR_50_2', 'z_1', 'z_2'])
@@ -1047,6 +1050,12 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         catalog_ids = [i[1] for i in catalog_ids]
 
     # now have the catalog matches:
+    spec_z_catalog = catalog[spec_z_catalog_ids]
+    spec_z_catalog['z_co'] = np.zeros(shape=(spec_z_catalog['z_1'].shape))
+
+    no_spec_z_catalog = catalog[no_spec_z_catalog_ids]
+    no_spec_z_catalog['z_co'] = np.zeros(shape=(no_spec_z_catalog['z_1'].shape))
+
     aspecs_catalog = catalog[catalog_ids]
     aspecs_catalog['z_co'] = np.zeros(shape=(aspecs_catalog['z_1'].shape))
     # Add CO Z
@@ -1054,6 +1063,12 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         for index, row in enumerate(aspecs_catalog):
             if int(line['Roberto ID']) == int(row['id']):
                 aspecs_catalog[index]['z_co'] = line["Z (CO)"]
+        for index, row in enumerate(spec_z_catalog):
+            if int(line['Roberto ID']) == int(row['id']):
+                spec_z_catalog[index]['z_co'] = line["Z (CO)"]
+        for index, row in enumerate(no_spec_z_catalog):
+            if int(line['Roberto ID']) == int(row['id']):
+                no_spec_z_catalog[index]['z_co'] = line["Z (CO)"]
 
-    return aspecs_table, aspecs_catalog
+    return aspecs_table, aspecs_catalog, spec_z_catalog, no_spec_z_catalog
 

@@ -60,15 +60,15 @@ close
 
 """
 
-cubes = ["A1", "A2", "B1", "B2", "C1", "C2"]
+cubes = ["A1", "C1", "C2"]
 
 for cube_name in cubes:
     cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cube_name))
 
-    region_list = regions.read_ds9('line_search_P3_wa_crop.reg')
+    #region_list = regions.read_ds9('line_search_P3_wa_crop.reg')
     #sub_cube = cube.subcube_from_regions(region_list)
     real_catalog = load_table("line_search_P3_wa_crop.out")
-    sn_cut = 11.
+    sn_cut = 9.5
     real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     real_catalog_coords = make_skycoords(real_catalog, ra='rra', dec='rdc')
     real_catalog_freq = real_catalog['rfreq'] * u.GHz
@@ -80,6 +80,8 @@ for cube_name in cubes:
         upper_ghz_bound = real_catalog_freq[index]+(width_of_channel*((coord['width']-1)/2))
         if lower_ghz_bound > cube.spectral_axis[0] and upper_ghz_bound < cube.spectral_axis[-1]:
             print("Cube: {}".format(cube_name))
+            print("Source SN: {}".format(coord['rsnrrbin']))
+            print("Source Limits: Low: {}\n High: {}".format(lower_ghz_bound, upper_ghz_bound))
             sub_cube = cube.subcube(zlo=real_catalog_freq[index]-(width_of_channel*((coord['width']-1)/2)),
                                     zhi=real_catalog_freq[index]+(width_of_channel*((coord['width']-1)/2)))
             # Try to get the SN of the cube now...

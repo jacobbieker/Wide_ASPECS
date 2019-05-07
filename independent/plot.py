@@ -176,6 +176,90 @@ def plot_mstar_vs_sfr(aspecs_catalog, matched_catalog, snr_limit, max_z=0.3, lab
     f.show()
 
 
+def plot_mstar_vs_sfr_specz(spec_z_catalog, matched_catalog, no_spec_z_catalog, snr_limit, max_z=0.3, labels=('All', 'Spec Z', 'ASPECS'), z_lows=(0.0, 1.1, 2.2, 3), z_highs=(0.4, 1.8, 3, 4.4), colors=('lightgrey', 'red', 'blue', 'orange', 'green'), filename="", type='square'):
+    """
+    Given a set of catalogs, plot them with labels in a M* by SFR overlaid with best fits
+
+    Does perform cuts and errors on the catalogs
+
+
+    :param z_lows:
+    :param z_highs:
+    :param type:
+    :return:
+    """
+
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
+
+    for index, z_range in enumerate(zip(z_lows, z_highs)):
+        use_labels = False
+        if index == 0:
+            ax = ax1
+            use_labels = True
+        elif index == 1:
+            ax = ax2
+            use_labels = False
+        elif index == 2:
+            ax = ax3
+            use_labels = False
+        else:
+            ax = ax4
+            use_labels  = False
+        # Calculate and make the Main Sequence Plots
+        # Do it for the mid point of the range
+        mid_range_z = (z_range[1] + z_range[0]) / 2.
+        whitaker_dotted = False
+        whitaker_mass, whitaker_sfr = whitaker_main_sequence(mid_range_z, 6., 12.)
+        schrieber_mass, schrieber_sfr = schrieber_main_sequence(mid_range_z, 6., 12.)
+        if mid_range_z < 0.5 or mid_range_z > 2.5:
+            whitaker_dotted = True
+        if use_labels:
+            ax.plot(schrieber_mass, schrieber_sfr, color='green', label='S15', zorder=20)
+            if whitaker_dotted:
+                ax.plot(whitaker_mass, whitaker_sfr, color='orange', label='W14', linestyle='dashed',
+                        zorder=20)
+            else:
+                ax.plot(whitaker_mass, whitaker_sfr, color='orange', label='W14', zorder=20)
+
+        ax.plot(schrieber_mass, schrieber_sfr, color='green', zorder=20)
+        if whitaker_dotted:
+            ax.plot(whitaker_mass, whitaker_sfr, color='orange', linestyle='dashed', zorder=20)
+        else:
+            ax.plot(whitaker_mass, whitaker_sfr, color='orange', zorder=20)
+
+        sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", matched_catalog, z_range[0], z_range[1])
+        mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", matched_catalog, z_range[0], z_range[1])
+        if use_labels:
+            ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[0], label=labels[0],  mec='darkgrey',  fmt='.', ms=1, elinewidth=1)
+        else:
+            ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[0], fmt='.', mec='darkgrey', ms=1, elinewidth=1)
+
+        sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", spec_z_catalog, z_range[0] - max_z, z_range[1] + max_z)
+        mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", spec_z_catalog, z_range[0] - max_z, z_range[1] + max_z)
+
+        if use_labels:
+            ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[1], label=labels[1], fmt='.', ms=5, mec='red', zorder=20, elinewidth=1)
+        else:
+            ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[1], fmt='.', ms=5, mec='red', zorder=20, elinewidth=1)
+
+        sfr, sfr_error, sfr_z = create_points_and_error_by_z("SFR", no_spec_z_catalog, z_range[0] - max_z, z_range[1] + max_z)
+        mstar, mstar_error, mstar_z = create_points_and_error_by_z("Mstar", no_spec_z_catalog, z_range[0] - max_z, z_range[1] + max_z)
+
+        if use_labels:
+            ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[2], label=labels[2], fmt='.', ms=5, mec='blue', zorder=20, elinewidth=1)
+        else:
+            ax.errorbar(mstar, sfr, yerr=sfr_error, xerr=mstar_error, ecolor=colors[2], fmt='.', ms=5, mec='blue', zorder=20, elinewidth=1)
+
+        ax.set_title(str(np.round(z_range[0], 1)) + ' < Z < ' + str(np.round(z_range[1], 1)))
+
+        if use_labels:
+            handles, ax_labels = ax.get_legend_handles_labels()
+            f.legend(loc='best', handles=handles, labels=ax_labels, prop={'size': 6})
+    f.text(0.5, 0.01, 'Log(M*)', ha='center')
+    f.text(0.01, 0.5, 'Log(SFR)', va='center', rotation='vertical')
+    f.savefig(filename, bbox_inches='tight', dpi=300)
+    f.show()
+
 def plot_leinerdt():
     return NotImplementedError
 

@@ -91,7 +91,7 @@ def generate_random_catalog(number_of_points, filename):
     #x,y = real_catalog.to_pixel(wcs=wcs)
     #ax.scatter(x,y, c='b')
 
-    ax.scatter(random_catalog_coords.ra.hour, random_catalog_coords.dec.degree, c='r')
+    ax.scatter(random_catalog_coords.ra.hour, random_catalog_coords.dec.degree, c='r', s=1)
     #ax.scatter(real_catalog.ra.hour, real_catalog.dec.degree, c='b')
     fig.show()
     return random_catalog_coords
@@ -120,7 +120,7 @@ def angular_correlation_function(data_catalog, random_catalog):
             data_data = np.concatenate((data_data, sep2d))
     min_dist = np.min(data_data)
     if min_dist <= 0:
-        min_dist = 0.00001
+        min_dist = 0.01
     max_dist = np.max(data_data)
 
     print("Done with Data Data")
@@ -173,7 +173,9 @@ def xi_r(data_array, data_random_array, random_array, real_catalog, random_catal
     # return 2 * (5000/real_catalog.shape[0])*(data_array/data_random_array) - 1
 
     # return 4 * (data_array*random_array)/(data_random_array)**2 - 1
-
+    print(data_array)
+    print(data_random_array)
+    print(random_array)
     return data_array / random_array - (2 * (data_random_array / random_array)) + 1
 
 
@@ -195,6 +197,11 @@ def xi_r_error(omega_theta, data_array):
     """
 
     return (1 + omega_theta) / np.sqrt(data_array)
+
+def correlation_function(x, a):
+    return a*(x**(-0.8))
+
+from scipy.optimize import curve_fit
 
 random_catalog = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 random_catalog2 = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
@@ -218,10 +225,10 @@ for bin_num in [5,10,15,20,25,30,35,40,45]:
     plt.ylabel("$\omega(\\theta)$")
     plt.yscale("log")
     #plt.tight_layout()
-    plt.savefig("Random_vs_Random_bin{}.png".format(bin_num), dpi=300)
+    #plt.savefig("Random_vs_Random_bin{}.png".format(bin_num), dpi=300)
 
 
-for sn_cut in [8.5,8.,7.5,7.,6.5,6.,5.5,5.,4.5,4.,3.5,3.]:
+for sn_cut in [9.5, 9.0, 8.5, 8.0, 7.5,7.,6.5,6.,5.5,5.,4.5,4.,3.5,3.]:
     real_catalog = load_table("line_search_P3_wa_crop.out")
     real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
@@ -235,11 +242,19 @@ for sn_cut in [8.5,8.,7.5,7.,6.5,6.,5.5,5.,4.5,4.,3.5,3.]:
         omega_w = xi_r(dd, dr, rr, real_catalog, random_catalog)
         e_omega_w = xi_r_error(omega_w, dd)
         distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
-
+        # Best fit to the data
+        params = curve_fit(correlation_function, distance_bins, omega_w)
+        a = params[0][0]
+        print("Value for A: {}".format(a))
+        xmin=min_dist
+        xmax=max_dist+0.1*max_dist
+        x_fit = np.linspace(xmin, xmax, 10000)
         plt.cla()
         plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
+        plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}'.format(np.round(a,4)))
         plt.xscale("log")
         plt.title("Data vs Random")
+        plt.legend(loc='best')
         plt.xlabel("Angular Distance (arcseconds)")
         plt.ylabel("$\omega(\\theta)$")
         plt.yscale("log")
