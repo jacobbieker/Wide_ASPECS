@@ -68,7 +68,7 @@ for cube_name in cubes:
     #region_list = regions.read_ds9('line_search_P3_wa_crop.reg')
     #sub_cube = cube.subcube_from_regions(region_list)
     real_catalog = load_table("line_search_P3_wa_crop.out")
-    sn_cut = 9.5
+    sn_cut = 9.0
     real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     real_catalog_coords = make_skycoords(real_catalog, ra='rra', dec='rdc')
     real_catalog_freq = real_catalog['rfreq'] * u.GHz
@@ -82,34 +82,72 @@ for cube_name in cubes:
             print("Cube: {}".format(cube_name))
             print("Source SN: {}".format(coord['rsnrrbin']))
             print("Source Limits: Low: {}\n High: {}".format(lower_ghz_bound, upper_ghz_bound))
-            sub_cube = cube.subcube(zlo=real_catalog_freq[index]-(width_of_channel*((coord['width']-1)/2)),
+            subcube = cube.subcube(zlo=real_catalog_freq[index]-(width_of_channel*((coord['width']-1)/2)),
                                     zhi=real_catalog_freq[index]+(width_of_channel*((coord['width']-1)/2)))
             # Try to get the SN of the cube now...
-            rms_values = []
-            for i in range(sub_cube.shape[0]):
-                rms_cube = cube.unitless.unmasked_data[i,:,:]
-                rms_noise = mad_std(sub_cube, ignore_nan=True)
-                rms_values.append(rms_noise)
+            subcube.allow_huge_operations=True
 
             # Now cut down to right around the source
-            sub_cube = sub_cube.subcube(xlo=int(coord['rx']-1), xhi=int(coord['rx']),
-                                        ylo=int(coord['ry']-1), yhi=int(coord['ry']))
+            rms_sub_cube = subcube.subcube(xlo=int(coord['rx']+50-15), xhi=int(coord['rx']+50+15),
+                                            ylo=int(coord['ry']+50-15), yhi=int(coord['ry']+50+15))
 
-            sub_vals = []
+            sub_cube = subcube.subcube(xlo=int(coord['rx']-15), xhi=int(coord['rx']+15),
+                                        ylo=int(coord['ry']-15), yhi=int(coord['ry']+15))
+
+            sub_cube = sub_cube.mean(axis=0)
+            try:
+                rms_sub_cube = rms_sub_cube.mean(axis=0)
+            except:
+                rms_sub_cube = subcube.subcube(xlo=int(coord['rx']-50-15), xhi=int(coord['rx']-50+15),
+                                               ylo=int(coord['ry']-50-15), yhi=int(coord['ry']-50+15))
+                rms_sub_cube = rms_sub_cube.mean(axis=0)
+
             print(sub_cube.shape)
-            for i in range(sub_cube.shape[0]):
-                sub_val_cube = sub_cube[i,:,:]
-                #print(sub_val_cube)
-                sub_cube_values = sub_val_cube[~np.isnan(sub_val_cube)]
-                sub_cube_values /= rms_values[i]
-                print(sub_cube_values)
-                sub_vals.append(sub_cube_values)
-            sub_vals = np.asarray(sub_vals)
+            rms_cube = cube.unitless.unmasked_data[:,:]
+            rms_noise = mad_std(sub_cube, ignore_nan=True)
+            print(rms_noise)
+
+            rms_cube = sub_cube
+            print("RMS Shape {}".format(rms_cube.shape))
+            rms_noise = mad_std(sub_cube)
+            print("RMS Noise around Source: {}".format(rms_noise))
+
+            rms_rms_cube = rms_sub_cube
+            rms_noise = mad_std(rms_rms_cube)
+            print("RMS Noise around Random Space: {}".format(rms_noise))
+
             print("\nSource: {} Width: {}".format(coord['rsnrrbin'], coord['width']))
             print("Flux: {} Peak Flux: {}".format(coord['rflux'], coord['rpeak']))
-            print("Sum Axis = 1: {}".format(np.sum(sub_vals, axis=1)))
-            print("Sum Axis = 0: {}".format(np.sum(sub_vals, axis=0)))
-            print("Sum: {}\n".format(np.sum(sub_vals)))
+
+            # now plot the contours
+            class nf(float):
+                def __repr__(self):
+                    str = '%.1f' % (self.__float__(),)
+                    if str[-1] == '0':
+                        return '%.0f' % self.__float__()
+                    else:
+                        return '%.1f' % self.__float__()
+
+            wcs = sub_cube.wcs
+            fig = plt.figure()
+            ax = fig.add_axes([0.1,0.1,0.8,0.8], projection=wcs)
+            #sub_cube.quicklook()
+            im = ax.imshow(sub_cube.value/rms_noise.value, origin='lower')
+            fig.colorbar(im)
+            cs = ax.contour(sub_cube.value/rms_noise.value, levels=np.linspace(-2, 10, 12), colors='white', alpha=0.5)
+            cs.levels = [nf(val) for val in cs.levels]
+            if plt.rcParams["text.usetex"]:
+                fmt = r'%r'
+            else:
+                fmt = '%r'
+
+            ax.clabel(cs, cs.levels, inline=True, fmt=fmt, fontsize=10)
+            fig.suptitle("S/N: {} Cube: {} Pix (X,Y): ({},{}) Freq: {} GHz\nCube Range: {} - {}".format(coord['rsnrrbin'], cube_name,
+                                                                               coord['rx'], coord['ry'],
+                                                                               coord['rfreq'],
+                                                                                np.round(real_catalog_freq[index]-(width_of_channel*((coord['width']-1)/2)), 4),
+                                                                                np.round(real_catalog_freq[index]+(width_of_channel*((coord['width']-1)/2)), 4)))
+            plt.show()
 
             #sub_cube[0,:,:].quicklook() # uses aplpy
             # using wcsaxes

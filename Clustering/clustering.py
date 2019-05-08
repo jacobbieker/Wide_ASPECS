@@ -83,16 +83,16 @@ def generate_random_catalog(number_of_points, filename):
 
     #random_catalog_coords = SkyCoord(ras_sim, decs_sim)
 
-    values = random_catalog_coords.to_pixel(wcs=wcs)
-    r_c_x, r_c_y = np.fliplr(np.flipud(values))
-    random_catalog_coords = SkyCoord.from_pixel(r_c_x, r_c_y, wcs=wcs, origin=1)
+    #values = random_catalog_coords.to_pixel(wcs=wcs)
+    #r_c_x, r_c_y = np.fliplr(np.flipud(values))
+    #random_catalog_coords = SkyCoord.from_pixel(r_c_x, r_c_y, wcs=wcs, origin=1)
     #ax.scatter(r_c_x, r_c_y, c='r')
-    #ax.imshow(mask)
+    ax.imshow(mask)
     #x,y = real_catalog.to_pixel(wcs=wcs)
     #ax.scatter(x,y, c='b')
 
-    ax.scatter(random_catalog_coords.ra.hour, random_catalog_coords.dec.degree, c='r', s=1)
-    #ax.scatter(real_catalog.ra.hour, real_catalog.dec.degree, c='b')
+    ax.scatter(random_catalog_coords.ra.hour, random_catalog_coords.dec.degree, c='r', s=1,  transform=ax.get_transform('world'))
+    #ax.scatter(real_catalog.ra.hour, real_catalog.dec.degree, c='b',  transform=ax.get_transform('world'))
     fig.show()
     return random_catalog_coords
 
@@ -202,7 +202,9 @@ def correlation_function(x, a):
     return a*(x**(-0.8))
 
 from scipy.optimize import curve_fit
-
+real_catalog = load_table("line_search_P3_wa_crop.out")
+real_catalog = real_catalog[real_catalog['rsnrrbin'] > 8.5]
+real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
 random_catalog = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 random_catalog2 = generate_random_catalog(1000, "/home/jacob/Research/Wide_ASPECS/Data/gs_A1_2chn.fits")
 
