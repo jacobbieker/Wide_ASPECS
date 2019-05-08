@@ -94,7 +94,7 @@ from spectral_cube import SpectralCube
 #plt.show()
 
 f160w_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst_v4.0_f160w/goodss_3dhst.v4.0.F160W_orig_sci.fits")
-w = wcs.WCS(f160w_goodss[0].header)
+#w = wcs.WCS(f160w_goodss[0].header)
 
 roberto_muse = Table.read("roberto_catalog_muse.fits", format='fits')
 test_roberto = Table.read("/home/jacob/Development/Wide_ASPECS/mapghys_in_nov2018_all.fits", format='fits')
@@ -389,29 +389,30 @@ rob_z = aspecs_lines['Z (Matched)']
 # Now plot all Radio Sources and see what is around them for all ones without a match
 
 for index, row in enumerate(aspecs_lines):
-    if row['Roberto ID'] > 0:
-        # Make the cutouts
-        shape_file = int(np.ceil(np.sqrt(len(fits_files))))
-        f = plt.figure(figsize=(20, 20))
-        # no counterpart
-        distances = [0]
-        freq_valus = [np.round(row['Observed CO (GHz)'], 3)]
-        rest_frame_ghz = [np.round(row['Restframe CO (GHz)'], 3)]
-        f.suptitle(
-            " Z: " + str(row['Z (CO)']) + " Delta_Z: " + str(
-                row['Delta Z']) + " S/N: " + str(row['S/N']) +
-            " Observed Freq: " + str(freq_valus) + "\n Spec Z: " + str(
-                row['Spec Z']) + " Transition: " + str(row['Transition']) +
-            " RA: " + str(row['RA (J2000)']) + " DEC: " + str(row['DEC (J2000)']) +
-            "\n Rest Frame GHz: " + str(rest_frame_ghz) + " MStar: " + str(row['Log(M*)']) + " SFR: " + str(row['Log(SFR)']))
-        for third_index, image in enumerate(fits_files):
-            ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
-            create_multi_overlap_ax_cutout(ax, fits_names[third_index], image,
-                                           catalog_coordinate=coords[index],
-                                           matches=[index], ra_dec=coords)
-        f.savefig(str("May_Output/ASPECS_Cutout_NoCounter_Sep1.5_SN9.0_" + str(index) + ".png"), dpi=300)
-        f.clf()
-        plt.close()
+    # Make the cutouts
+    shape_file = int(np.ceil(np.sqrt(len(fits_files))))
+    f = plt.figure(figsize=(20, 20))
+    # no counterpart
+    distances = [0]
+    freq_valus = [np.round(row['Observed CO (GHz)'], 3)]
+    rest_frame_ghz = [np.round(row['Restframe CO (GHz)'], 3)]
+    f.suptitle(
+        " Z: " + str(row['Z (CO)']) + " Delta_Z: " + str(
+            row['Delta Z']) + " Roberto ID: " + str(row['Roberto ID']) + " Separation: " + str(row['Separation (Arcsecond)']) + " S/N: " + str(row['S/N']) +
+        " Observed Freq: " + str(freq_valus) + "\n Spec Z: " + str(
+            row['Spec Z']) + " Transition: " + str(row['Transition']) +
+        " RA: " + str(row['RA (J2000)']) + " DEC: " + str(row['DEC (J2000)']) +
+        "\n Rest Frame GHz: " + str(rest_frame_ghz) + " MStar: " + str(row['Log(M*)']) + " SFR: " + str(row['Log(SFR)']))
+    for third_index, image in enumerate(fits_files):
+        wcs_header = image[0].header
+        w = wcs.WCS(wcs_header)
+        ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+        create_multi_overlap_ax_cutout(ax, fits_names[third_index], image,
+                                       catalog_coordinate=coords[index],
+                                       matches=[index], ra_dec=coords)
+    f.savefig(str("May_Output/matched/ASPECS_Cutout_NoCounter_Sep1.5_SN9.0_" + str(index) + ".png"), dpi=300)
+    f.clf()
+    plt.close()
 
 
 
@@ -497,7 +498,7 @@ for fits_index in range(len(fits_files)):
     plt.close()
 '''
 #exit()
-# exit()
+exit()
 # Now have the matches, plot them on the sky
 
 all_restframe_ghz = {}

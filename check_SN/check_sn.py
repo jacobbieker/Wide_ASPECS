@@ -60,7 +60,7 @@ close
 
 """
 
-cubes = ["A1", "C1", "C2"]
+cubes = ["A1", "B1", "C1", "C2"]
 
 for cube_name in cubes:
     cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cube_name))
@@ -115,41 +115,43 @@ for cube_name in cubes:
             rms_rms_cube = rms_sub_cube
             rms_noise = mad_std(rms_rms_cube)
             print("RMS Noise around Random Space: {}".format(rms_noise))
-            max_val = np.max(sub_cube.value/rms_noise.value)
-            print("Max SN vs Cat SN: {}".format(coord['rsnrrbin']/max_val))
+            try:
+                max_val = np.max(sub_cube.value/rms_noise.value)
+                print("Max SN vs Cat SN: {}".format(coord['rsnrrbin']/max_val))
 
-            print("\nSource: {} Width: {}".format(coord['rsnrrbin'], coord['width']))
-            print("Flux: {} Peak Flux: {}".format(coord['rflux'], coord['rpeak']))
+                print("\nSource: {} Width: {}".format(coord['rsnrrbin'], coord['width']))
+                print("Flux: {} Peak Flux: {}".format(coord['rflux'], coord['rpeak']))
 
-            # now plot the contours
-            class nf(float):
-                def __repr__(self):
-                    str = '%.1f' % (self.__float__(),)
-                    if str[-1] == '0':
-                        return '%.0f' % self.__float__()
-                    else:
-                        return '%.1f' % self.__float__()
+                # now plot the contours
+                class nf(float):
+                    def __repr__(self):
+                        str = '%.1f' % (self.__float__(),)
+                        if str[-1] == '0':
+                            return '%.0f' % self.__float__()
+                        else:
+                            return '%.1f' % self.__float__()
 
-            wcs = sub_cube.wcs
-            fig = plt.figure()
-            ax = fig.add_axes([0.1,0.1,0.8,0.8], projection=wcs)
-            #sub_cube.quicklook()
-            im = ax.imshow(sub_cube.value/rms_noise.value, origin='lower')
-            fig.colorbar(im)
-            cs = ax.contour(sub_cube.value/rms_noise.value, levels=[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12], colors='white', alpha=0.5)
-            cs.levels = [nf(val) for val in cs.levels]
-            if plt.rcParams["text.usetex"]:
-                fmt = r'%r'
-            else:
-                fmt = '%r'
+                wcs = sub_cube.wcs
+                fig = plt.figure()
+                ax = fig.add_axes([0.1,0.1,0.8,0.8], projection=wcs)
+                im = ax.imshow(sub_cube.value/rms_noise.value, origin='lower')
+                fig.colorbar(im)
+                cs = ax.contour(sub_cube.value/rms_noise.value, levels=[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12], colors='white', alpha=0.5)
+                cs.levels = [nf(val) for val in cs.levels]
+                if plt.rcParams["text.usetex"]:
+                    fmt = r'%r'
+                else:
+                    fmt = '%r'
 
-            ax.clabel(cs, cs.levels, inline=True, fmt=fmt, fontsize=10)
-            fig.suptitle("S/N: {} Cube: {} Pix (X,Y): ({},{}) Freq: {} GHz\nCube Range: {} - {}".format(coord['rsnrrbin'], cube_name,
-                                                                               coord['rx'], coord['ry'],
-                                                                               coord['rfreq'],
-                                                                                np.round(real_catalog_freq[index]-(width_of_channel*((coord['width']-1)/2)), 4),
-                                                                                np.round(real_catalog_freq[index]+(width_of_channel*((coord['width']-1)/2)), 4)))
-            plt.savefig("/home/jacob/Development/Wide_ASPECS/May_Output/Contours_SN_{}_Cube_{}.png".format(coord['rsnrrbin'], cube_name), dpi=300)
+                ax.clabel(cs, cs.levels, inline=True, fmt=fmt, fontsize=10)
+                fig.suptitle("S/N: {} Cube: {} Pix (X,Y): ({},{}) Freq: {} GHz\nCube Range: {} - {}".format(coord['rsnrrbin'], cube_name,
+                                                                                   coord['rx'], coord['ry'],
+                                                                                   coord['rfreq'],
+                                                                                    np.round(real_catalog_freq[index]-(width_of_channel*((coord['width']-1)/2)), 4),
+                                                                                    np.round(real_catalog_freq[index]+(width_of_channel*((coord['width']-1)/2)), 4)))
+                plt.savefig("/home/jacob/Development/Wide_ASPECS/May_Output/Contours_SN_{}_Cube_{}.png".format(coord['rsnrrbin'], cube_name), dpi=300)
+            except:
+                continue
 
             #sub_cube[0,:,:].quicklook() # uses aplpy
             # using wcsaxes

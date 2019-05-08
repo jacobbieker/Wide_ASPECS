@@ -722,13 +722,19 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                                         print("Extra Rows")
                                         print(matched_rows)
                                     else:
-                                        if matched_rows['Delta Z'] < delta_z:
-                                            # Keep current one
-                                            add_row = False
+                                        if matched_rows['Roberto ID'] > 0:
+                                            if matched_rows['Delta Z'] < delta_z:
+                                                # Keep current one
+                                                add_row = False
+                                            else:
+                                                add_row = True
+                                                # Now need to remove the current row and get the other row
+                                                aspecs_table.remove_rows(np.nonzero(prev_match_mask))
                                         else:
                                             add_row = True
                                             # Now need to remove the current row and get the other row
                                             aspecs_table.remove_rows(np.nonzero(prev_match_mask))
+
                                 except:
                                     add_row = True
                                 if add_row:
