@@ -96,11 +96,11 @@ for cube_name in cubes:
 
             sub_cube = sub_cube.mean(axis=0)
             try:
-                rms_sub_cube = rms_sub_cube.mean(axis=0)
+                rms_sub_cube = subcube.mean(axis=0)
             except:
                 rms_sub_cube = subcube.subcube(xlo=int(coord['rx']-50-15), xhi=int(coord['rx']-50+15),
                                                ylo=int(coord['ry']-50-15), yhi=int(coord['ry']-50+15))
-                rms_sub_cube = rms_sub_cube.mean(axis=0)
+                rms_sub_cube = subcube.mean(axis=0)
 
             print(sub_cube.shape)
             rms_cube = cube.unitless.unmasked_data[:,:]
@@ -113,10 +113,10 @@ for cube_name in cubes:
             print("RMS Noise around Source: {}".format(rms_noise))
 
             rms_rms_cube = rms_sub_cube
-            rms_noise = mad_std(rms_rms_cube)
+            rms_noise = np.nanstd(rms_rms_cube.value)
             print("RMS Noise around Random Space: {}".format(rms_noise))
             try:
-                max_val = np.max(sub_cube.value/rms_noise.value)
+                max_val = np.max(sub_cube.value/rms_noise)
                 print("Max SN vs Cat SN: {}".format(coord['rsnrrbin']/max_val))
 
                 print("\nSource: {} Width: {}".format(coord['rsnrrbin'], coord['width']))
@@ -134,9 +134,9 @@ for cube_name in cubes:
                 wcs = sub_cube.wcs
                 fig = plt.figure()
                 ax = fig.add_axes([0.1,0.1,0.8,0.8], projection=wcs)
-                im = ax.imshow(sub_cube.value/rms_noise.value, origin='lower')
+                im = ax.imshow(sub_cube.value/rms_noise, origin='lower')
                 fig.colorbar(im)
-                cs = ax.contour(sub_cube.value/rms_noise.value, levels=[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12], colors='white', alpha=0.5)
+                cs = ax.contour(sub_cube.value/rms_noise, levels=[-2,-1,0,1,2,3,4,5,6,7,8,9,10,11,12], colors='white', alpha=0.5)
                 cs.levels = [nf(val) for val in cs.levels]
                 if plt.rcParams["text.usetex"]:
                     fmt = r'%r'
@@ -149,7 +149,7 @@ for cube_name in cubes:
                                                                                    coord['rfreq'],
                                                                                     np.round(real_catalog_freq[index]-(width_of_channel*((coord['width']-1)/2)), 4),
                                                                                     np.round(real_catalog_freq[index]+(width_of_channel*((coord['width']-1)/2)), 4)))
-                plt.savefig("/home/jacob/Development/Wide_ASPECS/May_Output/Contours_SN_{}_Cube_{}.png".format(coord['rsnrrbin'], cube_name), dpi=300)
+                plt.savefig("/home/jacob/Development/Wide_ASPECS/May_Output/Contours_All_SN_{}_Cube_{}.png".format(coord['rsnrrbin'], cube_name), dpi=300)
             except:
                 continue
 

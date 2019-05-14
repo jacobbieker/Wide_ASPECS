@@ -633,7 +633,7 @@ def get_estimated_z(ghz):
             return element[0], transitions[element[0]][3]
 
 
-def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_sep=1.0, method='closest'):
+def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='closest'):
     aspecs_table = Table(names=(
         'RA (J2000)', 'DEC (J2000)', 'Roberto ID', 'Roberto RA', 'Roberto DEC', 'Observed CO (GHz)', 'Restframe CO (GHz)',
         'Transition', 'Z (Matched)', 'Z (CO)',
@@ -695,6 +695,11 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                 # Could be a match!
                 # Get the catalog match
                 matched_galaxy = catalog[idxcatalog[index]]  # index is the index in line_skycoord matched
+                spec_z = has_spec_z(matched_galaxy)
+                if spec_z:
+                    max_redshift = 0.01
+                else:
+                    max_redshift = 0.3
                 # idx[index] is then the index into catalog that is matched to this one
                 for key, values in transitions.items():
                     if (values[0] - max_redshift) < matched_galaxy['z_1'] < (values[1] + max_redshift):
@@ -710,7 +715,6 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                                 # so with offset, the galaxy is now within the range, is above SNR, and have a transition
                                 # Now get the KMS, if there is a Spec Z, Comoving volume, etc. and add to the table
                                 volume = comoving_volume(values[0], values[1], 42.6036)
-                                spec_z = has_spec_z(matched_galaxy)
                                 co_z = get_co_z(matched_line['rfreq'], matched_key)
                                 kms = get_kms(matched_line['width'], matched_line['rfreq'])
                                 delta_v = convert_deltaZ_to_kms(delta_z, co_z)
@@ -723,7 +727,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                                         print(matched_rows)
                                     else:
                                         if matched_rows['Roberto ID'] > 0:
-                                            if matched_rows['Delta Z'] < delta_z:
+                                            if np.abs(matched_rows['Delta Z']) < np.abs(delta_z):
                                                 # Keep current one
                                                 add_row = False
                                             else:
@@ -767,6 +771,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
             else:
                 print("Outside of Max Separation (Shouldn't Happen)")
             if not matched_to_galaxy:
+                max_redshift = 0.3
                 table_input = match_to_co_line(matched_line, max_redshift=max_redshift, line_coords=line_skycoords[idxc[index]])
                 add_row = False
                 if table_input is not None:
@@ -778,7 +783,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                             print(matched_rows)
                         else:
                             if matched_rows['Roberto ID'] > 0.:
-                                if matched_rows['Delta Z'] < delta_z:
+                                if np.abs(matched_rows['Delta Z']) < np.abs(delta_z):
                                     # Keep current one
                                     add_row = False
                                 else:
@@ -793,6 +798,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
         # Now have to do it for the non-matched ones
         for index in non_matched_set_indexes:
             matched_line = lines[index]
+            max_redshift = 0.3
             table_input = match_to_co_line(matched_line, max_redshift=max_redshift)
             add_row = False
             if table_input is not None:
@@ -804,7 +810,7 @@ def match_lines_to_catalog(lines, catalog, max_redshift=0.3, snr_limit=6., max_s
                         print(matched_rows)
                     else:
                         if matched_rows['Roberto ID'] > 0.:
-                            if matched_rows['Delta Z'] < delta_z:
+                            if np.abs(matched_rows['Delta Z']) < np.abs(delta_z):
                                 # Keep current one
                                 add_row = False
                             else:
