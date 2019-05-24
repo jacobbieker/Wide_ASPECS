@@ -60,7 +60,7 @@ close
 
 """
 
-cubes = ["A1", "B1", "C1", "C2"]
+cubes = ["A1","A2", "B1", "B2", "C1", "C2"]
 
 for cube_name in cubes:
     cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cube_name))
