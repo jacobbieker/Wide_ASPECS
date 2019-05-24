@@ -7,6 +7,9 @@ import astropy.io.fits as fits
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from astropy.stats import mad_std
+import astropy.units as u
+from spectral_cube import SpectralCube
 
 from astropy.table import Table, join
 from matplotlib.patches import Circle
@@ -309,10 +312,48 @@ def create_multi_overlap_cutout(ax, wcs_header, image, aspecs, matches, ra_dec=r
     return ax
 
 
+def create_multi_overlap_cutout_cube(ax, wcs_header, image, aspecs, matches, ra_dec=roberto_ra_dec, rob_z=0, subcube=None, rmscube=None):
+    """
+    :param ax: Matplotlib ax to use
+    :param wcs_header: Image header with WCS info
+    :param image: Image
+    :param ra: RA coordiantes for center in J2000
+    :param dec: DEC coordinates for center in J2000
+    :param size: Size, in degrees, of the cutout
+    :return:
+    :return:
+    """
+
+    w = wcs.WCS(wcs_header)
+    center = aspecs
+
+    other_centers = []
+    for coord in matches:
+        other_centers.append(ra_dec[coord])
+    size = 3
+    cutouts = []
+    for row_center in other_centers:
+        # then make an array cutout
+        cutouts.append(Cutout2D(image, row_center, size=size * u.arcsec, wcs=w))
+    co = Cutout2D(image, center, size=size * u.arcsec, wcs=w)
+    ax.imshow(co.data, origin='lower', cmap='gray')
+    # Now show the contours from Wide ASPECS
+    ax.contour(subcube.value/rmscube, levels=np.linspace(-2,12,14), colors='white', alpha=0.5)
+
+    return ax
+
 
 def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, matches, ra_dec=roberto_ra_dec, rob_z=0):
     ax = create_multi_overlap_cutout(ax, fit_data[0].header, fit_data[0].data, aspecs=catalog_coordinate,
                                      matches=matches, ra_dec=ra_dec, rob_z=rob_z)
+    ax.set_title(name)
+    ax.tick_params(direction='in', colors='w', bottom=True, top=True, left=True, right=True, labelbottom=True,
+                   labeltop=False, labelleft=True, labelright=False)
+    return ax
+
+def create_multi_overlap_ax_cutout_cube(ax, name, fit_data, catalog_coordinate, matches, ra_dec=roberto_ra_dec, rob_z=0, subcube=None, rmscube=None):
+    ax = create_multi_overlap_cutout_cube(ax, fit_data[0].header, fit_data[0].data, aspecs=catalog_coordinate,
+                                     matches=matches, ra_dec=ra_dec, rob_z=rob_z, subcube=subcube, rmscube=rmscube)
     ax.set_title(name)
     ax.tick_params(direction='in', colors='w', bottom=True, top=True, left=True, right=True, labelbottom=True,
                    labeltop=False, labelleft=True, labelright=False)
@@ -365,7 +406,7 @@ def convert_to_rest_frame_ghz(z, ghz):
 #aspecs_lines = Table.read("ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format="ascii", header_start=0, data_start=1)
 
 
-aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/independent/ASPECS_Line_Candidates_all_closest_Sep_1.5_SN_9.0.ecsv", format='ascii.ecsv')
+aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/May_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.0.ecsv", format='ascii.ecsv')
 
 #sn_cut = 9.5
 
@@ -387,6 +428,17 @@ z_s = aspecs_lines['Z (CO)']
 rob_z = aspecs_lines['Z (Matched)']
 
 # Now plot all Radio Sources and see what is around them for all ones without a match
+cubes = ["A1","A2", "B1", "B2", "C1", "C2"]
+
+cube_range = []
+
+for cube_name in cubes:
+    # Get ranges of all the cubes
+    cube = SpectralCube.read("/media/jacob/A6548D38548D0BED/gs_{}_2chn.fits".format(cube_name))
+    cube = cube.with_spectral_unit(u.GHz)
+    width_of_channel = (cube.spectral_axis[-1] - cube.spectral_axis[0]) / cube.shape[0]
+    cube_range.append((cube.spectral_axis[0], cube.spectral_axis[-1], width_of_channel, cube_name))
+    del cube
 
 for index, row in enumerate(aspecs_lines):
     # Make the cutouts
@@ -394,25 +446,59 @@ for index, row in enumerate(aspecs_lines):
     f = plt.figure(figsize=(20, 20))
     # no counterpart
     distances = [0]
-    freq_valus = [np.round(row['Observed CO (GHz)'], 3)]
-    rest_frame_ghz = [np.round(row['Restframe CO (GHz)'], 3)]
-    f.suptitle(
-        " Z: " + str(row['Z (CO)']) + " Delta_Z: " + str(
-            row['Delta Z']) + " Roberto ID: " + str(row['Roberto ID']) + " Separation: " + str(row['Separation (Arcsecond)']) + " S/N: " + str(row['S/N']) +
-        " Observed Freq: " + str(freq_valus) + "\n Spec Z: " + str(
-            row['Spec Z']) + " Transition: " + str(row['Transition']) +
-        " RA: " + str(row['RA (J2000)']) + " DEC: " + str(row['DEC (J2000)']) +
-        "\n Rest Frame GHz: " + str(rest_frame_ghz) + " MStar: " + str(row['Log(M*)']) + " SFR: " + str(row['Log(SFR)']))
-    for third_index, image in enumerate(fits_files):
-        wcs_header = image[0].header
-        w = wcs.WCS(wcs_header)
-        ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
-        create_multi_overlap_ax_cutout(ax, fits_names[third_index], image,
-                                       catalog_coordinate=coords[index],
-                                       matches=[index], ra_dec=coords)
-    f.savefig(str("May_Output/matched/ASPECS_Cutout_NoCounter_Sep1.5_SN9.0_" + str(index) + ".png"), dpi=300)
-    f.clf()
-    plt.close()
+    # Get the cube that contains the CO line observed
+    cube_to_use = None
+    width_of_channel = 0
+    for cube in cube_range:
+        if cube[0].value < row['Observed CO (GHz)'] < cube[1].value:
+            cube_to_use = SpectralCube.read("/media/jacob/A6548D38548D0BED/gs_{}_2chn.fits".format(cube[-1]))
+            width_of_channel = cube[2]
+            break
+    cube = cube_to_use
+    if cube_to_use is not None:
+        lower_ghz_bound = row['Observed CO (GHz)']*u.GHz -(width_of_channel*((row['Width (Channels)']-1)/2))
+        upper_ghz_bound = row['Observed CO (GHz)']*u.GHz +(width_of_channel*((row['Width (Channels)']-1)/2))
+        if lower_ghz_bound > cube.spectral_axis[0] and upper_ghz_bound < cube.spectral_axis[-1]:
+            print("Source Limits: Low: {}\n High: {}".format(lower_ghz_bound, upper_ghz_bound))
+            subcube = cube.subcube(zlo=lower_ghz_bound,
+                                   zhi=upper_ghz_bound)
+            # Try to get the SN of the cube now...
+            subcube.allow_huge_operations=True
+            subcube.beam_threshold=0.05
+
+            # Now cut down to right around the source
+            rms_sub_cube = subcube.subcube(xlo=int(subcube.shape[1]/2-75), xhi=int(subcube.shape[1]/2+75),
+                                           ylo=int(subcube.shape[2]/2-75), yhi=int(subcube.shape[2]/2+75))
+
+            sub_cube = subcube.subcube(xlo=int(coords[index].to_pixel(subcube.wcs)[0]-25), xhi=int(coords[index].to_pixel(subcube.wcs)[0]+25),
+                                       ylo=int(coords[index].to_pixel(subcube.wcs)[1]-25), yhi=int(coords[index].to_pixel(subcube.wcs)[1]+25))
+
+            sub_cube = sub_cube.mean(axis=0)
+            rms_sub_cube = rms_sub_cube.mean(axis=0)
+
+            #rms_cube = rms_sub_cube.unitless.unmasked_data[:,:]
+            rms_noise = mad_std(rms_sub_cube, ignore_nan=True)
+            print(rms_noise)
+
+        freq_valus = [np.round(row['Observed CO (GHz)'], 3)]
+        rest_frame_ghz = [np.round(row['Restframe CO (GHz)'], 3)]
+        f.suptitle(
+            " Z: " + str(row['Z (CO)']) + " Delta_Z: " + str(
+                row['Delta Z']) + " Roberto ID: " + str(row['Roberto ID']) + " Separation: " + str(row['Separation (Arcsecond)']) + " S/N: " + str(row['S/N']) +
+            " Observed Freq: " + str(freq_valus) + "\n Spec Z: " + str(
+                row['Spec Z']) + " Transition: " + str(row['Transition']) +
+            " RA: " + str(row['RA (J2000)']) + " DEC: " + str(row['DEC (J2000)']) +
+            "\n Rest Frame GHz: " + str(rest_frame_ghz) + " MStar: " + str(row['Log(M*)']) + " SFR: " + str(row['Log(SFR)']))
+        for third_index, image in enumerate(fits_files):
+            wcs_header = image[0].header
+            w = wcs.WCS(wcs_header)
+            ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+            create_multi_overlap_ax_cutout_cube(ax, fits_names[third_index], image,
+                                           catalog_coordinate=coords[index],
+                                           matches=[index], ra_dec=coords, subcube=sub_cube, rmscube=rms_noise)
+        f.savefig(str("May_Output/matched/ASPECS_Cutout_NoCounter_Sep1.0_SN9.0_" + str(index) + ".png"), dpi=300)
+        f.clf()
+        plt.close()
 
 
 
