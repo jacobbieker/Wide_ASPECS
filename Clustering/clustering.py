@@ -7,16 +7,9 @@ from astropy.table import Table, hstack, join
 from astropy.stats import histogram
 from scipy.spatial.distance import cdist
 
-print(SkyCoord("3:32:41.5041", "-27:44:13.553", unit=(u.hourangle, u.deg), frame='icrs'))
-print(SkyCoord("3:32:08.9056", "-27:47:02.788", unit=(u.hourangle, u.deg), frame='icrs'))
-print(SkyCoord("3:32:51.1022", "-27:49:27.011", unit=(u.hourangle, u.deg), frame='icrs'))
-print(SkyCoord("3:32:18.9546", "-27:52:16.837", unit=(u.hourangle, u.deg), frame='icrs'))
-
-#exit()
 def load_table(ascii_table, header=0, start=1):
     ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
     return ascii_table_data
-
 
 def make_skycoords(source, ra='ra', dec='dec', distance=None):
     """
@@ -333,7 +326,6 @@ random_catalog, r_pixels = generate_random_catalog(num_points, "/media/jacob/A65
 #np.random.seed(5227)
 random_catalog2, r2_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
 
-
 data_data, data_random, random_random, min_dist, max_dist = angular_correlation_function(random_catalog, random_catalog2)
 from astroML.correlation import two_point
 for bin_num in [5,6,7,8,9,10]:
@@ -345,12 +337,17 @@ for bin_num in [5,6,7,8,9,10]:
     x_vals = []
     omega_w = xi_r(dd, dr, rr,  random_catalog, random_catalog2)
     le_omega_w, ue_omega_w = xi_r_error(omega_w, dd)
-    distance_bins1 = np.logspace(np.log10(min_dist),np.log10(max_dist+1), len(omega_w))
+    distance_bins1 = 0.5*(distance_bins[1:]+distance_bins[:-1])
     #distance_bins1 = np.concatenate((np.asarray([1.5]), distance_bins1))
     # Best fit to the data
+    pinit = [1.]
     out = leastsq(errfunc, pinit,
                   args=(distance_bins1, omega_w, (le_omega_w+ue_omega_w)/2.), full_output=True)
     a = out[0][0]
+    s_sq = (errfunc(out[0][0], distance_bins1, omega_w, (le_omega_w+ue_omega_w)/2.)**2).sum()/(len(distance_bins1)-len(pinit))
+    cov_matrix = out[1] * s_sq
+
+    a_error = np.absolute(cov_matrix[0][0])**0.5
 #    print("Value for A: {}".format(a))
     xmin=min_dist
     xmax=max_dist+0.1*max_dist
@@ -359,7 +356,7 @@ for bin_num in [5,6,7,8,9,10]:
     plt.cla()
     plt.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
     #plt.plot(x_fit, correlation_function(x_fit, params[0][0]), '-', c='r', label='Fit Normal: A = {}'.format(np.round( params[0][0],4)))
-    plt.plot(x_fit, correlation_function(x_fit, a), '-', c='g', label='Fit: A = {}'.format(np.round(a,4)))
+    plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error,5)))
     #plt.scatter(x=distance_bins1, y=corr, c='r', label='Normal')
     #plt.scatter(x=distance_bins1, y=corr2, c='g', label='Other Random')
     plt.legend(loc='best')
@@ -374,8 +371,8 @@ for bin_num in [5,6,7,8,9,10]:
     plt.cla()
     plt.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
     #plt.plot(x_fit, correlation_function(x_fit, params[0][0]), '-', c='r', label='Fit Normal: A = {}'.format(np.round(a,4)))
-    plt.plot(x_fit, correlation_function(x_fit, a), '-', c='g', label='Fit: A = {}'.format(np.round(a,4)))
-    #plt.scatter(x=distance_bins1, y=corr, c='r', label='Normal')
+    plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error,5)))
+    #plt.scatter(x=distance_bins1, y=corr, c='r', label='r')
     #plt.scatter(x=distance_bins1, y=corr2, c='g', label='Other Random')
     plt.legend(loc='best')
     plt.xscale("log")
@@ -424,18 +421,44 @@ for sn_cut in [9.5, 9.0, 8.5, 8.0]:
         rrs[sn_cut].append(rr)
         omega_w = xi_r(dd, dr, rr, real_catalog, random_catalog)
         le_omega_w, ue_omega_w = xi_r_error(omega_w, dd)
-        distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
+        distance_bins = 0.5*(distance_bins[1:]+distance_bins[:-1])
+        #distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
         dist_binners[bin_num] = distance_bins
         # Best fit to the data
-        params = curve_fit(correlation_function, distance_bins, omega_w)
-        a = params[0][0]
+        pinit = [1.]
+        out = leastsq(errfunc, pinit,
+                      args=(distance_bins, omega_w, (le_omega_w+ue_omega_w)/2.), full_output=True)
+        a = out[0][0]
+        s_sq = (errfunc(out[0][0], distance_bins, omega_w, (le_omega_w+ue_omega_w)/2.)**2).sum()/(len(distance_bins)-len(pinit))
+        cov_matrix = out[1] * s_sq
+
+        a_error = np.absolute(cov_matrix[0][0])**0.5
         print("Value for A: {}".format(a))
-        xmin=min_dist-0.001
-        xmax=max_dist+0.1*max_dist
+
+        # Now get one for only the positive points
+        pos_mask = (omega_w > 0.)
+        pos_ue = ue_omega_w[pos_mask]
+        pos_le = le_omega_w[pos_mask]
+        pos_bins = distance_bins[pos_mask]
+        pos_omega = omega_w[pos_mask]
+
+        pinit = [1.]
+        out = leastsq(errfunc, pinit,
+                      args=(pos_bins, pos_omega, (pos_le+pos_ue)/2.), full_output=True)
+        pos_a = out[0][0]
+        s_sq = (errfunc(out[0][0], pos_bins, pos_omega, (pos_le+pos_ue)/2.)**2).sum()/(len(pos_bins)-len(pinit))
+        cov_matrix = out[1] * s_sq
+
+        pos_a_error = np.absolute(cov_matrix[0][0])**0.5
+        print("Value for A: {}".format(a))
+
+        xmin=distance_bins[0]-0.001
+        xmax=distance_bins[-1]+0.1*distance_bins[-1]
         x_fit = np.linspace(xmin, xmax, 10000)
         plt.cla()
         plt.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w,ue_omega_w), fmt='o')
-        plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}'.format(np.round(a,4)))
+        plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error,5)))
+        plt.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
         plt.xscale("log")
         plt.title("Data vs Random")
         plt.legend(loc='best')
@@ -448,10 +471,11 @@ for sn_cut in [9.5, 9.0, 8.5, 8.0]:
 
         plt.cla()
         plt.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w,ue_omega_w), fmt='o')
-        plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}'.format(np.round(a,4)))
+        plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error,5)))
+        plt.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
         plt.xscale("log")
         plt.title("Data vs Random")
-        plt.legend(loc='best')
+        plt.legend(loc='best', fontsize='5')
         plt.xlabel("Angular Distance (arcseconds)")
         plt.ylabel("$\omega(\\theta)$")
         #plt.yscale("log")
@@ -462,7 +486,7 @@ for sn_cut in [9.5, 9.0, 8.5, 8.0]:
 # Now have dictionary of lists of datas
 
 
-def plot_four(dd, dr, rr, distance_bins, distance_bins1):
+def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True,):
     """
     Take set of 4 S/N cut lists for DD, DR, and RR and plot a 4 panel plot, has to be same binning for it
     Assumes dd, dr, and rr are all in same order, 9.5, 9.0, 8.5, 8.0 SN
@@ -472,7 +496,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1):
     :return:
     """
     plt.cla()
-    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all')
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all', figsize=(10,10))
     sn_cut = [9.5,9.0,8.5,8.0]
     for index, data_data in enumerate(dd):
         real_catalog = load_table("line_search_P3_wa_crop.out")
@@ -480,64 +504,99 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1):
         real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
         omega_w = xi_r(dd[index], dr[index], rr[index], real_catalog, random_catalog)
         le_omega_w, ue_omega_w = xi_r_error(omega_w, dd[index])
-        params = curve_fit(correlation_function, distance_bins, omega_w)
-        a = params[0][0]
+        pinit = [1.]
+        out = leastsq(errfunc, pinit,
+                      args=(distance_bins1, omega_w, (le_omega_w+ue_omega_w)/2.), full_output=True)
+        a = out[0][0]
+        s_sq = (errfunc(out[0][0], distance_bins1, omega_w, (le_omega_w+ue_omega_w)/2.)**2).sum()/(len(distance_bins1)-len(pinit))
+        cov_matrix = out[1] * s_sq
+
+        a_error = np.absolute(cov_matrix[0][0])**0.5
+        print("Value for A: {}".format(a))
+        # Now get one for only the positive points
+        pos_mask = (omega_w > 0.)
+        pos_ue = ue_omega_w[pos_mask]
+        pos_le = le_omega_w[pos_mask]
+        pos_bins = distance_bins1[pos_mask]
+        pos_omega = omega_w[pos_mask]
+
+        pinit = [1.]
+        out = leastsq(errfunc, pinit,
+                      args=(pos_bins, pos_omega, (pos_le+pos_ue)/2.), full_output=True)
+        pos_a = out[0][0]
+        s_sq = (errfunc(out[0][0], pos_bins, pos_omega, (pos_le+pos_ue)/2.)**2).sum()/(len(pos_bins)-len(pinit))
+        cov_matrix = out[1] * s_sq
+
+        pos_a_error = np.absolute(cov_matrix[0][0])**0.5
         print("Value for A: {}".format(a))
         xmin=min_dist-0.001
         xmax=max_dist+0.1*max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
         if index == 0:
             ax1.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w,ue_omega_w), fmt='o')
-            ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}'.format(np.round(a,4)))
-            ax1.xscale("log")
+            ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error, 5)))
+            ax1.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
+            ax1.set_xscale("log")
             ax1.set_title("S/N > 9.5")
             #plt.title("Data vs Random")
-            ax1.set_legend(loc='best')
-            ax1.set_xlabel("Angular Distance (arcseconds)")
+            ax1.legend(loc='best', fontsize='8')
+            ax1.set_ylabel("$\omega(\\theta)$")
             #ax1.set_ylabel("$\omega(\\theta)$")
-            ax1.yscale("log")
+            if use_log:
+                ax1.set_yscale("log")
             #plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 1:
             ax2.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w,ue_omega_w), fmt='o')
-            ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}'.format(np.round(a,4)))
-            ax2.xscale("log")
+            ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error, 5)))
+            ax2.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
+            ax2.set_xscale("log")
             ax2.set_title("S/N > 9.0")
             #plt.title("Data vs Random")
-            ax2.set_legend(loc='best')
+            ax2.legend(loc='best', fontsize='8')
             #plt.xlabel("Angular Distance (arcseconds)")
             #plt.ylabel("$\omega(\\theta)$")
-            ax2.yscale("log")
+            if use_log:
+                ax2.set_yscale("log")
             #plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 2:
             ax3.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w,ue_omega_w), fmt='o')
-            ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}'.format(np.round(a,4)))
-            ax3.xscale("log")
+            ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error, 5)))
+            ax3.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
+            ax3.set_xscale("log")
             ax3.set_title("S/N > 8.5")
             #plt.title("Data vs Random")
-            ax3.set_legend(loc='best')
+            ax3.legend(loc='best', fontsize='8')
             ax3.set_xlabel("Angular Distance (arcseconds)")
             ax3.set_ylabel("$\omega(\\theta)$")
-            ax3.yscale("log")
+            if use_log:
+                ax3.set_yscale("log")
             #plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 3:
             ax4.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w,ue_omega_w), fmt='o')
-            ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}'.format(np.round(a,4)))
-            ax4.xscale("log")
+            ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error, 5)))
+            ax4.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
+            ax4.set_xscale("log")
             ax4.set_title("S/N > 8.0")
             #plt.title("Data vs Random")
-            ax4.set_legend(loc='best')
+            ax4.legend(loc='best', fontsize='8')
             #plt.xlabel("Angular Distance (arcseconds)")
-            ax4.set_ylabel("$\omega(\\theta)$")
-            ax4.yscale("log")
+            if use_log:
+                ax4.set_yscale("log")
+            ax4.set_xlabel("Angular Distance (arcseconds)")
             #plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
+            # Now add the plot to the others
+            ax1.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
+            ax2.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
+            ax3.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
 
     # Actually plot it all now
     f.align_xlabels()
     f.align_ylabels()
-    f.sup_title("Data vs Random")
-    plt.show()
-
-
+    f.suptitle("Data vs Random")
+    if use_log:
+        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}.png".format(len(distance_bins1)), dpi=300)
+    else:
+        plt.savefig("final/4Panel_Data_Vs_Random_bin{}.png".format(len(distance_bins1)), dpi=300)
 
 num_ones = len(dds[9.5])
 
@@ -554,26 +613,8 @@ for i in range(num_ones):
     # Number of bins
     print(dd_plot)
     print(np.asarray(dd_plot).shape)
-    bin_num = len(dd_plot[i])
+    bin_num = len(dd_plot[0])
     distance_bins = dist_bns[bin_num]
     distance_bins1 = dist_binners[bin_num]
     plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1)
-
-"""
-        dd, dr, rr, min_dist, max_dist = angular_correlation_function(real_catalog, real_catalog, number_of_bins=bin_num)
-    
-        omega_w = xi_r(dd, dr, rr, real_catalog, real_catalog)
-        e_omega_w = xi_r_error(omega_w, dd)
-        distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
-    
-        plt.cla()
-        plt.errorbar(x=distance_bins, y=omega_w, yerr=e_omega_w, fmt='o')
-        plt.xscale("log")
-        plt.title("Data vs Data")
-        plt.xlabel("Angular Distance (arcseconds)")
-        plt.ylabel("$\omega(\\theta)$")
-        plt.yscale("log")
-        plt.tight_layout()
-        plt.savefig("Data_vs_Data_{}_bin{}.png".format(sn_cut, bin_num), dpi=300)
-        plt.show()
-"""
+    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1, use_log=False)
