@@ -16,7 +16,7 @@ aspecs_lines = load_table("/home/jacob/Development/Wide_ASPECS/independent/line_
 special_ones = ["/home/jacob/Development/Wide_ASPECS/independent/matches/sn59_sep15.fits", "/home/jacob/Development/Wide_ASPECS/independent/matches/sn6_sep15.fits"]
 
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
-cat_mask = (combined_catalog['fIRAC1_1'] >= (np.mean(combined_catalog['fIRAC1_1']) + 1*np.std(combined_catalog['fIRAC1_1'])))
+cat_mask = (combined_catalog['fIRAC1_1'] >= (np.median(combined_catalog['fIRAC1_1'])))# + 1*np.std(combined_catalog['fIRAC1_1'])))
 
 # Need to convert AB magnitude to Jansky, select those with an AB magntiude larger than
 # either 17 ( low end of spectrum) , or 21.8 median
@@ -29,25 +29,62 @@ cat_mask = (combined_catalog['fIRAC1_1'] >= (np.mean(combined_catalog['fIRAC1_1'
 # Another is > 2 uJy from: https://arxiv.org/pdf/1212.1234.pdf which is about < 41 mag according to the other one
 # But they say the limit for IRAC is 1 uJy which corresponds to 23.9 magAB
 
+#print(combined_catalog['fIRAC1_1'])
 
+def jansky_to_ab(jansky):
+    return -2.5 * np.log10(jansky) + 8.9
 
+jansky_to_ab_limit = jansky_to_ab(3631)
 
-combined_catalog = combined_catalog[cat_mask]
+print(jansky_to_ab_limit)
+print(np.mean(combined_catalog['fIRAC1_1']))
+print(jansky_to_ab(np.median(combined_catalog['fIRAC1_1'])))
+
+low_irac_mask = (jansky_to_ab(combined_catalog['fIRAC1_1']) <= 22.8)
+high_irac_mask = (jansky_to_ab(combined_catalog['fIRAC1_1']) <= 24.5)
+
+print("Low Mask: {}".format(len(combined_catalog[low_irac_mask])))
+print("High Mask: {}".format(len(combined_catalog[high_irac_mask])))
+print("No Mask: {}".format(len(combined_catalog)))
+print("Mean Mask: {}".format(len(combined_catalog[cat_mask])))
+combined_catalog = combined_catalog[low_irac_mask]
+
 for option_name in ["all_closest"]:
     for separation in [2.]:
-        for snrlimit in [10., 9.5, 9.0, 8.5, 8., 7.5]:
+        for snrlimit in [10., 9.5, 9.0, 8.5, 8.]:
             aspecs_table, aspecs_catalog, spec_catalog, no_spec_catalog = match_lines_to_catalog(aspecs_lines, combined_catalog, method=option_name, max_sep=separation, snr_limit=snrlimit)
-            save_catalog(aspecs_catalog, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/aspecs_zco_IRAC1STD_catalog_SN{}_method_{}_Sep_{}".format(snrlimit, option_name, separation))
-            ascii.write(aspecs_table, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/IRAC1STD_ASPECS_Line_Candidates_Only_Matched_{}_Sep_{}_SN_{}.txt".format(option_name, separation, snrlimit), format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
+            save_catalog(aspecs_catalog, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/22.8/22.8aspecs_zco_IRAC1STD_catalog_SN{}_method_{}_Sep_{}".format(snrlimit, option_name, separation))
+            ascii.write(aspecs_table, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/22.8/IRAC22.8_ASPECS_Line_Candidates_Only_Matched_{}_Sep_{}_SN_{}.txt".format(option_name, separation, snrlimit), format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
                                                                                                                                                                                                          'Delta Z': '%2.3f', 'Delta V (Km/s)': '%4.3f', 'Km/s': '%4.3f', 'Separation (Arcsecond)': '%2.4f', 'S/N': '%2.3f', 'Flux Density at Peak (Jy/beam)': '%2.4f',
                                                                                                                                                                                                          'Integrated Flux (Jy km/s)': '%2.4f', 'Cosmic Volume (Mpc^3)': '%8.0f', 'Log(M*)': '%2.4f', 'Error Log(M*)': '%2.4f', 'Log(SFR)': '%2.4f', 'Error Log(SFR)': '%2.4f'})
-            ascii.write(aspecs_table, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/IRAC1STD_ASPECS_Line_Candidates_{}_Sep_{}_SN_{}.ecsv".format(option_name, separation, snrlimit), format='ecsv')
-            plot_mstar_vs_sfr_specz(spec_catalog, combined_catalog, no_spec_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/IRAC1STD_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
+            ascii.write(aspecs_table, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/22.8/IRAC22.8_ASPECS_Line_Candidates_{}_Sep_{}_SN_{}.ecsv".format(option_name, separation, snrlimit), format='ecsv')
+            plot_mstar_vs_sfr_specz(spec_catalog, combined_catalog, no_spec_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/22.8/IRAC22.8_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
             combined_catalog = perform_cuts(combined_catalog)
-            plot_mstar_vs_sfr(spec_catalog, combined_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/IRAC1STD_0nlySpecZ_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
-            plot_mstar_vs_sfr_specz(spec_catalog, combined_catalog, no_spec_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/IRAC1STD_Cleaned_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
+            plot_mstar_vs_sfr(spec_catalog, combined_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/22.8/IRAC22.8_0nlySpecZ_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
+            plot_mstar_vs_sfr_specz(spec_catalog, combined_catalog, no_spec_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/22.8/IRAC22.8_Cleaned_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
 
             combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
             # Only Select IRAC Sources above... Median?
-            cat_mask = (combined_catalog['fIRAC1_1'] >= (np.mean(combined_catalog['fIRAC1_1']) + 1*np.std(combined_catalog['fIRAC1_1'])))
-            combined_catalog = combined_catalog[cat_mask]
+            combined_catalog = combined_catalog[low_irac_mask]
+
+
+combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
+# Only Select IRAC Sources above... Median?
+combined_catalog = combined_catalog[high_irac_mask]
+for option_name in ["all_closest"]:
+    for separation in [2.]:
+        for snrlimit in [10., 9.5, 9.0, 8.5, 8.]:
+            aspecs_table, aspecs_catalog, spec_catalog, no_spec_catalog = match_lines_to_catalog(aspecs_lines, combined_catalog, method=option_name, max_sep=separation, snr_limit=snrlimit)
+            save_catalog(aspecs_catalog, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/24.5/24.5aspecs_zco_IRAC1STD_catalog_SN{}_method_{}_Sep_{}".format(snrlimit, option_name, separation))
+            ascii.write(aspecs_table, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/24.5/IRAC24.5_ASPECS_Line_Candidates_Only_Matched_{}_Sep_{}_SN_{}.txt".format(option_name, separation, snrlimit), format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
+                                                                                                                                                                                                                                                                  'Delta Z': '%2.3f', 'Delta V (Km/s)': '%4.3f', 'Km/s': '%4.3f', 'Separation (Arcsecond)': '%2.4f', 'S/N': '%2.3f', 'Flux Density at Peak (Jy/beam)': '%2.4f',
+                                                                                                                                                                                                                                                                  'Integrated Flux (Jy km/s)': '%2.4f', 'Cosmic Volume (Mpc^3)': '%8.0f', 'Log(M*)': '%2.4f', 'Error Log(M*)': '%2.4f', 'Log(SFR)': '%2.4f', 'Error Log(SFR)': '%2.4f'})
+            ascii.write(aspecs_table, "/home/jacob/Development/Wide_ASPECS/IRAC_Output/24.5/IRAC24.5_ASPECS_Line_Candidates_{}_Sep_{}_SN_{}.ecsv".format(option_name, separation, snrlimit), format='ecsv')
+            plot_mstar_vs_sfr_specz(spec_catalog, combined_catalog, no_spec_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/24.5/IRAC24.5_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
+            combined_catalog = perform_cuts(combined_catalog)
+            plot_mstar_vs_sfr(spec_catalog, combined_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/24.5/IRAC24.5_0nlySpecZ_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
+            plot_mstar_vs_sfr_specz(spec_catalog, combined_catalog, no_spec_catalog, snr_limit=snrlimit, filename="/home/jacob/Development/Wide_ASPECS/IRAC_Output/24.5/IRAC24.5_Cleaned_Mstar_vs_SFR_{}_sep_{}_sn_{}.png".format(option_name, separation, snrlimit))
+
+            combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
+            # Only Select IRAC Sources above... Median?
+            combined_catalog = combined_catalog[high_irac_mask]

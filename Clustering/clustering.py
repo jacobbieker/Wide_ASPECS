@@ -7,6 +7,19 @@ from astropy.table import Table, hstack, join
 from astropy.stats import histogram
 from scipy.spatial.distance import cdist
 
+def calc_gamma(beta):
+    return 1 + beta
+
+def calculate_r0(a, beta):
+    """
+    Calculates r0 given a beta and a, along with other things
+
+    :param a:
+    :param beta:
+    :return:
+    """
+    raise NotImplementedError
+
 def load_table(ascii_table, header=0, start=1):
     ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
     return ascii_table_data
