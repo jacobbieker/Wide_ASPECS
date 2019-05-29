@@ -338,7 +338,7 @@ def create_multi_overlap_cutout_cube(ax, wcs_header, image, aspecs, matches, ra_
     co = Cutout2D(image, center, size=size * u.arcsec, wcs=w)
     ax.imshow(co.data, origin='lower', cmap='gray')
     # Now show the contours from Wide ASPECS
-    ax.contour(subcube.value/rmscube, levels=np.linspace(-2,12,14), colors='white', alpha=0.5)
+    ax.contour(subcube.value/rmscube, levels=[3,5,7,9,11], colors='white', alpha=0.5)
 
     return ax
 
@@ -428,7 +428,7 @@ z_s = aspecs_lines['Z (CO)']
 rob_z = aspecs_lines['Z (Matched)']
 
 # Now plot all Radio Sources and see what is around them for all ones without a match
-cubes = ["A1","A2", "B1", "B2", "C1", "C2"]
+cubes = ["A1","A2", "B1", "B2", "C1"]
 
 cube_range = []
 
@@ -496,7 +496,7 @@ for index, row in enumerate(aspecs_lines):
             create_multi_overlap_ax_cutout_cube(ax, fits_names[third_index], image,
                                            catalog_coordinate=coords[index],
                                            matches=[index], ra_dec=coords, subcube=sub_cube, rmscube=rms_noise)
-        f.savefig(str("May_Output/matched/ASPECS_Cutout_NoCounter_Sep1.0_SN9.0_" + str(index) + ".png"), dpi=300)
+        f.savefig(str("Final_Output/matched/ASPECS_Cutout_NoCounter_Sep1.0_SN9.0_" + str(index) + ".png"), dpi=300)
         f.clf()
         plt.close()
 

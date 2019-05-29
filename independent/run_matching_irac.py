@@ -15,9 +15,23 @@ aspecs_lines = load_table("/home/jacob/Development/Wide_ASPECS/independent/line_
 
 special_ones = ["/home/jacob/Development/Wide_ASPECS/independent/matches/sn59_sep15.fits", "/home/jacob/Development/Wide_ASPECS/independent/matches/sn6_sep15.fits"]
 
-
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 cat_mask = (combined_catalog['fIRAC1_1'] >= (np.mean(combined_catalog['fIRAC1_1']) + 1*np.std(combined_catalog['fIRAC1_1'])))
+
+# Need to convert AB magnitude to Jansky, select those with an AB magntiude larger than
+# either 17 ( low end of spectrum) , or 21.8 median
+# Detection Limit is 24.5 magAB
+# Decarli uses those selected galaxies
+# mAB= 8.9−2.5 log(F) from : https://arxiv.org/pdf/1609.08772.pdf where F is in Jansky
+# Same group assumes mag_3.6um < 26, above is undetected, potential < 25.3 as well
+# mag 19.3-22.8 for m_3.6 for 3.6 um selected catalog as training sample
+
+# Another is > 2 uJy from: https://arxiv.org/pdf/1212.1234.pdf which is about < 41 mag according to the other one
+# But they say the limit for IRAC is 1 uJy which corresponds to 23.9 magAB
+
+
+
+
 combined_catalog = combined_catalog[cat_mask]
 for option_name in ["all_closest"]:
     for separation in [2.]:
