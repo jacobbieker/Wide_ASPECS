@@ -15,7 +15,7 @@ transitions = {"1-0": [0.0030, 0.3694, 115.271, 0.2801, 89],
                "3-2": [2.0088, 3.1080, 345.796, 2.6129, 3363],
                "4-3": [3.0115, 4.4771, 461.041, 3.8030, 4149], }
 
-transitions = {"1-0": [0.0030, 0.3694, 115.271, 0.2801, 89],
+transitions1 = {"1-0": [0.0030, 0.3694, 115.271, 0.2801, 89],
                "2-1": [1.0059, 1.7387, 230.538, 1.4277, 1920],
                "3-2": [2.0088, 3.1080, 345.796, 2.6129, 3363],
                "4-3": [3.0115, 4.4771, 461.041, 3.8030, 4149],
@@ -493,7 +493,6 @@ def match_to_co_line(single_line, max_redshift=0.3, line_coords=None):
     """
     estimated_transition, estimated_z = get_estimated_z(single_line['rfreq'])
     if estimated_z < 0.4 or 1.1 <= estimated_z <= 1.8 or 2.2 < estimated_z < 4.4:
-        # TODO Get the MS, rest_ghs, delta_z etc.
         rest_frame_ghz = convert_to_rest_frame_ghz(estimated_z, single_line['rfreq'])
         delta_z, matched_key = get_delta_z(estimated_z, rest_frame_ghz)
         if np.abs(delta_z) <= max_redshift:
@@ -616,6 +615,11 @@ def get_estimated_z(ghz):
     """
     Estimate the CO line based on Wide-ASPECS one, (3-2), z > 2 or higher J, calculate possible Z's and find which Z is closest
     to the <z> value from Wide ASPECS
+
+    Get it from doing the difference times the inverse of the volume of space it looks at
+    Smallest one then is the one to choose, as long as its within the z limit
+
+
     :param ghz:
     :return: transition, estimated_z
     """
@@ -624,12 +628,14 @@ def get_estimated_z(ghz):
         # Convert ghz to rest_ghz of the Z value, otherwise always closest to lowest one
         sghz = convert_to_rest_frame_ghz(values[3], ghz)
         delta_z, matched_key = get_delta_z(values[3], sghz)
-        differences.append((matched_key, delta_z))
+        # Now multiply by volume covered to get likely one
+        vol_prop_delta = delta_z * (1/values[-1])
+        differences.append((matched_key, delta_z, vol_prop_delta))
 
-    min_diff = np.min([np.abs(i[1]) for i in differences])
+    min_diff = np.min([np.abs(i[2]) for i in differences])
 
     for index, element in enumerate(differences):
-        if np.isclose(np.abs(element[1]), min_diff):
+        if np.isclose(np.abs(element[2]), min_diff):
             return element[0], transitions[element[0]][3]
 
 

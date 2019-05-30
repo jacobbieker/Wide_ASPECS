@@ -6,24 +6,125 @@ from astropy.coordinates import SkyCoord, Angle, SkyOffsetFrame, ICRS, Distance
 from astropy.table import Table, hstack, join
 from astropy.stats import histogram
 from scipy.spatial.distance import cdist
+from scipy.special import gamma
+from astropy.cosmology import FlatLambdaCDM
+from astropy import constants as const
+cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 
 def calc_gamma(beta):
     return 1 + beta
 
-def calculate_r0(a, beta):
+
+def H_gamma(gam):
+    """
+    Returns H_gamma for the r0 calculation
+    :param gam: gamma
+    :return:
+    """
+    return (gamma(0.5)*gamma(0.5*(gam-1)))/gamma(0.5*gam)
+
+
+def H_z(z):
+    """
+    Calculates H(z)
+    :param z:
+    :return:
+    """
+    return cosmo.H(z)
+
+
+def E_z(z):
+    """
+    Calculates E_z for a given redshift
+    :param z:
+    :return:
+    """
+
+    return H_z(z) / const.c
+
+def Chi(z):
+    """
+    Returns the radial comoving distance, Dc, X in the equation
+    :param z:
+    :return:
+    """
+
+    return cosmo.comoving_distance(z)
+
+
+def redshift_distribution(table, use_matched=False):
+    """
+    Calculates redshift distribution in 0.1 redshift increments for all the sources
+
+    If its noisy with empty bins, then need to make_curve and use that instead
+
+    Get this from the matched ones
+
+
+    :param table:
+    :param bins:
+    :return: A curve that captures the redshift distribution of the sample
+    """
+    # Get min and max Z
+
+    min_z = np.min(table['Z (CO)'])
+    max_z = np.max(table['Z (CO)'])
+
+    bins = np.arange(0, max_z+0.1, 0.1)
+    # TODO Check this is okay, or normalize the line to the candidates
+    if use_matched:
+        only_matched = (table['Roberto ID'] > 0)
+    else:
+        only_matched = (table['Roberto ID'] > -1000000)
+    values, bins = np.histogram(table[only_matched]['Z (CO)'], bins=bins)
+    plt.hist(table[only_matched]['Z (CO)'], bins=bins)
+    plt.show()
+
+    return NotImplementedError
+
+def calculate_r0(a, beta, table):
     """
     Calculates r0 given a beta and a, along with other things
 
+    Calculates H_gamma*\frac{}{}
+
     :param a:
     :param beta:
+    :param table: The Astropy Table from the matching that is used to get the
+    Redshift Distribution for the sample
     :return:
     """
+
+    # Convert A to radians to the 1, so need to raise to positive beta
+    # A should be in units of arcseconds
+    a_rad = a.radian ** beta
+
+    # Need to calc redshift distribution
+
+    # Need to calc redshift vector E as a vector for every redshift Ez = Hz/c
+
+    # Need to calculate X -> Dc = DH as a vector for all redshifts too, can use Astropy distance
+    # Radial comoving Distance, so I think all of the comoving distance
+    # http://docs.astropy.org/en/stable/cosmology/
+
     raise NotImplementedError
+
 
 def load_table(ascii_table, header=0, start=1):
     ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
     return ascii_table_data
 
+sn8_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_8.0.ecsv")
+sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_8.5.ecsv")
+sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.0.ecsv")
+sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.5.ecsv")
+
+redshift_distribution(sn8_table)
+redshift_distribution(sn85_table)
+redshift_distribution(sn9_table)
+redshift_distribution(sn95_table)
+
+exit()
 def make_skycoords(source, ra='ra', dec='dec', distance=None):
     """
     Makes and returns a SkyCoord array from given source
