@@ -9,6 +9,11 @@ from scipy.spatial.distance import cdist
 from scipy.special import gamma
 from astropy.cosmology import FlatLambdaCDM
 from astropy import constants as const
+from scipy.interpolate import interp2d, interp1d
+from scipy.stats import norm
+from scipy.optimize import leastsq, curve_fit
+
+import matplotlib.mlab as mlab
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 
 def calc_gamma(beta):
@@ -51,6 +56,14 @@ def Chi(z):
 
     return cosmo.comoving_distance(z)
 
+def round_of_rating(number):
+    """Round a number to the closest half integer.
+    1.5
+    2.5
+    3.0
+    4.0"""
+
+    return round(number * 2) / 2
 
 def redshift_distribution(table, use_matched=False):
     """
@@ -70,16 +83,38 @@ def redshift_distribution(table, use_matched=False):
     min_z = np.min(table['Z (CO)'])
     max_z = np.max(table['Z (CO)'])
 
-    bins = np.arange(0, max_z+0.1, 0.1)
-    # TODO Check this is okay, or normalize the line to the candidates
+    bins = np.arange(0, max_z+0.2, 0.05)
     if use_matched:
         only_matched = (table['Roberto ID'] > 0)
     else:
         only_matched = (table['Roberto ID'] > -1000000)
     values, bins = np.histogram(table[only_matched]['Z (CO)'], bins=bins)
-    plt.hist(table[only_matched]['Z (CO)'], bins=bins)
-    plt.show()
+    print(sum(values))
+    #plt.hist(table[only_matched]['Z (CO)'], bins=bins)
+    #plt.show()
+    bin_centers = 0.5*(bins[1:]+bins[:-1]) # convert to centers
+    mask = (values > 0)
+    interp_values = values[mask]
+    interp_bins = bin_centers[mask]
+    interp_values = np.concatenate((np.asarray([0]), interp_values))
+    interp_bins = np.concatenate((np.asarray([0]), interp_bins))
 
+    def func(x, a, b, c):
+        return a*x**2 + b*x + c
+
+    popt, pcov = curve_fit(func, interp_bins, interp_values)
+
+    xdata = np.linspace(0.1, np.max(interp_bins), 10000)
+    f = interp1d(interp_bins, interp_values, kind='slinear')
+
+    plt.hist(table[only_matched]['Z (CO)'], bins=bins)
+    plt.title("SN > {}".format(round_of_rating(np.min(table['S/N']))))
+    plt.ylabel("Count")
+    plt.xlabel("Redshift (z)")
+    plt.plot(xdata, func(xdata, *popt))
+    plt.plot(xdata, f(xdata))
+    plt.savefig("SN_{}_Redshift_Distribution.png".format(round_of_rating(np.min(table['S/N']))), dpi=300)
+    plt.cla()
     return NotImplementedError
 
 def calculate_r0(a, beta, table):
