@@ -338,7 +338,7 @@ def create_multi_overlap_cutout_cube(ax, wcs_header, image, aspecs, matches, ra_
     co = Cutout2D(image, center, size=size * u.arcsec, wcs=w)
     ax.imshow(co.data, origin='lower', cmap='gray')
     # Now show the contours from Wide ASPECS
-    ax.contour(subcube.value/rmscube, levels=[3,5,7,9,11], colors='white', alpha=0.5)
+    ax.contour(subcube.value/rmscube, levels=[3,5,7,8], colors='white', alpha=0.5)
 
     return ax
 
@@ -406,7 +406,7 @@ def convert_to_rest_frame_ghz(z, ghz):
 #aspecs_lines = Table.read("ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format="ascii", header_start=0, data_start=1)
 
 
-aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/May_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.0.ecsv", format='ascii.ecsv')
+aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_all_closest_Sep_1.0_SN_6.0.ecsv", format='ascii.ecsv')
 
 #sn_cut = 9.5
 
@@ -428,7 +428,7 @@ z_s = aspecs_lines['Z (CO)']
 rob_z = aspecs_lines['Z (Matched)']
 
 # Now plot all Radio Sources and see what is around them for all ones without a match
-cubes = ["A1","A2", "B1", "B2", "C1"]
+cubes = ["A1","A2", "B1", "B2", "C2", "C1"]
 
 cube_range = []
 
