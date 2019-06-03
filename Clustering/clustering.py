@@ -149,17 +149,16 @@ def load_table(ascii_table, header=0, start=1):
     ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
     return ascii_table_data
 
-sn8_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_8.0.ecsv")
-sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_8.5.ecsv")
-sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.0.ecsv")
-sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.5.ecsv")
+#sn8_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_8.0.ecsv")
+#sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_8.5.ecsv")
+#sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.0.ecsv")
+#sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.5.ecsv")
 
-redshift_distribution(sn8_table)
-redshift_distribution(sn85_table)
-redshift_distribution(sn9_table)
-redshift_distribution(sn95_table)
+#redshift_distribution(sn8_table)
+#redshift_distribution(sn85_table)
+#redshift_distribution(sn9_table)
+#redshift_distribution(sn95_table)
 
-exit()
 def make_skycoords(source, ra='ra', dec='dec', distance=None):
     """
     Makes and returns a SkyCoord array from given source
@@ -548,9 +547,9 @@ drs = {}
 rrs = {}
 dist_bns = {}
 dist_binners = {}
+snners = [6.45, 6.3, 6.1, 5.5]
 
-
-for sn_cut in [9.5, 9.0, 8.5, 8.0]:
+for sn_cut in snners:
     real_catalog = load_table("line_search_P3_wa_crop.out")
     real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
@@ -635,7 +634,7 @@ for sn_cut in [9.5, 9.0, 8.5, 8.0]:
 # Now have dictionary of lists of datas
 
 
-def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True,):
+def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True, neg=False):
     """
     Take set of 4 S/N cut lists for DD, DR, and RR and plot a 4 panel plot, has to be same binning for it
     Assumes dd, dr, and rr are all in same order, 9.5, 9.0, 8.5, 8.0 SN
@@ -646,9 +645,12 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True,):
     """
     plt.cla()
     f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all', figsize=(10,10))
-    sn_cut = [9.5,9.0,8.5,8.0]
+    sn_cut = snners
     for index, data_data in enumerate(dd):
-        real_catalog = load_table("line_search_P3_wa_crop.out")
+        if neg:
+            real_catalog = load_table("line_search_N3_wa_crop.out")
+        else:
+            real_catalog = load_table("line_search_P3_wa_crop.out")
         real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
         real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
         omega_w = xi_r(dd[index], dr[index], rr[index], real_catalog, random_catalog)
@@ -686,7 +688,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True,):
             ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error, 5)))
             ax1.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
             ax1.set_xscale("log")
-            ax1.set_title("S/N > 9.5")
+            ax1.set_title("S/N > {}".format(snners[index]))
             #plt.title("Data vs Random")
             ax1.legend(loc='best', fontsize='8')
             ax1.set_ylabel("$\omega(\\theta)$")
@@ -699,7 +701,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True,):
             ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error, 5)))
             ax2.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
             ax2.set_xscale("log")
-            ax2.set_title("S/N > 9.0")
+            ax2.set_title("S/N > {}".format(snners[index]))
             #plt.title("Data vs Random")
             ax2.legend(loc='best', fontsize='8')
             #plt.xlabel("Angular Distance (arcseconds)")
@@ -712,7 +714,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True,):
             ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error, 5)))
             ax3.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
             ax3.set_xscale("log")
-            ax3.set_title("S/N > 8.5")
+            ax3.set_title("S/N > {}".format(snners[index]))
             #plt.title("Data vs Random")
             ax3.legend(loc='best', fontsize='8')
             ax3.set_xlabel("Angular Distance (arcseconds)")
@@ -725,7 +727,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True,):
             ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r', label='Fit: A = {}+-{}'.format(np.round(a,4), np.round(a_error, 5)))
             ax4.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g', label='Pos Fit: A = {}+-{}'.format(np.round(pos_a,4), np.round(pos_a_error,5)))
             ax4.set_xscale("log")
-            ax4.set_title("S/N > 8.0")
+            ax4.set_title("S/N > {}".format(snners[index]))
             #plt.title("Data vs Random")
             ax4.legend(loc='best', fontsize='8')
             #plt.xlabel("Angular Distance (arcseconds)")
@@ -743,11 +745,11 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True,):
     f.align_ylabels()
     f.suptitle("Data vs Random")
     if use_log:
-        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}.png".format(len(distance_bins1)), dpi=300)
+        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), neg), dpi=300)
     else:
-        plt.savefig("final/4Panel_Data_Vs_Random_bin{}.png".format(len(distance_bins1)), dpi=300)
+        plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), neg), dpi=300)
 
-num_ones = len(dds[9.5])
+num_ones = len(dds[snners[2]])
 
 for i in range(num_ones):
     dd_plot = []
@@ -765,5 +767,5 @@ for i in range(num_ones):
     bin_num = len(dd_plot[0])
     distance_bins = dist_bns[bin_num]
     distance_bins1 = dist_binners[bin_num]
-    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1)
-    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1, use_log=False)
+    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1)#, neg=True)
+    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1, use_log=False)#, neg=True)
