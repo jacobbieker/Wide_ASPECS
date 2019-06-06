@@ -495,41 +495,41 @@ def match_to_co_line(single_line, max_redshift=0.3, line_coords=None):
     if estimated_z < 0.4 or 1.1 <= estimated_z <= 1.8 or 2.2 < estimated_z < 4.4:
         rest_frame_ghz = convert_to_rest_frame_ghz(estimated_z, single_line['rfreq'])
         delta_z, matched_key = get_delta_z(estimated_z, rest_frame_ghz)
-        if np.abs(delta_z) <= max_redshift:
-            spec_z = False
-            volume = comoving_volume(transitions[estimated_transition][0], transitions[estimated_transition][1], 52.5)
-            kms = 0#get_kms(single_line['width'], single_line['rfreq'])
-            co_z = get_co_z(single_line['rfreq'], matched_key)
-            delta_v = convert_deltaZ_to_kms(delta_z, co_z)
-            new_row = (np.round(single_line['rra'], 6),
-                       np.round(single_line['rdc'], 6),
-                       -999,
-                       -999,
-                       -999,
-                       single_line['rfreq'],
-                       rest_frame_ghz,
-                       matched_key,
-                       estimated_z,
-                       co_z,
-                       spec_z,
-                       delta_z,
-                       delta_v,
-                       kms,
-                       -999,
-                       single_line['rsnrrbin'],
-                       single_line['rpeak'],
-                       single_line['rflux'],
-                       single_line['width'],
-                       np.round(volume, 3),
-                       -999,
-                       -999,
-                       -999,
-                       -999,
-                       -999)
+        #if np.abs(delta_z) <= max_redshift: No checking for that, as long as delta_z is between acceptable values, choose that, so not biased as much hopefully
+        spec_z = False
+        volume = comoving_volume(transitions[estimated_transition][0], transitions[estimated_transition][1], 52.5)
+        kms = get_kms(single_line['width'], single_line['rfreq'])
+        co_z = get_co_z(single_line['rfreq'], matched_key)
+        delta_v = convert_deltaZ_to_kms(delta_z, co_z)
+        new_row = (np.round(single_line['rra'], 6),
+                   np.round(single_line['rdc'], 6),
+                   -999,
+                   -999,
+                   -999,
+                   single_line['rfreq'],
+                   rest_frame_ghz,
+                   matched_key,
+                   estimated_z,
+                   co_z,
+                   spec_z,
+                   delta_z,
+                   delta_v,
+                   kms,
+                   -999,
+                   single_line['rsnrrbin'],
+                   single_line['rpeak'],
+                   single_line['rflux'],
+                   single_line['width'],
+                   np.round(volume, 3),
+                   -999,
+                   -999,
+                   -999,
+                   -999,
+                   -999)
 
-            return new_row
-        else:
-            return None
+        return new_row
+        #else:
+        #    return None
     else:
         return None
 
@@ -611,6 +611,57 @@ def convert_to_rest_frame_ghz(z, ghz):
     return emitted
 
 
+def get_z_from_ghz(ghz):
+    """
+    Get the Z from the GhZ directly, so that it can be seen if there is a valid transition, with higher Z having higher
+    priority for these things
+
+
+    :param ghz:
+    :return: transition, estimated z
+    """
+
+
+    differences = []
+    for key, values in transitions.items():
+        val_differences = []
+        # Go through each redshift CO transition bin in 1/100 of the Z
+        z_vals = np.arange(start=values[0], stop=values[1], step=0.1)
+        # Potentially have to go through one by one
+        for index, val in enumerate(z_vals):
+            sghz = convert_to_rest_frame_ghz(val, ghz)
+
+            # Now have rest frame GHz for each of the z values
+            delta_z, matched_key = get_delta_z(val, sghz)
+
+            # Since all for same transition, only really need to look at delta_z values
+            # Slightly more likely to be higher Z values in same transition
+            # Ideally calculate cosmic volume per z value and use that for the whole determination of best one
+
+            # Then return best one for each transition
+            try:
+                volume = comoving_volume(z_vals[index-1], z_vals[index], 52.5)
+            except:
+                volume = comoving_volume(0, z_vals[index], 52.5)
+            vol_prop_delta = delta_z * (1/volume)
+            val_differences.append((delta_z, matched_key, val, vol_prop_delta))
+
+        # Now determine closest one for this transition
+        min_diff = np.min([np.abs(i[0]) for i in val_differences])
+        for index, element in enumerate(val_differences):
+            if np.isclose(np.abs(element[0]), min_diff):
+                # Now that getting the best one, include the cosmic volume of the whole redshift range
+                vol_prop_delta = element[0] * (1/values[-1])
+                differences.append((element[1], element[0], element[2], vol_prop_delta))
+
+    # Now do it for all of them
+    min_diff = np.min([np.abs(i[2]) for i in differences])
+
+    for index, element in enumerate(differences):
+        if np.isclose(np.abs(element[2]), min_diff):
+            return element[0], element[2]
+
+
 def get_estimated_z(ghz):
     """
     Estimate the CO line based on Wide-ASPECS one, (3-2), z > 2 or higher J, calculate possible Z's and find which Z is closest
@@ -618,6 +669,9 @@ def get_estimated_z(ghz):
 
     Get it from doing the difference times the inverse of the volume of space it looks at
     Smallest one then is the one to choose, as long as its within the z limit
+
+    Should test all redshifts within the range of each transition, with higher Z's getting higher chance of being
+    right, or actually, just go from GHz to z for the different transitions and see which redshift that would be at
 
 
     :param ghz:

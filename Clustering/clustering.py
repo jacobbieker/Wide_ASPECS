@@ -83,7 +83,7 @@ def redshift_distribution(table, use_matched=False):
     min_z = np.min(table['Z (CO)'])
     max_z = np.max(table['Z (CO)'])
 
-    bins = np.arange(0, max_z+0.2, 0.05)
+    bins = np.arange(0, max_z+0.2, 0.5)
     if use_matched:
         only_matched = (table['Roberto ID'] > 0)
     else:
@@ -108,12 +108,12 @@ def redshift_distribution(table, use_matched=False):
     f = interp1d(interp_bins, interp_values, kind='slinear')
 
     plt.hist(table[only_matched]['Z (CO)'], bins=bins)
-    plt.title("SN > {}".format(round_of_rating(np.min(table['S/N']))))
+    plt.title("SN > {}".format(np.round(np.min(table['S/N']), 2)))
     plt.ylabel("Count")
     plt.xlabel("Redshift (z)")
     plt.plot(xdata, func(xdata, *popt))
     plt.plot(xdata, f(xdata))
-    plt.savefig("SN_{}_Redshift_Distribution.png".format(round_of_rating(np.min(table['S/N']))), dpi=300)
+    plt.savefig("SN_{}_Redshift_Distribution.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
     plt.cla()
     return NotImplementedError
 
@@ -149,16 +149,16 @@ def load_table(ascii_table, header=0, start=1):
     ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
     return ascii_table_data
 
-#sn8_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_8.0.ecsv")
-#sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_8.5.ecsv")
-#sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.0.ecsv")
-#sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_9.5.ecsv")
+#sn8_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.35.ecsv")
+#sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
+#sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
+#sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.25.ecsv")
 
 #redshift_distribution(sn8_table)
 #redshift_distribution(sn85_table)
 #redshift_distribution(sn9_table)
 #redshift_distribution(sn95_table)
-
+#exit()
 def make_skycoords(source, ra='ra', dec='dec', distance=None):
     """
     Makes and returns a SkyCoord array from given source
@@ -342,7 +342,7 @@ def angular_correlation_function(data_catalog, random_catalog):
             data_data = np.concatenate((data_data, sep2d))
     min_dist = np.min(data_data)
     print("Min Distance: {}".format(min_dist))
-    min_dist = 3.
+    min_dist = 13.5
     max_dist = np.max(data_data)
 
     print("Done with Data Data")
@@ -402,11 +402,11 @@ def xi_r(data_array, data_random_array, random_array, real_catalog, random_catal
     # return 2 * (5000/real_catalog.shape[0])*(data_array/data_random_array) - 1
 
     # return 4 * (data_array*random_array)/(data_random_array)**2 - 1
-    print("Data-Data: {}".format(data_array))
-    print("RR: {}".format(random_array))
-    print("DR: {}".format(data_random_array))
-    print("DD/RR: {}".format(data_array/random_array))
-    print("DR/RR: {}".format(data_random_array/random_array))
+    #print("Data-Data: {}".format(data_array))
+    #print("RR: {}".format(random_array))
+    #print("DR: {}".format(data_random_array))
+    #print("DD/RR: {}".format(data_array/random_array))
+    #print("DR/RR: {}".format(data_random_array/random_array))
     return (data_array / random_array) - 2 * (data_random_array / random_array) + 1
 
 
@@ -465,8 +465,12 @@ errfunc = lambda p, x, y, err: (y - fitfunc(p, x)) / err
 pinit = [1.0]
 
 from scipy.optimize import curve_fit
+negative = False
 num_points = 7500
-real_catalog = load_table("line_search_P3_wa_crop.out")
+if negative:
+    real_catalog = load_table("line_search_N3_wa_crop.out")
+else:
+    real_catalog = load_table("line_search_P3_wa_crop.out")
 real_catalog = real_catalog[real_catalog['rsnrrbin'] > 8.5]
 real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
 np.random.seed(5227)
@@ -547,10 +551,13 @@ drs = {}
 rrs = {}
 dist_bns = {}
 dist_binners = {}
-snners = [6.45, 6.3, 6.1, 5.5]
+snners = [6.25, 6.1, 5.9, 5.5]
 
 for sn_cut in snners:
-    real_catalog = load_table("line_search_P3_wa_crop.out")
+    if negative:
+        real_catalog = load_table("line_search_N3_wa_crop.out")
+    else:
+        real_catalog = load_table("line_search_P3_wa_crop.out")
     real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
     print(real_catalog.shape)
@@ -634,7 +641,7 @@ for sn_cut in snners:
 # Now have dictionary of lists of datas
 
 
-def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True, neg=False):
+def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
     """
     Take set of 4 S/N cut lists for DD, DR, and RR and plot a 4 panel plot, has to be same binning for it
     Assumes dd, dr, and rr are all in same order, 9.5, 9.0, 8.5, 8.0 SN
@@ -647,7 +654,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True, neg=False
     f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all', figsize=(10,10))
     sn_cut = snners
     for index, data_data in enumerate(dd):
-        if neg:
+        if negative:
             real_catalog = load_table("line_search_N3_wa_crop.out")
         else:
             real_catalog = load_table("line_search_P3_wa_crop.out")
@@ -745,9 +752,9 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True, neg=False
     f.align_ylabels()
     f.suptitle("Data vs Random")
     if use_log:
-        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), neg), dpi=300)
+        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), negative), dpi=300)
     else:
-        plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), neg), dpi=300)
+        plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), negative), dpi=300)
 
 num_ones = len(dds[snners[2]])
 
@@ -767,5 +774,5 @@ for i in range(num_ones):
     bin_num = len(dd_plot[0])
     distance_bins = dist_bns[bin_num]
     distance_bins1 = dist_binners[bin_num]
-    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1)#, neg=True)
-    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1, use_log=False)#, neg=True)
+    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1)
+    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1, use_log=False)

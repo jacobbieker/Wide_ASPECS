@@ -19,7 +19,7 @@ special_ones = ["/home/jacob/Development/Wide_ASPECS/independent/matches/sn59_se
 combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 for option_name in ["all_closest"]:
     for separation in [1.0]:
-        for snrlimit in [6.85, 6.75, 6.65, 6.55, 6.45,6.35,6.25,6.15]:
+        for snrlimit in [6.85, 6.75, 6.65, 6.55, 6.45,6.35,6.25,6.15, 6.0, 5.85, 5.5, 5.0]:
             aspecs_table, aspecs_catalog, spec_catalog, no_spec_catalog = match_lines_to_catalog(aspecs_lines, combined_catalog, method=option_name, max_sep=separation, snr_limit=snrlimit)
             save_catalog(aspecs_catalog, "/home/jacob/Development/Wide_ASPECS/Final_Output/aspecs_zco_catalog_SN{}_method_{}_Sep_{}".format(snrlimit, option_name, separation))
             ascii.write(aspecs_table, "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_Only_Matched_{}_Sep_{}_SN_{}.txt".format(option_name, separation, snrlimit), format='fixed_width', bookend=False, delimiter=None, formats={'RA (J2000)': '%2.6f', 'DEC (J2000)': '%2.6f', 'Roberto RA': '%2.6f', 'Roberto DEC': '%2.6f','Observed CO (GHz)': '%3.4f', 'Restframe CO (GHz)': '%3.4f', 'Z (CO)': '%2.3f', 'Z (Matched)': '%2.3f',
