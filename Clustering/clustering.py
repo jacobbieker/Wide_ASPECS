@@ -83,7 +83,7 @@ def redshift_distribution(table, use_matched=False):
     min_z = np.min(table['Z (CO)'])
     max_z = np.max(table['Z (CO)'])
 
-    bins = np.arange(0, max_z+0.2, 0.5)
+    bins = np.arange(1.5, 3.5, 0.5)
     if use_matched:
         only_matched = (table['Roberto ID'] > 0)
     else:
@@ -115,7 +115,7 @@ def redshift_distribution(table, use_matched=False):
     plt.plot(xdata, f(xdata))
     plt.savefig("SN_{}_Redshift_Distribution.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
     plt.cla()
-    return NotImplementedError
+    return f, xdata
 
 def calculate_r0(a, beta, table):
     """
@@ -135,14 +135,37 @@ def calculate_r0(a, beta, table):
     a_rad = a.radian ** beta
 
     # Need to calc redshift distribution
+    # Got that from the linear interpolation
+    z_dist_func, zs = redshift_distribution(table)
 
     # Need to calc redshift vector E as a vector for every redshift Ez = Hz/c
+    Ez = E_z(zs)
 
     # Need to calculate X -> Dc = DH as a vector for all redshifts too, can use Astropy distance
     # Radial comoving Distance, so I think all of the comoving distance
     # http://docs.astropy.org/en/stable/cosmology/
 
-    raise NotImplementedError
+    X = Chi(zs)
+
+    # So now have everything to get r0
+    # Divide over the equation to have r0 on its own so
+    # But write parts in normal Equation 16 order here
+    # Need Integral here
+    top = z_dist_func(zs) * Ez * X**(1-calc_gamma(beta))
+
+    # Need integral here
+    bottom = z_dist_func(zs)**2
+
+    # Front
+    front = H_gamma(calc_gamma(beta))
+
+    # Now put together with swap to other side
+
+    r0_gamma = a_rad * (bottom/(top*front))
+
+    r0 = r0_gamma**(-1.*calc_gamma(beta))
+
+    return r0
 
 
 def load_table(ascii_table, header=0, start=1):
@@ -465,7 +488,7 @@ errfunc = lambda p, x, y, err: (y - fitfunc(p, x)) / err
 pinit = [1.0]
 
 from scipy.optimize import curve_fit
-negative = False
+negative = True
 num_points = 7500
 if negative:
     real_catalog = load_table("line_search_N3_wa_crop.out")

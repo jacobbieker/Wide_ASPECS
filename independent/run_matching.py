@@ -11,7 +11,11 @@ from astropy.table import Table, hstack, join
 initial_catalog = Table.read("/home/jacob/Development/Wide_ASPECS/independent/jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits", format='fits')  # hdu_list[1].data
 roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')
 
-aspecs_lines = load_table("line_search_P3_wa_crop.out")
+negative = False
+if negative:
+    aspecs_lines = load_table("line_search_N3_wa_crop.out")
+else:
+    aspecs_lines = load_table("line_search_P3_wa_crop.out")
 
 special_ones = ["/home/jacob/Development/Wide_ASPECS/independent/matches/sn59_sep15.fits", "/home/jacob/Development/Wide_ASPECS/independent/matches/sn6_sep15.fits"]
 
