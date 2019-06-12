@@ -35,6 +35,7 @@ def H_z(z):
     :param z:
     :return:
     """
+    # return np.sqrt(cosmo.H0**2 * (0.3*(1+z)**3 + 0.7))
     return cosmo.H(z)
 
 
@@ -44,8 +45,7 @@ def E_z(z):
     :param z:
     :return:
     """
-
-    return H_z(z) / const.c
+    return H_z(z) / const.c.to(u.km/u.s)
 
 def Chi(z):
     """
@@ -133,7 +133,7 @@ def calculate_r0(a, beta, table):
 
     # Convert A to radians to the 1, so need to raise to positive beta
     # A should be in units of arcseconds
-    a_rad = a.radian ** beta
+    a_rad = a.radian ** (-1.*beta)
 
     print(a_rad)
     # Need to calc redshift distribution
@@ -157,7 +157,7 @@ def calculate_r0(a, beta, table):
     # Need Integral here
 
     # Need to do elementwise multiplication of all of these together, then sum in integral
-    top = z_dist_func(zs) * z_dist_func(zs) * Ez * X**(1-calc_gamma(beta))
+    top = z_dist_func(zs) * z_dist_func(zs) * Ez * X**(0.8)
     diff = zs[1] - zs[0]
     print("Top")
     print(top)
@@ -181,10 +181,12 @@ def calculate_r0(a, beta, table):
     print(top)
     print(front)
 
+    print("Top/Bottom*front")
+    print(front*(top/bottom))
+
     r0_gamma = a_rad * (bottom/top) * (1/front)
-
-    r0 = r0_gamma**(-1.*calc_gamma(beta))
-
+    print(r0_gamma)
+    r0 = r0_gamma**(-1.8)
     return r0
 
 
@@ -196,8 +198,8 @@ sn8_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_
 #sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
 #sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
 #sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.25.ecsv")
-print(calculate_r0(Angle(0.0005 * u.deg), 0.8, sn8_table))
-#redshift_distribution(sn8_table)
+redshift_distribution(sn8_table)
+print(calculate_r0(Angle(0.0005 * u.arcsecond), 0.8, sn8_table))
 #redshift_distribution(sn85_table)
 #redshift_distribution(sn9_table)
 #redshift_distribution(sn95_table)
