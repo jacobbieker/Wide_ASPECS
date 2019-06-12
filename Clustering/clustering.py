@@ -17,7 +17,7 @@ import matplotlib.mlab as mlab
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 
 def calc_gamma(beta):
-    return 1 + beta
+    return beta + 1
 
 
 def H_gamma(gam):
@@ -36,6 +36,7 @@ def H_z(z):
     :return:
     """
     # return np.sqrt(cosmo.H0**2 * (0.3*(1+z)**3 + 0.7))
+    # Returns the same as the equation above from the paper
     return cosmo.H(z)
 
 
@@ -157,36 +158,21 @@ def calculate_r0(a, beta, table):
     # Need Integral here
 
     # Need to do elementwise multiplication of all of these together, then sum in integral
-    top = z_dist_func(zs) * z_dist_func(zs) * Ez * X**(0.8)
+    chi_pow = 1 - calc_gamma(beta)
+    top = z_dist_func(zs) * z_dist_func(zs) * Ez * np.power(X, chi_pow)
     diff = zs[1] - zs[0]
-    print("Top")
-    print(top)
-    print("Top Integrand")
     top_integrand = diff * sum(top)
     top = top_integrand
     # Need integral here
     bottom = z_dist_func(zs)**2
-    print("Bottom")
-    print(bottom)
-    print("Bottom Integrated")
-    bottom_integral = diff * sum(bottom)
-    bottom = bottom_integral
+    bottom_integral = diff * sum(z_dist_func(zs))
+    bottom = bottom_integral**2
     # Front
     front = H_gamma(calc_gamma(beta))
-    print("Front")
-    print(front)
     # Now put together with swap to other side
-    print("Top, Bottom, Front")
-    print(bottom)
-    print(top)
-    print(front)
-
-    print("Top/Bottom*front")
-    print(front*(top/bottom))
-
     r0_gamma = a_rad * (bottom/top) * (1/front)
     print(r0_gamma)
-    r0 = r0_gamma**(-1.8)
+    r0 = r0_gamma**(1/calc_gamma(beta))
     return r0
 
 
