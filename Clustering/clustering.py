@@ -117,6 +117,7 @@ def redshift_distribution(table, use_matched=False):
     plt.cla()
     return f, xdata
 
+
 def calculate_r0(a, beta, table):
     """
     Calculates r0 given a beta and a, along with other things
@@ -134,34 +135,53 @@ def calculate_r0(a, beta, table):
     # A should be in units of arcseconds
     a_rad = a.radian ** beta
 
+    print(a_rad)
     # Need to calc redshift distribution
     # Got that from the linear interpolation
     z_dist_func, zs = redshift_distribution(table)
 
     # Need to calc redshift vector E as a vector for every redshift Ez = Hz/c
     Ez = E_z(zs)
-
+    print("Ez")
+    print(Ez)
     # Need to calculate X -> Dc = DH as a vector for all redshifts too, can use Astropy distance
     # Radial comoving Distance, so I think all of the comoving distance
     # http://docs.astropy.org/en/stable/cosmology/
 
     X = Chi(zs)
-
+    print("X")
+    print(X)
     # So now have everything to get r0
     # Divide over the equation to have r0 on its own so
     # But write parts in normal Equation 16 order here
     # Need Integral here
-    top = z_dist_func(zs) * Ez * X**(1-calc_gamma(beta))
 
+    # Need to do elementwise multiplication of all of these together, then sum in integral
+    top = z_dist_func(zs) * z_dist_func(zs) * Ez * X**(1-calc_gamma(beta))
+    diff = zs[1] - zs[0]
+    print("Top")
+    print(top)
+    print("Top Integrand")
+    top_integrand = diff * sum(top)
+    top = top_integrand
     # Need integral here
     bottom = z_dist_func(zs)**2
-
+    print("Bottom")
+    print(bottom)
+    print("Bottom Integrated")
+    bottom_integral = diff * sum(bottom)
+    bottom = bottom_integral
     # Front
     front = H_gamma(calc_gamma(beta))
-
+    print("Front")
+    print(front)
     # Now put together with swap to other side
+    print("Top, Bottom, Front")
+    print(bottom)
+    print(top)
+    print(front)
 
-    r0_gamma = a_rad * (bottom/(top*front))
+    r0_gamma = a_rad * (bottom/top) * (1/front)
 
     r0 = r0_gamma**(-1.*calc_gamma(beta))
 
@@ -172,16 +192,16 @@ def load_table(ascii_table, header=0, start=1):
     ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
     return ascii_table_data
 
-#sn8_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.35.ecsv")
+sn8_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
 #sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
 #sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
 #sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.25.ecsv")
-
+print(calculate_r0(Angle(0.0005 * u.deg), 0.8, sn8_table))
 #redshift_distribution(sn8_table)
 #redshift_distribution(sn85_table)
 #redshift_distribution(sn9_table)
 #redshift_distribution(sn95_table)
-#exit()
+exit()
 def make_skycoords(source, ra='ra', dec='dec', distance=None):
     """
     Makes and returns a SkyCoord array from given source
