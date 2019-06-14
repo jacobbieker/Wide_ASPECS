@@ -12,6 +12,7 @@ from astropy.cosmology import FlatLambdaCDM
 from astropy import constants as const
 from scipy.interpolate import interp2d, interp1d
 from scipy.stats import norm
+from astropy import modeling
 from scipy.optimize import leastsq, curve_fit
 
 import matplotlib.mlab as mlab
@@ -113,6 +114,11 @@ def redshift_distribution(table, use_matched=False):
     xdata = np.linspace(0.1, np.max(interp_bins), 10000)
     f = interp1d(interp_bins, interp_values, kind='slinear')
 
+    # Fit Gaussian
+    fitter = modeling.fitting.LevMarLSQFitter()
+    model = modeling.models.Gaussian1D()   # depending on the data you need to give some initial values
+    fitted_model = fitter(model, interp_bins, interp_values)
+    plt.plot(xdata, fitted_model(xdata))
     values, _, _ = plt.hist(table[only_matched]['Z (CO)'], bins=bins)
     plt.title("SN > {}".format(np.round(np.min(table['S/N']), 2)))
     plt.ylabel("Count")
@@ -124,17 +130,17 @@ def redshift_distribution(table, use_matched=False):
     t = Table()
     t['Z'] = Column(xdata, description='Redshift')
     t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
-    ascii.write(t, "redshift_distribution_interpolated_density.txt")
+    ascii.write(t, "redshift_distribution_interpolated.txt")
 
     t = Table()
     t['Z'] = Column(bin_centers, description='Redshift')
     t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
-    ascii.write(t, "redshift_distribution_points_density.txt")
+    ascii.write(t, "redshift_distribution_points.txt")
 
-    return f, xdata
+    return f, xdata, fitted_model
 
 
-def calculate_r0(a, beta, table):
+def calculate_r0(a, beta, table, use_gauss=False):
     """
     Calculates r0 given a beta and a, along with other things
 
@@ -152,7 +158,7 @@ def calculate_r0(a, beta, table):
     a_rad = a.radian ** (beta)
     # Need to calc redshift distribution
     # Got that from the linear interpolation
-    z_dist_func, zs = redshift_distribution(table)
+    z_dist_func, zs, gaussian = redshift_distribution(table)
 
     # Need to calc redshift vector E as a vector for every redshift Ez = Hz/c
     Ez = E_z(zs)
@@ -168,12 +174,18 @@ def calculate_r0(a, beta, table):
 
     # Need to do elementwise multiplication of all of these together, then sum in integral
     chi_pow = 1 - calc_gamma(beta)
-    top = z_dist_func(zs) * z_dist_func(zs) * Ez * np.power(X, chi_pow)
+    if use_gauss:
+        top = gaussian(zs) * gaussian(zs) * Ez * np.power(X, chi_pow)
+    else:
+        top = z_dist_func(zs) * z_dist_func(zs) * Ez * np.power(X, chi_pow)
     diff = zs[1] - zs[0]
     top_integrand = diff * sum(top)
     top = top_integrand
     # Need integral here
-    bottom_integral = diff * sum(z_dist_func(zs))
+    if use_gauss:
+        bottom_integral = diff * sum(gaussian(zs))
+    else:
+        bottom_integral = diff * sum(z_dist_func(zs))
     bottom = bottom_integral ** 2
     # Front
     front = H_gamma(calc_gamma(beta))
@@ -196,6 +208,7 @@ sn8_table = Table.read(
 # sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
 sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.25.ecsv")
 print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table))
+print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table, use_gauss=True))
 # redshift_distribution(sn85_table)
 # redshift_distribution(sn9_table)
 # redshift_distribution(sn95_table)
@@ -510,7 +523,7 @@ pinit = [1.0]
 
 from scipy.optimize import curve_fit
 
-negative = True
+negative = False
 num_points = 7500
 if negative:
     real_catalog = load_table("line_search_N3_wa_crop.out")
@@ -730,9 +743,9 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         else:
             real_catalog = load_table("line_search_P3_wa_crop.out")
         if negative:
-            open_file = open("density_negative_r0_bin{}.txt".format(len(data_data)), "a")
+            open_file = open("negative_r0_bin{}.txt".format(len(data_data)), "a")
         else:
-            open_file = open("density_positive_r0_bin{}.txt".format(len(data_data)), "a")
+            open_file = open("positive_r0_bin{}.txt".format(len(data_data)), "a")
         real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
         real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
         omega_w = xi_r(dd[index], dr[index], rr[index], real_catalog, random_catalog)
@@ -775,6 +788,13 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
             open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+
+            open_file.write("Gauss A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("GaussA+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
             ax1.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -797,6 +817,13 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
             open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+
+            open_file.write("Gauss A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("GaussA+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
             ax2.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -819,6 +846,13 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
             open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+
+            open_file.write("Gauss A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("GaussA+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
             ax3.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -841,6 +875,13 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
             open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+
+            open_file.write("Gauss A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("GaussA+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
             ax4.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
