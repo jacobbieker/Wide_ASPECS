@@ -3,10 +3,11 @@ import matplotlib.pyplot as plt
 import astropy.units as u
 from spectral_cube import SpectralCube
 from astropy.coordinates import SkyCoord, Angle, SkyOffsetFrame, ICRS, Distance
-from astropy.table import Table, hstack, join
+from astropy.table import Table, hstack, join, Column
 from astropy.stats import histogram
 from scipy.spatial.distance import cdist
 from scipy.special import gamma
+from astropy.io import ascii
 from astropy.cosmology import FlatLambdaCDM
 from astropy import constants as const
 from scipy.interpolate import interp2d, interp1d
@@ -95,7 +96,6 @@ def redshift_distribution(table, use_matched=False):
     else:
         only_matched = (table['Roberto ID'] > -1000000)
     values, bins = np.histogram(table[only_matched]['Z (CO)'], bins=bins)
-    print(sum(values))
     # plt.hist(table[only_matched]['Z (CO)'], bins=bins)
     # plt.show()
     bin_centers = 0.5 * (bins[1:] + bins[:-1])  # convert to centers
@@ -113,7 +113,7 @@ def redshift_distribution(table, use_matched=False):
     xdata = np.linspace(0.1, np.max(interp_bins), 10000)
     f = interp1d(interp_bins, interp_values, kind='slinear')
 
-    plt.hist(table[only_matched]['Z (CO)'], bins=bins)
+    values, _, _ = plt.hist(table[only_matched]['Z (CO)'], bins=bins)
     plt.title("SN > {}".format(np.round(np.min(table['S/N']), 2)))
     plt.ylabel("Count")
     plt.xlabel("Redshift (z)")
@@ -121,6 +121,16 @@ def redshift_distribution(table, use_matched=False):
     plt.plot(xdata, f(xdata))
     plt.savefig("SN_{}_Redshift_Distribution.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
     plt.cla()
+    t = Table()
+    t['Z'] = Column(xdata, description='Redshift')
+    t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
+    ascii.write(t, "redshift_distribution_interpolated_density.txt")
+
+    t = Table()
+    t['Z'] = Column(bin_centers, description='Redshift')
+    t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
+    ascii.write(t, "redshift_distribution_points_density.txt")
+
     return f, xdata
 
 
@@ -140,10 +150,6 @@ def calculate_r0(a, beta, table):
     # Convert A to radians to the 1, so need to raise to positive beta
     # A should be in units of arcseconds
     a_rad = a.radian ** (beta)
-    print("A Radians:")
-    print(a_rad)
-    print("A Arcsecond")
-    print(a)
     # Need to calc redshift distribution
     # Got that from the linear interpolation
     z_dist_func, zs = redshift_distribution(table)
@@ -173,7 +179,6 @@ def calculate_r0(a, beta, table):
     front = H_gamma(calc_gamma(beta))
     # Now put together with swap to other side
     r0_gamma = a_rad * (bottom / top) * (1 / front)
-    print(r0_gamma)
     r0 = r0_gamma ** (1 / calc_gamma(beta))
     # Convert to cMpc/h
     r0 = r0.to((u.Mpc / u.littleh), u.with_H0(cosmo.H0))
@@ -186,7 +191,7 @@ def load_table(ascii_table, header=0, start=1):
 
 
 sn8_table = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.85.ecsv")
 # sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
 # sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
 sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.25.ecsv")
@@ -194,7 +199,7 @@ print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table))
 # redshift_distribution(sn85_table)
 # redshift_distribution(sn9_table)
 # redshift_distribution(sn95_table)
-exit()
+#exit()
 
 
 def make_skycoords(source, ra='ra', dec='dec', distance=None):
@@ -273,6 +278,8 @@ def generate_random_catalog(number_of_points, filename):
             random_catalog_coords.append(c)
 
     random_catalog_coords = SkyCoord(random_catalog_coords)
+
+
     plt.cla()
     plt.scatter(xs, ys, s=1)
     plt.title("X vs Y for RandInt")
@@ -379,9 +386,9 @@ def angular_correlation_function(data_catalog, random_catalog):
     min_dist = np.min(data_data)
     print("Min Distance: {}".format(min_dist))
     min_dist = 13.5
+    #min_dist = 18.75 # For Negative Ones
     max_dist = np.max(data_data)
 
-    print("Done with Data Data")
 
     random_random = None
 
@@ -398,7 +405,6 @@ def angular_correlation_function(data_catalog, random_catalog):
     m_dist = np.max(random_random)
     if m_dist > max_dist:
         max_dist = m_dist
-    print("Done with Random Random")
 
     data_random = None
 
@@ -410,7 +416,6 @@ def angular_correlation_function(data_catalog, random_catalog):
         else:
             data_random = np.concatenate((data_random, sep2d))
 
-    print("Done with Data Random")
     m_dist = np.max(data_random)
     if m_dist > max_dist:
         max_dist = m_dist
@@ -517,7 +522,20 @@ np.random.seed(5227)
 random_catalog, r_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
 # np.random.seed(5227)
 random_catalog2, r2_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
+# Now Write out the coordinates for the random ones
+# convert to a table of ra and dec
+ra = []
+dec = []
+t = Table()
+for coord in random_catalog:
+    ra.append(coord.ra.degree)
+    dec.append(coord.dec.degree)
 
+t['ra'] = Column(ra, unit='degree', description='RA')
+t['dec'] = Column(dec, unit='degree', description='DEC')
+ascii.write(t, "random_catalog.txt")
+#ascii.write(random_catalog2, "random_catalog2.txt")
+#exit()
 data_data, data_random, random_random, min_dist, max_dist = angular_correlation_function(random_catalog,
                                                                                          random_catalog2)
 from astroML.correlation import two_point
@@ -711,6 +729,10 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             real_catalog = load_table("line_search_N3_wa_crop.out")
         else:
             real_catalog = load_table("line_search_P3_wa_crop.out")
+        if negative:
+            open_file = open("density_negative_r0_bin{}.txt".format(len(data_data)), "a")
+        else:
+            open_file = open("density_positive_r0_bin{}.txt".format(len(data_data)), "a")
         real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
         real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
         omega_w = xi_r(dd[index], dr[index], rr[index], real_catalog, random_catalog)
@@ -724,7 +746,6 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         cov_matrix = out[1] * s_sq
 
         a_error = np.absolute(cov_matrix[0][0]) ** 0.5
-        print("Value for A: {}".format(a))
         # Now get one for only the positive points
         pos_mask = (omega_w > 0.)
         pos_ue = ue_omega_w[pos_mask]
@@ -741,11 +762,19 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         cov_matrix = out[1] * s_sq
 
         pos_a_error = np.absolute(cov_matrix[0][0]) ** 0.5
-        print("Value for A: {}".format(a))
         xmin = min_dist - 0.001
         xmax = max_dist + 0.1 * max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
+        sn8_table = Table.read(
+            "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_{}.ecsv".format(sn_cut[index]))
         if index == 0:
+            open_file.write("{} SN\n".format(sn_cut[index]))
+            open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
             ax1.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -761,6 +790,13 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
                 ax1.set_yscale("log")
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 1:
+            open_file.write("{} SN\n".format(sn_cut[index]))
+            open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
             ax2.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -776,6 +812,13 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
                 ax2.set_yscale("log")
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 2:
+            open_file.write("{} SN\n".format(sn_cut[index]))
+            open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
             ax3.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -791,6 +834,13 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
                 ax3.set_yscale("log")
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 3:
+            open_file.write("{} SN\n".format(sn_cut[index]))
+            open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
             ax4.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -819,6 +869,8 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
     else:
         plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), negative), dpi=300)
 
+    open_file.close()
+
 
 num_ones = len(dds[snners[2]])
 
@@ -833,8 +885,6 @@ for i in range(num_ones):
         rr_plot.append(rrs[key][i])
 
     # Number of bins
-    print(dd_plot)
-    print(np.asarray(dd_plot).shape)
     bin_num = len(dd_plot[0])
     distance_bins = dist_bns[bin_num]
     distance_bins1 = dist_binners[bin_num]

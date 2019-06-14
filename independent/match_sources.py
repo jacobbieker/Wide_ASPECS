@@ -731,8 +731,8 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                      ((lines['width'] == 11) & (lines['rsnrrbin'] >= 6.1)) | ((lines['width'] == 13) & (lines['rsnrrbin'] >= 6.15)) | \
                      ((lines['width'] == 15) & (lines['rsnrrbin'] >= 6.1)) | ((lines['width'] == 17) & (lines['rsnrrbin'] >= 6.15)) | \
                      ((lines['width'] == 19) & (lines['rsnrrbin'] >= 6.05))
-    lines = lines[fidelity_sixty]
-    #lines = lines[lines['rsnrrbin'] >= snr_limit]
+    #lines = lines[fidelity_sixty]
+    lines = lines[lines['rsnrrbin'] >= snr_limit]
 
     line_skycoords = make_skycoords(lines, ra='rra', dec='rdc')
     catalog_skycoords = make_skycoords(catalog, ra=catalog_ra, dec=catalog_dec)
