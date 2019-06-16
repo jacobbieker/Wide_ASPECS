@@ -129,22 +129,22 @@ def redshift_distribution(table, use_matched=False, plot=False):
         plt.xlabel("Redshift (z)")
         plt.plot(xdata, func(xdata, *popt))
         plt.plot(xdata, f(xdata))
-        plt.savefig("SN_{}_Redshift_Distribution.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
+        plt.savefig("SN_{}_Redshift_Distribution_60.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
         plt.cla()
         t = Table()
         t['Z'] = Column(xdata, description='Redshift')
         t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_interpolated.txt")
+        ascii.write(t, "redshift_distribution_interpolated_60.txt")
 
         t = Table()
         t['Z'] = Column(xdata, description='Redshift')
         t['Num_Gal'] = Column(fitted_model(xdata), description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_interpolated_gauss.txt")
+        ascii.write(t, "redshift_distribution_interpolated_gauss_60.txt")
 
         t = Table()
         t['Z'] = Column(bin_centers, description='Redshift')
         t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_points.txt")
+        ascii.write(t, "redshift_distribution_points_60.txt")
 
     return f, xdata, fitted_model
 
@@ -201,26 +201,26 @@ def redshift_distribution_galaxy(table, plot=False):
         plt.xlabel("Redshift (z)")
         plt.plot(xdata, func(xdata, *popt))
         plt.plot(xdata, f(xdata))
-        plt.savefig("SN_{}_Redshift_Distribution.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
+        plt.savefig("SN_{}_Redshift_Distribution_60.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
         plt.cla()
         t = Table()
         t['Z'] = Column(xdata, description='Redshift')
         t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_interpolated.txt")
+        ascii.write(t, "redshift_distribution_interpolated_60.txt")
 
         t = Table()
         t['Z'] = Column(xdata, description='Redshift')
         t['Num_Gal'] = Column(fitted_model(xdata), description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_interpolated_gauss.txt")
+        ascii.write(t, "redshift_distribution_interpolated_gauss_60.txt")
 
         t = Table()
         t['Z'] = Column(bin_centers, description='Redshift')
         t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_points.txt")
+        ascii.write(t, "redshift_distribution_points_60.txt")
 
     return f, xdata, fitted_model
 
-def calculate_r0(a, beta, table, use_gauss=False):
+def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     """
     Calculates r0 given a beta and a, along with other things
 
@@ -238,7 +238,7 @@ def calculate_r0(a, beta, table, use_gauss=False):
     a_rad = a.radian ** (beta)
     # Need to calc redshift distribution
     # Got that from the linear interpolation
-    z_dist_func, zs, gaussian = redshift_distribution(table)
+    z_dist_func, zs, gaussian = redshift_distribution(table, plot=plot)
 
     # Need to calc redshift vector E as a vector for every redshift Ez = Hz/c
     Ez = E_z(zs)
@@ -340,14 +340,14 @@ def load_table(ascii_table, header=0, start=1):
 
 
 sn8_table = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.85.ecsv")
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_60.ecsv")
 # sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
 # sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
-sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.25.ecsv")
+sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_60.ecsv")
 print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table))
-print(calculate_r0(Angle((6.52+0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
+print(calculate_r0(Angle((6.52+0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False, plot=True))
 print(calculate_r0(Angle((6.52-0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
-print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table, use_gauss=True))
+print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table, use_gauss=True, plot=True))
 print(calculate_r0(Angle((6.52+0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
 print(calculate_r0(Angle((6.52-0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
 
@@ -688,7 +688,7 @@ for coord in random_catalog:
 
 t['ra'] = Column(ra, unit='degree', description='RA')
 t['dec'] = Column(dec, unit='degree', description='DEC')
-ascii.write(t, "random_catalog.txt")
+ascii.write(t, "random_catalog60.txt")
 #ascii.write(random_catalog2, "random_catalog2.txt")
 #exit()
 data_data, data_random, random_random, min_dist, max_dist = angular_correlation_function(random_catalog,
@@ -735,7 +735,7 @@ for bin_num in [5, 6, 7, 8, 9, 10]:
     plt.ylabel("$\omega(\\theta)$")
     # plt.yscale("log")
     # plt.tight_layout()
-    plt.savefig("final/Random_vs_Random_{}NoParenFlip_bin{}.png".format(num_points, bin_num), dpi=300)
+    plt.savefig("final/Random_vs_Random_{}NoParenFlip_bin{}.png".format(num_points, 60), dpi=300)
 
     plt.cla()
     plt.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
@@ -751,7 +751,7 @@ for bin_num in [5, 6, 7, 8, 9, 10]:
     plt.ylabel("$\omega(\\theta)$")
     plt.yscale("log")
     # plt.tight_layout()
-    plt.savefig("final/Log_Random_vs_Random_{}NoParenFlip_bin{}.png".format(num_points, bin_num), dpi=300)
+    plt.savefig("final/Log_Random_vs_Random_{}NoParenFlip_bin{}.png".format(num_points, 60), dpi=300)
 
 # exit()
 
@@ -776,7 +776,14 @@ for sn_cut in snners:
         real_catalog = load_table("line_search_N3_wa_crop.out")
     else:
         real_catalog = load_table("line_search_P3_wa_crop.out")
-    real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
+
+    fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.25)) | ((real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.2)) | \
+                     ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.1)) | \
+                     ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.15)) | \
+                     ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.15)) | \
+                     ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.05))
+    #real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
+    real_catalog = real_catalog[fidelity_sixty]
     real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
     print(real_catalog.shape)
     dds[sn_cut] = []
@@ -844,7 +851,7 @@ for sn_cut in snners:
         plt.ylabel("$\omega(\\theta)$")
         plt.yscale("log")
         # plt.tight_layout()
-        plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
+        plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, 60), dpi=300)
         # plt.show()
 
         plt.cla()
@@ -860,7 +867,7 @@ for sn_cut in snners:
         plt.ylabel("$\omega(\\theta)$")
         # plt.yscale("log")
         # plt.tight_layout()
-        plt.savefig("final/Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
+        plt.savefig("final/Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, 60), dpi=300)
         # plt.show()
 
 
@@ -885,10 +892,17 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         else:
             real_catalog = load_table("line_search_P3_wa_crop.out")
         if negative:
-            open_file = open("negative_r0_bin{}.txt".format(len(data_data)), "a")
+            open_file = open("negative_r0_bin{}_sn60.txt".format(len(data_data)), "a")
         else:
-            open_file = open("positive_r0_bin{}.txt".format(len(data_data)), "a")
-        real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
+            open_file = open("positive_r0_bin{}_sn60.txt".format(len(data_data)), "a")
+        fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.25)) | ((real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.2)) | \
+                         ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.1)) | \
+                         ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.15)) | \
+                         ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.15)) | \
+                         ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.05))
+        #real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
+        real_catalog = real_catalog[fidelity_sixty]
+        real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
         real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
         omega_w = xi_r(dd[index], dr[index], rr[index], real_catalog, random_catalog)
         le_omega_w, ue_omega_w = xi_r_error(omega_w, dd[index])
@@ -921,7 +935,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         xmax = max_dist + 0.1 * max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
         sn8_table = Table.read(
-            "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_{}.ecsv".format(sn_cut[index]))
+            "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_60.ecsv")#.format(sn_cut[index]))
         if index == 0:
             open_file.write("{} SN\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
@@ -1048,9 +1062,9 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
     f.align_ylabels()
     f.suptitle("Data vs Random")
     if use_log:
-        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), negative), dpi=300)
+        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}_N{}_sn60.png".format(len(distance_bins1), negative), dpi=300)
     else:
-        plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}.png".format(len(distance_bins1), negative), dpi=300)
+        plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}_sn60.png".format(len(distance_bins1), negative), dpi=300)
 
     open_file.close()
 
