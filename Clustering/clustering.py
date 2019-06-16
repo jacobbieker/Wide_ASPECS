@@ -73,7 +73,7 @@ def round_of_rating(number):
     return round(number * 2) / 2
 
 
-def redshift_distribution(table, use_matched=False):
+def redshift_distribution(table, use_matched=False, plot=False):
     """
     Calculates redshift distribution in 0.1 redshift increments for all the sources
 
@@ -91,51 +91,60 @@ def redshift_distribution(table, use_matched=False):
     min_z = np.min(table['Z (CO)'])
     max_z = np.max(table['Z (CO)'])
 
-    bins = np.arange(1.5, 3.5, 0.5)
+    bins = np.arange(0., max_z+0.5, 0.5)
     if use_matched:
         only_matched = (table['Roberto ID'] > 0)
     else:
         only_matched = (table['Roberto ID'] > -1000000)
-    values, bins = np.histogram(table[only_matched]['Z (CO)'], bins=bins)
+    values, bins = np.histogram(table[only_matched]['Z (CO)'], bins=bins, density=True)
+    # Multiply by the bin width to get the values to sum to 1
+    #values = values * ((bins[0] + bins[1]) * 0.5)
     # plt.hist(table[only_matched]['Z (CO)'], bins=bins)
     # plt.show()
     bin_centers = 0.5 * (bins[1:] + bins[:-1])  # convert to centers
     mask = (values > 0)
     interp_values = values[mask]
     interp_bins = bin_centers[mask]
-    interp_values = np.concatenate((np.asarray([0]), interp_values))
-    interp_bins = np.concatenate((np.asarray([0]), interp_bins))
+    #interp_values = np.concatenate((np.asarray([0]), interp_values))
+    #interp_bins = np.concatenate((np.asarray([0]), interp_bins))
 
     def func(x, a, b, c):
         return a * x ** 2 + b * x + c
 
     popt, pcov = curve_fit(func, interp_bins, interp_values)
 
-    xdata = np.linspace(0.1, np.max(interp_bins), 10000)
+    xdata = np.linspace(np.min(interp_bins), np.max(interp_bins), 10000)
     f = interp1d(interp_bins, interp_values, kind='slinear')
 
     # Fit Gaussian
     fitter = modeling.fitting.LevMarLSQFitter()
     model = modeling.models.Gaussian1D()   # depending on the data you need to give some initial values
     fitted_model = fitter(model, interp_bins, interp_values)
-    plt.plot(xdata, fitted_model(xdata))
-    values, _, _ = plt.hist(table[only_matched]['Z (CO)'], bins=bins)
-    plt.title("SN > {}".format(np.round(np.min(table['S/N']), 2)))
-    plt.ylabel("Count")
-    plt.xlabel("Redshift (z)")
-    plt.plot(xdata, func(xdata, *popt))
-    plt.plot(xdata, f(xdata))
-    plt.savefig("SN_{}_Redshift_Distribution.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
-    plt.cla()
-    t = Table()
-    t['Z'] = Column(xdata, description='Redshift')
-    t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
-    ascii.write(t, "redshift_distribution_interpolated.txt")
+    if plot:
+        plt.plot(xdata, fitted_model(xdata))
+        values, _, _ = plt.hist(table[only_matched]['Z (CO)'], bins=bins, density=True)
+        #values = values * ((bins[0] + bins[1]) * 0.5)
+        plt.title("SN > {}".format(np.round(np.min(table['S/N']), 2)))
+        plt.ylabel("Count")
+        plt.xlabel("Redshift (z)")
+        plt.plot(xdata, func(xdata, *popt))
+        plt.plot(xdata, f(xdata))
+        plt.savefig("SN_{}_Redshift_Distribution.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
+        plt.cla()
+        t = Table()
+        t['Z'] = Column(xdata, description='Redshift')
+        t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
+        ascii.write(t, "redshift_distribution_interpolated.txt")
 
-    t = Table()
-    t['Z'] = Column(bin_centers, description='Redshift')
-    t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
-    ascii.write(t, "redshift_distribution_points.txt")
+        t = Table()
+        t['Z'] = Column(xdata, description='Redshift')
+        t['Num_Gal'] = Column(fitted_model(xdata), description='Num Gal at Redshift')
+        ascii.write(t, "redshift_distribution_interpolated_gauss.txt")
+
+        t = Table()
+        t['Z'] = Column(bin_centers, description='Redshift')
+        t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
+        ascii.write(t, "redshift_distribution_points.txt")
 
     return f, xdata, fitted_model
 
@@ -208,7 +217,12 @@ sn8_table = Table.read(
 # sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
 sn95_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.25.ecsv")
 print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table))
+print(calculate_r0(Angle((6.52+0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
+print(calculate_r0(Angle((6.52-0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
 print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table, use_gauss=True))
+print(calculate_r0(Angle((6.52+0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
+print(calculate_r0(Angle((6.52-0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
+
 # redshift_distribution(sn85_table)
 # redshift_distribution(sn9_table)
 # redshift_distribution(sn95_table)
@@ -784,17 +798,17 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("{} SN\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A-: {}, r0: {}\n".format(a-a_error, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A: {}, r0: {}\n".format(pos_a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A+: {}, r0: {}\n".format(pos_a+pos_a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A-: {}, r0: {}\n".format(pos_a-pos_a_error, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
 
             open_file.write("Gauss A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("GaussA+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A-: {}, r0: {}\n".format(a-a_error, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A: {}, r0: {}\n".format(pos_a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A+: {}, r0: {}\n".format(pos_a+pos_a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A-: {}, r0: {}\n".format(pos_a-pos_a_error, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
             ax1.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -813,17 +827,17 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("{} SN\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A-: {}, r0: {}\n".format(a-a_error, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A: {}, r0: {}\n".format(pos_a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A+: {}, r0: {}\n".format(pos_a+pos_a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A-: {}, r0: {}\n".format(pos_a-pos_a_error, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
 
             open_file.write("Gauss A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("GaussA+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A-: {}, r0: {}\n".format(a-a_error, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A: {}, r0: {}\n".format(pos_a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A+: {}, r0: {}\n".format(pos_a+pos_a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A-: {}, r0: {}\n".format(pos_a-pos_a_error, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
             ax2.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -842,17 +856,17 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("{} SN\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A-: {}, r0: {}\n".format(a-a_error, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A: {}, r0: {}\n".format(pos_a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A+: {}, r0: {}\n".format(pos_a+pos_a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A-: {}, r0: {}\n".format(pos_a-pos_a_error, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
 
             open_file.write("Gauss A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("GaussA+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A-: {}, r0: {}\n".format(a-a_error, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A: {}, r0: {}\n".format(pos_a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A+: {}, r0: {}\n".format(pos_a+pos_a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A-: {}, r0: {}\n".format(pos_a-pos_a_error, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
             ax3.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -871,17 +885,17 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("{} SN\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
-            open_file.write("pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("A-: {}, r0: {}\n".format(a-a_error, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A: {}, r0: {}\n".format(pos_a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A+: {}, r0: {}\n".format(pos_a+pos_a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table)))
+            open_file.write("pos A-: {}, r0: {}\n".format(pos_a-pos_a_error, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table)))
 
             open_file.write("Gauss A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("GaussA+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss A-: {}, r0: {}\n".format(a, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A: {}, r0: {}\n".format(a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
-            open_file.write("Gauss pos A-: {}, r0: {}\n".format(a, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A+: {}, r0: {}\n".format(a+a_error, calculate_r0(Angle((a+a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss A-: {}, r0: {}\n".format(a-a_error, calculate_r0(Angle((a-a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A: {}, r0: {}\n".format(pos_a, calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A+: {}, r0: {}\n".format(pos_a+pos_a_error, calculate_r0(Angle((pos_a+pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
+            open_file.write("Gauss pos A-: {}, r0: {}\n".format(pos_a-pos_a_error, calculate_r0(Angle((pos_a-pos_a_error) * u.arcsecond), 0.8, sn8_table, use_gauss=True)))
             ax4.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
