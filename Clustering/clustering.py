@@ -149,6 +149,77 @@ def redshift_distribution(table, use_matched=False, plot=False):
     return f, xdata, fitted_model
 
 
+def redshift_distribution_galaxy(table, plot=False):
+    """
+    Calculates redshift distribution in 0.1 redshift increments for all the sources
+
+    If its noisy with empty bins, then need to make_curve and use that instead
+
+    Get this from the matched ones
+
+
+    :param table:
+    :param bins:
+    :return: A curve that captures the redshift distribution of the sample
+    """
+    # Get min and max Z
+
+    min_z = np.min(table['z'])
+    max_z = np.max(table['z'])
+
+    bins = np.arange(0., max_z+0.5, 0.5)
+    values, bins = np.histogram(table['z'], bins=bins, density=True)
+    # Multiply by the bin width to get the values to sum to 1
+    #values = values * ((bins[0] + bins[1]) * 0.5)
+    # plt.hist(table[only_matched]['Z (CO)'], bins=bins)
+    # plt.show()
+    bin_centers = 0.5 * (bins[1:] + bins[:-1])  # convert to centers
+    mask = (values > 0)
+    interp_values = values[mask]
+    interp_bins = bin_centers[mask]
+    #interp_values = np.concatenate((np.asarray([0]), interp_values))
+    #interp_bins = np.concatenate((np.asarray([0]), interp_bins))
+
+    def func(x, a, b, c):
+        return a * x ** 2 + b * x + c
+
+    popt, pcov = curve_fit(func, interp_bins, interp_values)
+
+    xdata = np.linspace(np.min(interp_bins), np.max(interp_bins), 10000)
+    f = interp1d(interp_bins, interp_values, kind='slinear')
+
+    # Fit Gaussian
+    fitter = modeling.fitting.LevMarLSQFitter()
+    model = modeling.models.Gaussian1D()   # depending on the data you need to give some initial values
+    fitted_model = fitter(model, interp_bins, interp_values)
+    if plot:
+        plt.plot(xdata, fitted_model(xdata))
+        values, _, _ = plt.hist(table['Z (CO)'], bins=bins, density=True)
+        #values = values * ((bins[0] + bins[1]) * 0.5)
+        plt.title("SN > {}".format(np.round(np.min(table['S/N']), 2)))
+        plt.ylabel("Count")
+        plt.xlabel("Redshift (z)")
+        plt.plot(xdata, func(xdata, *popt))
+        plt.plot(xdata, f(xdata))
+        plt.savefig("SN_{}_Redshift_Distribution.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
+        plt.cla()
+        t = Table()
+        t['Z'] = Column(xdata, description='Redshift')
+        t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
+        ascii.write(t, "redshift_distribution_interpolated.txt")
+
+        t = Table()
+        t['Z'] = Column(xdata, description='Redshift')
+        t['Num_Gal'] = Column(fitted_model(xdata), description='Num Gal at Redshift')
+        ascii.write(t, "redshift_distribution_interpolated_gauss.txt")
+
+        t = Table()
+        t['Z'] = Column(bin_centers, description='Redshift')
+        t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
+        ascii.write(t, "redshift_distribution_points.txt")
+
+    return f, xdata, fitted_model
+
 def calculate_r0(a, beta, table, use_gauss=False):
     """
     Calculates r0 given a beta and a, along with other things
@@ -196,6 +267,63 @@ def calculate_r0(a, beta, table, use_gauss=False):
     else:
         bottom_integral = diff * sum(z_dist_func(zs))
     bottom = bottom_integral ** 2
+    # Front
+    front = H_gamma(calc_gamma(beta))
+    # Now put together with swap to other side
+    r0_gamma = a_rad * (bottom / top) * (1 / front)
+    r0 = r0_gamma ** (1 / calc_gamma(beta))
+    # Convert to cMpc/h
+    r0 = r0.to((u.Mpc / u.littleh), u.with_H0(cosmo.H0))
+    return r0
+
+def calculate_cross_r0(a, beta, table, gal_table, use_gauss=False):
+    """
+    Calculates r0 given a beta and a, along with other things
+
+    Calculates H_gamma*\frac{}{}
+
+    :param a:
+    :param beta:
+    :param table: The Astropy Table from the matching that is used to get the
+    Redshift Distribution for the sample
+    :return:
+    """
+
+    # Convert A to radians to the 1, so need to raise to positive beta
+    # A should be in units of arcseconds
+    a_rad = a.radian ** (beta)
+    # Need to calc redshift distribution
+    # Got that from the linear interpolation
+    z_dist_func, zs, gaussian = redshift_distribution(table)
+    gal_dist_func, gal_zs, gal_gauss = redshift_distribution_galaxy(gal_table)
+
+    # Need to calc redshift vector E as a vector for every redshift Ez = Hz/c
+    Ez = E_z(zs)
+    # Need to calculate X -> Dc = DH as a vector for all redshifts too, can use Astropy distance
+    # Radial comoving Distance, so I think all of the comoving distance
+    # http://docs.astropy.org/en/stable/cosmology/
+
+    X = Chi(zs)
+    # So now have everything to get r0
+    # Divide over the equation to have r0 on its own so
+    # But write parts in normal Equation 16 order here
+    # Need Integral here
+
+    # Need to do elementwise multiplication of all of these together, then sum in integral
+    chi_pow = 1 - calc_gamma(beta)
+    if use_gauss:
+        top = gal_gauss(zs) * gaussian(zs) * Ez * np.power(X, chi_pow)
+    else:
+        top = gal_dist_func(zs) * z_dist_func(zs) * Ez * np.power(X, chi_pow)
+    diff = zs[1] - zs[0]
+    top_integrand = diff * sum(top)
+    top = top_integrand
+    # Need integral here
+    if use_gauss:
+        bottom_integral = diff * sum(gaussian(zs)) * (diff*sum(gal_gauss(zs)))
+    else:
+        bottom_integral = diff * sum(z_dist_func(zs)) * (diff*sum(gal_dist_func(zs)))
+    bottom = bottom_integral
     # Front
     front = H_gamma(calc_gamma(beta))
     # Now put together with swap to other side
