@@ -19,6 +19,62 @@ import matplotlib.mlab as mlab
 
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
 
+def load_table(ascii_table, header=0, start=1):
+    ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
+    return ascii_table_data
+
+def fid(neg, pos):
+    return 1 - (len(neg)/len(pos))
+
+neg_catalog = load_table("line_search_N3_wa_crop.out")
+pos_catalog = load_table("line_search_P3_wa_crop.out")
+
+line_widths = [i for i in range(3, 21, 2)]
+
+sn_cuts = np.arange(5., 8.1, 0.01)
+six_fids = []
+for width in line_widths:
+    neg_widths = neg_catalog[neg_catalog['width'] == width]
+    pos_widths = pos_catalog[pos_catalog['width'] == width]
+    print("Neg Width Lines: {}".format(len(neg_widths)))
+    print("Pos Width Lines: {}".format(len(pos_widths)))
+    print("Width {} MaxSN: {}".format(width, np.max(neg_widths['rsnrrbin'])))
+    fid_width = []
+    sn_vals = []
+    six_fid = -1
+    for sn in sn_cuts:
+        neg_sn = neg_widths[neg_widths['rsnrrbin'] >= sn]
+        pos_sn = pos_widths[pos_widths['rsnrrbin'] >= sn]
+        #print("SN: {} Len: {}".format(sn, len(pos_sn)))
+        if len(pos_sn) > 0:
+            fid_width.append(fid(neg_sn, pos_sn))
+            sn_vals.append(sn)
+            if six_fid < 0 and fid_width[-1] >= 0.6:
+                six_fid = sn
+        elif len(neg_sn) == 0:
+            fid_width.append(1)
+            sn_vals.append(sn)
+            if six_fid < 0 and fid_width[-1] >= 0.6:
+                six_fid = sn
+        six_fids.append(six_fid)
+
+
+def construct_fid_mask(catalog):
+    """
+    Constructs the fidelity mask based off my results, not Robertos
+    :param catalog:
+    :return:
+    """
+    masks = []
+    for index, width in enumerate(line_widths):
+        masks.append(((catalog['width'] == width) & (catalog['rsnrrbin'] >= six_fids[index])))
+
+    big_mask = masks[0]
+    for mask in masks:
+        big_mask = np.ma.mask_or(big_mask, mask)
+
+    return big_mask
+
 
 def calc_gamma(beta):
     return beta + 1
@@ -71,7 +127,6 @@ def round_of_rating(number):
     4.0"""
 
     return round(number * 2) / 2
-
 
 def redshift_distribution(table, use_matched=False, plot=False):
     """
@@ -333,10 +388,6 @@ def calculate_cross_r0(a, beta, table, gal_table, use_gauss=False):
     r0 = r0.to((u.Mpc / u.littleh), u.with_H0(cosmo.H0))
     return r0
 
-
-def load_table(ascii_table, header=0, start=1):
-    ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
-    return ascii_table_data
 
 
 sn8_table = Table.read(
@@ -663,6 +714,30 @@ errfunc = lambda p, x, y, err: (y - fitfunc(p, x)) / err
 
 pinit = [1.0]
 
+def cross_correlation_method(co_lines, random_catalog, galaxies, num_gals, num_co, num_random):
+    """
+    Need it in Skycoords, to do angular correlation function for each of them
+    :param co_lines:
+    :param random:
+    :param galaxies:
+    :param num_gals:
+    :param num_co:
+    :param num_random:
+    :return:
+    """
+    front = num_random/num_gals
+
+    _, co_gal, _, min_dist, max_dist = angular_correlation_function(co_lines, galaxies)
+    _, co_random, _, min_dist, max_dist = angular_correlation_function(co_lines, random_catalog)
+
+    co_gal_array_norm = (galaxies.shape[0] * co_lines.shape[0])
+    co_random_array_norm = (random_catalog.shape[0] * co_lines.shape[0])
+    co_gal = co_gal / co_gal_array_norm
+    co_random = co_random / co_random_array_norm
+
+    return front * (co_gal/co_random) - 1
+
+
 from scipy.optimize import curve_fit
 
 negative = False
@@ -777,11 +852,11 @@ for sn_cut in snners:
     else:
         real_catalog = load_table("line_search_P3_wa_crop.out")
 
-    fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.25)) | ((real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.2)) | \
-                     ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.1)) | \
-                     ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.15)) | \
-                     ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.15)) | \
-                     ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.05))
+    fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.54)) | ((real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.83)) | \
+                     ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.18)) | ((real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.49)) | \
+                     ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.61)) | ((real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.54)) | \
+                     ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.89)) | ((real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.83)) | \
+                     ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.1))
     #real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     real_catalog = real_catalog[fidelity_sixty]
     real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
@@ -895,11 +970,11 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file = open("negative_r0_bin{}_sn60.txt".format(len(data_data)), "a")
         else:
             open_file = open("positive_r0_bin{}_sn60.txt".format(len(data_data)), "a")
-        fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.25)) | ((real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.2)) | \
-                         ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.1)) | \
-                         ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.15)) | \
-                         ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.1)) | ((real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.15)) | \
-                         ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.05))
+        fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.54)) | ((real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.83)) | \
+                         ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.18)) | ((real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.49)) | \
+                         ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.61)) | ((real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.54)) | \
+                         ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.89)) | ((real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.83)) | \
+                         ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.1))
         #real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
         real_catalog = real_catalog[fidelity_sixty]
         real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')

@@ -692,6 +692,62 @@ def get_estimated_z(ghz):
         if np.isclose(np.abs(element[2]), min_diff):
             return element[0], transitions[element[0]][3]
 
+def load_table(ascii_table, header=0, start=1):
+    ascii_table_data = Table.read(ascii_table, format="ascii", header_start=header, data_start=start)
+    return ascii_table_data
+
+def fid(neg, pos):
+    return 1 - (len(neg)/len(pos))
+
+neg_catalog = load_table("line_search_N3_wa_crop.out")
+pos_catalog = load_table("line_search_P3_wa_crop.out")
+
+line_widths = [i for i in range(3, 21, 2)]
+
+sn_cuts = np.arange(5., 8.1, 0.01)
+six_fids = []
+for width in line_widths:
+    neg_widths = neg_catalog[neg_catalog['width'] == width]
+    pos_widths = pos_catalog[pos_catalog['width'] == width]
+    print("Neg Width Lines: {}".format(len(neg_widths)))
+    print("Pos Width Lines: {}".format(len(pos_widths)))
+    print("Width {} MaxSN: {}".format(width, np.max(neg_widths['rsnrrbin'])))
+    fid_width = []
+    sn_vals = []
+    six_fid = -1
+    for sn in sn_cuts:
+        neg_sn = neg_widths[neg_widths['rsnrrbin'] >= sn]
+        pos_sn = pos_widths[pos_widths['rsnrrbin'] >= sn]
+        #print("SN: {} Len: {}".format(sn, len(pos_sn)))
+        if len(pos_sn) > 0:
+            fid_width.append(fid(neg_sn, pos_sn))
+            sn_vals.append(sn)
+            if six_fid < 0 and fid_width[-1] >= 0.6:
+                six_fid = sn
+        elif len(neg_sn) == 0:
+            fid_width.append(1)
+            sn_vals.append(sn)
+            if six_fid < 0 and fid_width[-1] >= 0.6:
+                six_fid = sn
+        six_fids.append(six_fid)
+
+
+def construct_fid_mask(catalog):
+    """
+    Constructs the fidelity mask based off my results, not Robertos
+    :param catalog:
+    :return:
+    """
+    masks = []
+    for index, width in enumerate(line_widths):
+        masks.append(((catalog['width'] == width) & (catalog['rsnrrbin'] >= six_fids[index])))
+
+    big_mask = masks[0]
+    for mask in masks:
+        big_mask = np.ma.mask_or(big_mask, mask)
+
+    return big_mask
+
 
 def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='closest'):
     aspecs_table = Table(names=(
@@ -731,6 +787,13 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                      ((lines['width'] == 11) & (lines['rsnrrbin'] >= 6.1)) | ((lines['width'] == 13) & (lines['rsnrrbin'] >= 6.15)) | \
                      ((lines['width'] == 15) & (lines['rsnrrbin'] >= 6.1)) | ((lines['width'] == 17) & (lines['rsnrrbin'] >= 6.15)) | \
                      ((lines['width'] == 19) & (lines['rsnrrbin'] >= 6.05))
+
+    fidelity_sixty = ((lines['width'] == 3) & (lines['rsnrrbin'] >= 6.54)) | ((lines['width'] == 5) & (lines['rsnrrbin'] >= 6.83)) | \
+                     ((lines['width'] == 7) & (lines['rsnrrbin'] >= 6.18)) | ((lines['width'] == 9) & (lines['rsnrrbin'] >= 6.49)) | \
+                     ((lines['width'] == 11) & (lines['rsnrrbin'] >= 6.61)) | ((lines['width'] == 13) & (lines['rsnrrbin'] >= 6.54)) | \
+                     ((lines['width'] == 15) & (lines['rsnrrbin'] >= 6.89)) | ((lines['width'] == 17) & (lines['rsnrrbin'] >= 6.83)) | \
+                     ((lines['width'] == 19) & (lines['rsnrrbin'] >= 6.1))
+    #fidelity_sixty = construct_fid_mask(lines)
     lines = lines[fidelity_sixty]
     #lines = lines[lines['rsnrrbin'] >= snr_limit]
 

@@ -34,6 +34,7 @@ for width in line_widths:
     neg_widths = neg_catalog[neg_catalog['width'] == width]
     pos_widths = pos_catalog[pos_catalog['width'] == width]
     print("Neg Width Lines: {}".format(len(neg_widths)))
+    print("Pos Width Lines: {}".format(len(pos_widths)))
     print("Width {} MaxSN: {}".format(width, np.max(neg_widths['rsnrrbin'])))
     fid_width = []
     sn_vals = []
@@ -64,4 +65,5 @@ plt.title("Fidelity vs SN")
 plt.axhline(y=0.6, c='r', ls='--')
 plt.ylabel("Fidelity")
 plt.xlabel("S/N")
+plt.legend(loc="best")
 plt.show()
