@@ -5,7 +5,7 @@ This is focused on matching sources in the catalog to those detected in the cube
 """
 import numpy as np
 import astropy.units as u
-from astropy.table import Table
+from astropy.table import Table, vstack
 from astropy.coordinates import SkyCoord, Angle, SkyOffsetFrame, ICRS, Distance
 from astropy.coordinates import match_coordinates_sky, search_around_sky
 from stats import comoving_volume, get_kms, has_spec_z, get_co_z, convert_deltaZ_to_kms
@@ -723,13 +723,9 @@ for width in line_widths:
             fid_width.append(fid(neg_sn, pos_sn))
             sn_vals.append(sn)
             if six_fid < 0 and fid_width[-1] >= 0.6:
+                print("Fidelty: {} SN: {}".format(fid(neg_sn, pos_sn), sn))
                 six_fid = sn
-        elif len(neg_sn) == 0:
-            fid_width.append(1)
-            sn_vals.append(sn)
-            if six_fid < 0 and fid_width[-1] >= 0.6:
-                six_fid = sn
-        six_fids.append(six_fid)
+                six_fids.append(six_fid)
 
 
 def construct_fid_mask(catalog):
@@ -739,14 +735,21 @@ def construct_fid_mask(catalog):
     :return:
     """
     masks = []
+    #six_fids = [6.25, 6.2, 6.1, 6.1, 6.1, 6.15, 6.1, 6.15, 6.05]
+    print(line_widths)
+    print(six_fids)
     for index, width in enumerate(line_widths):
-        masks.append(((catalog['width'] == width) & (catalog['rsnrrbin'] >= six_fids[index])))
+        print(six_fids[index])
+        masks.append(catalog[((catalog['width'] == width) & (catalog['rsnrrbin'] >= six_fids[index]))])
 
-    big_mask = masks[0]
-    for mask in masks:
-        big_mask = np.ma.mask_or(big_mask, mask)
+    total = masks[0]
+    t_sum = 0
+    for mask in masks[0:]:
+        t_sum += len(mask)
+        total = vstack((total, mask))
 
-    return big_mask
+    print("Total One: {}".format(t_sum))
+    return total
 
 
 def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='closest'):
@@ -793,8 +796,10 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                      ((lines['width'] == 11) & (lines['rsnrrbin'] >= 6.61)) | ((lines['width'] == 13) & (lines['rsnrrbin'] >= 6.54)) | \
                      ((lines['width'] == 15) & (lines['rsnrrbin'] >= 6.89)) | ((lines['width'] == 17) & (lines['rsnrrbin'] >= 6.83)) | \
                      ((lines['width'] == 19) & (lines['rsnrrbin'] >= 6.1))
-    #fidelity_sixty = construct_fid_mask(lines)
-    lines = lines[fidelity_sixty]
+    print(six_fids)
+    lines = construct_fid_mask(lines)
+    exit()
+    #lines = lines[fidelity_sixty]
     #lines = lines[lines['rsnrrbin'] >= snr_limit]
 
     line_skycoords = make_skycoords(lines, ra='rra', dec='rdc')
