@@ -489,6 +489,75 @@ def angular_distance():
     raise NotImplementedError
 
 
+def trim_galaxy(points, filename):
+    """
+    Removes galaxies that do not fall within the Wide ASPECS footprint in position of Wide ASPECS  and within the mask
+
+    :param number_of_points:
+    :param mask:
+    :return:
+    """
+    cube = SpectralCube.read(filename)
+    cube[0, :, :].quicklook()  # uses aplpy
+    # using wcsaxes
+    wcs = cube[0, :, :].wcs
+    fig = plt.figure()
+    ax = fig.add_axes([0.1, 0.1, 0.8, 0.8], projection=wcs)
+    # ax.imshow(cube.unitless[0,:,:]) # you may need cube[5,:,:].value depending on mpl version
+    # fig.show()
+
+    # Have the mask now, so can create from random pixel coordinates, generate SkyCoord
+
+    # Just do it 10 times the number of points, hoping enough are in the valid area
+    # rand_x = np.random.randint(0, cube.unitless[0,:,:].shape[0]+1, 100*number_of_points)
+    # rand_y = np.random.randint(0, cube.unitless[0,:,:].shape[1]+1, 100*number_of_points)
+    random_catalog_coords = []
+    r_c_x = []
+    r_c_y = []
+    r_c_y2 = []
+    mask = cube.filled_data[0:30, :, :]
+    mask = mask.mean(axis=0)
+
+    xs = []
+    ys = []
+    xs2 = []
+    ys2 = []
+
+    for point in points:
+        c = point
+        # print(c)
+
+        x, y = c.to_pixel(wcs=wcs)
+        if not np.isnan(mask[int(y), int(x)]):
+            xs.append(x)
+            ys.append(y)
+            r_c_x.append(np.asarray([x, y]))
+            random_catalog_coords.append(c)
+
+    random_catalog_coords = SkyCoord(random_catalog_coords)
+
+    plt.cla()
+    plt.scatter(xs, ys, s=1)
+    plt.title("X vs Y for RandInt")
+    plt.savefig("X_V_Y_{}.png".format(len(random_catalog_coords)))
+    plt.cla()
+
+    # values = random_catalog_coords.to_pixel(wcs=wcs)
+    # r_c_x, r_c_y = np.fliplr(np.flipud(values))
+    # random_catalog_coords = SkyCoord.from_pixel(r_c_x, r_c_y, wcs=wcs, origin=1)
+    # ax.scatter(r_c_x, r_c_y, c='r')
+    # ax.imshow(mask)
+    # x,y = real_catalog.to_pixel(wcs=wcs)
+    # ax.scatter(x,y, c='b')
+
+    ax.scatter(random_catalog_coords.ra.degree, random_catalog_coords.dec.degree, c='r', s=1,
+               transform=ax.get_transform('world'))
+    ax.scatter(real_catalog.ra.degree, real_catalog.dec.degree, c='b', s=3, transform=ax.get_transform('world'))
+    fig.show()
+    # random_catalog_coords = np.asarray(r_c_x)
+    return random_catalog_coords, np.asarray(r_c_x)
+
+
 def generate_random_catalog(number_of_points, filename):
     """
     Generates random number of points in position of Wide ASPECS  and within the mask
@@ -898,6 +967,8 @@ else:
     real_catalog = load_table("line_search_P3_wa_crop.out")
 real_catalog = real_catalog[real_catalog['rsnrrbin'] > 6.25]
 real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
+# Trim galaxy coordinates
+gal_catalog, _ = trim_galaxy(gal_catalog, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
 np.random.seed(5227)
 random_catalog, r_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
 # np.random.seed(5227)
