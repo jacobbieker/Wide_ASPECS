@@ -13,9 +13,50 @@ from astropy import constants as const
 from scipy.interpolate import interp2d, interp1d
 from scipy.stats import norm
 from astropy import modeling
+from scipy.integrate import newton_cotes
 from scipy.optimize import leastsq, curve_fit
 
 import matplotlib.mlab as mlab
+
+
+def idl_calc_r0(a, beta, z_dist):
+    """
+    a is alpha
+    beta is beta
+    z_dist is 2D array with z in the first vector and N in the second one.
+    :param a:
+    :param beta:
+    :param z_dist:
+    :return:
+    """
+    clight = 2.9979246e5 * (u.km/u.s)
+    HORIZON_MPC = 2.9979246e3 # * (u.Mpc / u.littleh)
+
+    # Compute Hg
+    gamma_par = beta + 1.
+    Hg = (gamma(1.0/2.0)*gamma((gamma_par-1.0)/2.0))/gamma(gamma_par/2.0)
+
+    # Computing Integral of redshift distribution
+    int_zdist1 = idl_tabulate(z_dist[:,0], z_dist[:,1])
+
+    # Compute Ez
+    Hz = (100.0 * (u.littleh * u.km / u.s / u.Mpc))
+    Ez = E_z(z_dist[:,0])
+
+    # Compute comoving distance, should be cMpc/h
+    zcom = HORIZON_MPC * cosmo.comoving_distance(z_dist[:,0])
+
+    # Compute Big Integral
+    expr = z_dist[:,1]*z_dist[:,1]*Ez*zcom**(1.-gamma_par)
+    int_big = idl_tabulate(z_dist[:,0], expr)
+
+    # Comput r0 using inverse Limber equation
+    A_param_rad = a * ((np.pi/180.0)/3600.) ** beta
+    r0_param = ((A_param_rad * int_zdist1 * int_zdist1) / (Hg * int_big)) ** (1.0/gamma_par) # in cMpc/h units
+
+    return r0_param
+
+
 
 
 def combine_catalogs(catalog_one, catalog_two):
@@ -56,7 +97,7 @@ combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 gal_catalog = make_skycoords(combined_catalog, ra='ra', dec='dc')
 
 
-cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
+cosmo = FlatLambdaCDM(H0=100, Om0=0.3, Tcmb0=2.725)
 
 
 def load_table(ascii_table, header=0, start=1):
@@ -109,18 +150,37 @@ def construct_fid_mask(catalog):
     """
     masks = []
     six_fids = [6.25, 6.2, 6.1, 6.1, 6.1, 6.15, 6.1, 6.15, 6.05]
+    #six_fids = [6.35, 6.25, 6.15, 6.15, 6.15, 6.25, 6.15, 6.25, 6.05]
+    #six_fids = [6.3, 6.2, 6.1, 6.15, 6.1, 6.20, 6.1, 6.20, 6.05]
     for index, width in enumerate(line_widths):
         print(six_fids[index])
         masks.append(catalog[((catalog['width'] == width) & (catalog['rsnrrbin'] >= six_fids[index]))])
 
     total = masks[0]
     t_sum = 0
-    for mask in masks[0:]:
+    for mask in masks[1:]:
         t_sum += len(mask)
         total = vstack((total, mask))
 
-    print("Total One: {}".format(t_sum))
+    print("Total One: {}".format(len(total)))
     return total
+
+print(" Num above Fid: 0.6: " + str(len(construct_fid_mask(pos_catalog))))
+print( " Num above 6.25: " + str(len(pos_catalog[pos_catalog['rsnrrbin'] > 6.25])))
+print( " Num above 6.1: " + str(len(pos_catalog[pos_catalog['rsnrrbin'] > 6.1])))
+
+
+def idl_tabulate(x, f, p=5) :
+    def idl_newton_cotes(x, f) :
+        if x.shape[0] < 2 :
+            return 0
+        rn = (x.shape[0] - 1) * (x - x[0]) / (x[-1] - x[0])
+        weights = newton_cotes(rn)[0]
+        return (x[-1] - x[0]) / (x.shape[0] - 1) * np.dot(weights, f)
+    ret = 0
+    for idx in range(0, x.shape[0], p - 1) :
+        ret += idl_newton_cotes(x[idx:idx + p], f[idx:idx + p])
+    return ret
 
 
 def calc_gamma(beta):
@@ -132,6 +192,8 @@ def H_gamma(gam):
     Returns H_gamma for the r0 calculation
     :param gam: gamma
     :return:
+
+    Hg = (gamma(0.5)*gamma((gamma_par-1.0)/2.0))/gamma(gamma_par/2.0)
     """
     return (gamma(0.5) * gamma(0.5 * (gam - 1))) / gamma(0.5 * gam)
 
@@ -144,26 +206,50 @@ def H_z(z):
     """
     # return np.sqrt(cosmo.H0**2 * (0.3*(1+z)**3 + 0.7))
     # Returns the same as the equation above from the paper
+    print(" H(z): {}".format(cosmo.H(z)))
     return cosmo.H(z)
 
 
 def E_z(z):
     """
     Calculates E_z for a given redshift
+
+    clight = double(2.9979246e5) ;km/s
+
+    HORIZON_MPC = double(2.9979246e3) ; HORIZON in Mpc/h
+
+    int_zdist1 = int_tabulated(z_dist1[*,0], z_dist1[*,1], /DOUBLE)
+    Integrates from the beginning to the end of it all
+
+
+    ;Computing Ez
+    Hz = 100.0*bigh(z_dist1[*,0], omega_m, omega_v, w)
+    ; Hz=H0*E(z) for the array of z, with H0=100h km/s/Mpc.
+    bigh is a function that compute the value of E(z) for the provided z and cosmology
+    Ez = (Hz/clight) ; in units of cMpc/h
+
     :param z:
     :return:
     """
+    print(" Ez(z): {}".format(H_z(z) / const.c.to(u.km / u.s)))
     return H_z(z) / const.c.to(u.km / u.s)
 
 
 def Chi(z):
     """
     Returns the radial comoving distance, Dc, X in the equation
+
+    ;Computing comoving distance
+    a = 1.0d/(1.0d + z_dist1[*,0])
+    zcom = HORIZON_MPC*dofa(a, omega_m, omega_v, w)
+    ; in units of cMpc/h. dofa is a function that compute
+    the comoving distance for the provided z (or alternatively a)
+
     :param z:
     :return:
     """
-
-    return cosmo.comoving_distance(z)
+    HORIZON_MPC = 2.9979246e3 * (u.Mpc / u.littleh)
+    return 1 * cosmo.comoving_distance(z)
 
 
 def round_of_rating(number):
@@ -175,6 +261,24 @@ def round_of_rating(number):
 
     return round(number * 2) / 2
 
+from scipy import arange, array, exp
+
+def extrap1d(interpolator):
+    xs = interpolator.x
+    ys = interpolator.y
+
+    def pointwise(x):
+        if x < xs[0]:
+            return ys[0]+(x-xs[0])*(ys[1]-ys[0])/(xs[1]-xs[0])
+        elif x > xs[-1]:
+            return ys[-1]+(x-xs[-1])*(ys[-1]-ys[-2])/(xs[-1]-xs[-2])
+        else:
+            return interpolator(x)
+
+    def ufunclike(xs):
+        return array(list(map(pointwise, array(xs))))
+
+    return ufunclike
 
 def redshift_distribution(table, use_matched=False, plot=False):
     """
@@ -184,6 +288,9 @@ def redshift_distribution(table, use_matched=False, plot=False):
 
     Get this from the matched ones
 
+    ;Computing big integral
+    expr = z_dist1[*,1]*z_dist2[*,1]*Ez*zcom^(1.0-gamma_par)
+    int_big = int_tabulated(z_dist1[*,0], expr, /DOUBLE)
 
     :param table:
     :param bins:
@@ -194,32 +301,38 @@ def redshift_distribution(table, use_matched=False, plot=False):
     min_z = np.min(table['Z (CO)'])
     max_z = np.max(table['Z (CO)'])
     width_bin = 0.5
-    bins = np.arange(0, 3.6, width_bin)
+    #print("Max Z: {}".format(max_z))
+    bins = np.arange(0, max_z+0.6, width_bin)
     if use_matched:
         only_matched = (table['Roberto ID'] > 0)
     else:
         only_matched = (table['Roberto ID'] > -1000000)
-    values, bins = np.histogram(table[only_matched]['Z (CO)'], bins=bins, density=True)
+    values, bins = np.histogram(table[only_matched]['Z (CO)'], bins=bins)#, density=True)
     # Multiply by the bin width to get the values to sum to 1
-    values = values * width_bin
+    #values = values * width_bin
     # plt.hist(table[only_matched]['Z (CO)'], bins=bins)
     # plt.show()
     bin_centers = 0.5 * (bins[1:] + bins[:-1])  # convert to centers
     mask = (values > 0)
     interp_values = values[mask]
-    print(sum(interp_values))
+    #print(sum(interp_values))
     interp_bins = bin_centers[mask]
 
-    # interp_values = np.concatenate((np.asarray([0]), interp_values))
-    # interp_bins = np.concatenate((np.asarray([0]), interp_bins))
+    #interp_values = np.concatenate((np.asarray([1.5]), interp_values))
+    #interp_bins = np.concatenate((np.asarray([values[0]]), interp_bins))
+    #interp_values = np.concatenate((interp_values, np.asarray([3.5])))
+    #interp_bins = np.concatenate((interp_bins, np.asarray([values[-1]])))
+    #print("Min Intern bins: {}".format(min(interp_bins)))
+    #print("Max Intern bins: {}".format(max(interp_bins)))
 
     def func(x, a, b, c):
         return a * x ** 2 + b * x + c
 
     popt, pcov = curve_fit(func, interp_bins, interp_values)
 
-    xdata = np.linspace(np.min(interp_bins), np.max(interp_bins), 10000)
+    xdata = np.linspace(1.5, 3.5, 10000)
     f = interp1d(interp_bins, interp_values, kind='slinear')
+    f = extrap1d(f)
 
     # Fit Gaussian
     fitter = modeling.fitting.LevMarLSQFitter()
@@ -254,84 +367,15 @@ def redshift_distribution(table, use_matched=False, plot=False):
     return f, xdata, fitted_model
 
 
-def redshift_distribution_galaxy(table, plot=False):
-    """
-    Calculates redshift distribution in 0.1 redshift increments for all the sources
-
-    If its noisy with empty bins, then need to make_curve and use that instead
-
-    Get this from the matched ones
-
-
-    :param table:
-    :param bins:
-    :return: A curve that captures the redshift distribution of the sample
-    """
-    # Get min and max Z
-
-    min_z = np.min(table['z'])
-    max_z = np.max(table['z'])
-
-    bins = np.arange(1.5, 3.6, 0.5)
-    values, bins = np.histogram(table['z'], bins=bins, density=True)
-    # Multiply by the bin width to get the values to sum to 1
-    # values = values * ((bins[0] + bins[1]) * 0.5)
-    # plt.hist(table[only_matched]['Z (CO)'], bins=bins)
-    # plt.show()
-    bin_centers = 0.5 * (bins[1:] + bins[:-1])  # convert to centers
-    mask = (values > 0)
-    interp_values = values[mask]
-    interp_bins = bin_centers[mask]
-
-    # interp_values = np.concatenate((np.asarray([0]), interp_values))
-    # interp_bins = np.concatenate((np.asarray([0]), interp_bins))
-
-    def func(x, a, b, c):
-        return a * x ** 2 + b * x + c
-
-    popt, pcov = curve_fit(func, interp_bins, interp_values)
-
-    xdata = np.linspace(np.min(interp_bins), np.max(interp_bins), 10000)
-    f = interp1d(interp_bins, interp_values, kind='slinear')
-
-    # Fit Gaussian
-    fitter = modeling.fitting.LevMarLSQFitter()
-    model = modeling.models.Gaussian1D()  # depending on the data you need to give some initial values
-    fitted_model = fitter(model, interp_bins, interp_values)
-    if plot:
-        plt.plot(xdata, fitted_model(xdata))
-        values, _, _ = plt.hist(table['Z (CO)'], bins=bins, density=True)
-        # values = values * ((bins[0] + bins[1]) * 0.5)
-        plt.title("SN > {}".format(np.round(np.min(table['S/N']), 2)))
-        plt.ylabel("Count")
-        plt.xlabel("Redshift (z)")
-        plt.plot(xdata, func(xdata, *popt))
-        plt.plot(xdata, f(xdata))
-        plt.savefig("SN_{}_Redshift_Distribution_60.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
-        plt.cla()
-        t = Table()
-        t['Z'] = Column(xdata, description='Redshift')
-        t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_interpolated_60.txt")
-
-        t = Table()
-        t['Z'] = Column(xdata, description='Redshift')
-        t['Num_Gal'] = Column(fitted_model(xdata), description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_interpolated_gauss_60.txt")
-
-        t = Table()
-        t['Z'] = Column(bin_centers, description='Redshift')
-        t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
-        ascii.write(t, "redshift_distribution_points_60.txt")
-
-    return f, xdata, fitted_model
-
-
 def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     """
     Calculates r0 given a beta and a, along with other things
 
     Calculates H_gamma*\frac{}{}
+
+    ;Computing r0 using the inverse of Limber equation
+    A_param_rad = A_param*((!dpi/180.0d)/3600.0d)^(beta_param) ; A in units of radians^beta
+    r0_param = ((A_param_rad * int_zdist1 * int_zdist2) / (Hg * int_big))^(1.0/gamma_par) ;in cMpc/h units
 
     :param a:
     :param beta:
@@ -342,7 +386,10 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
 
     # Convert A to radians to the 1, so need to raise to positive beta
     # A should be in units of arcseconds
-    a_rad = a.radian ** (beta)
+    a_rad = a.arcsec * ((np.pi/180.0)/3600.) ** beta
+    print("A Rad: {}".format(a_rad))
+    #a_rad = a.radian ** (beta)
+    #print("A Rad 2: {}".format(a_rad))
     # Need to calc redshift distribution
     # Got that from the linear interpolation
     z_dist_func, zs, gaussian = redshift_distribution(table, plot=plot)
@@ -352,113 +399,74 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     # Need to calculate X -> Dc = DH as a vector for all redshifts too, can use Astropy distance
     # Radial comoving Distance, so I think all of the comoving distance
     # http://docs.astropy.org/en/stable/cosmology/
+    #print("E(z): {}".format(Ez))
 
     X = Chi(zs)
+    #print("X: {}".format(X))
     # So now have everything to get r0
     # Divide over the equation to have r0 on its own so
     # But write parts in normal Equation 16 order here
     # Need Integral here
 
     # Need to do elementwise multiplication of all of these together, then sum in integral
+    """
+    
+        ;Computing big integral
+    expr = z_dist1[*,1]*z_dist2[*,1]*Ez*zcom^(1.0-gamma_par)
+    int_big = int_tabulated(z_dist1[*,0], expr, /DOUBLE)
+    
+    r0_param = ((A_param_rad * int_zdist1 * int_zdist2) / (Hg * int_big))^(1.0/gamma_par) ;in cMpc/h units
+    """
     chi_pow = 1 - calc_gamma(beta)
     if use_gauss:
         top = gaussian(zs) * gaussian(zs) * Ez * np.power(X, chi_pow)
     else:
         top = z_dist_func(zs) * z_dist_func(zs) * Ez * np.power(X, chi_pow)
-    diff = zs[1] - zs[0]
-    top_integrand = diff * sum(top)
+    # Now integrate over the Z_distribution with the expression
+    print("Top: {}".format(top))
+    top_unit = top.unit
+    top_integrand = idl_tabulate(zs, top) * top.unit
+    print("Top: {}".format(top_integrand))
+    #diff = zs[1] - zs[0]
+    #top_integrand = diff * sum(top)
     top = top_integrand
     # Need integral here
     if use_gauss:
-        bottom_integral = diff * sum(gaussian(zs))
+        bottom_integral = 0.5 * sum(gaussian(zs))
     else:
-        bottom_integral = diff * sum(z_dist_func(zs))
+        bottom_integral = 0.5 * sum(z_dist_func(zs))
+
+    bottom_integral = idl_tabulate(zs, gaussian(zs))
+    print("Bottom: {}".format(bottom_integral))
     bottom = bottom_integral ** 2
     # Front
     front = H_gamma(calc_gamma(beta))
     # Now put together with swap to other side
-    r0_gamma = a_rad * (bottom / top) * (1 / front)
+    r0_gamma = a_rad * (bottom / (front * top))
+    #print("R0Gamm: {}".format(r0_gamma))
     r0 = r0_gamma ** (1 / calc_gamma(beta))
     # Convert to cMpc/h
+    print("Before Convert: {}".format(r0))
     r0 = r0.to((u.Mpc / u.littleh), u.with_H0(cosmo.H0))
     return r0
-
-
-def calculate_cross_r0(a, beta, table, gal_table, use_gauss=False):
-    """
-    Calculates r0 given a beta and a, along with other things
-
-    Calculates H_gamma*\frac{}{}
-
-    :param a:
-    :param beta:
-    :param table: The Astropy Table from the matching that is used to get the
-    Redshift Distribution for the sample
-    :return:
-    """
-
-    # Convert A to radians to the 1, so need to raise to positive beta
-    # A should be in units of arcseconds
-    a_rad = a.radian ** (beta)
-    # Need to calc redshift distribution
-    # Got that from the linear interpolation
-    z_dist_func, zs, gaussian = redshift_distribution(table)
-    gal_dist_func, gal_zs, gal_gauss = redshift_distribution_galaxy(gal_table)
-
-    # Need to calc redshift vector E as a vector for every redshift Ez = Hz/c
-    Ez = E_z(zs)
-    # Need to calculate X -> Dc = DH as a vector for all redshifts too, can use Astropy distance
-    # Radial comoving Distance, so I think all of the comoving distance
-    # http://docs.astropy.org/en/stable/cosmology/
-
-    X = Chi(zs)
-    # So now have everything to get r0
-    # Divide over the equation to have r0 on its own so
-    # But write parts in normal Equation 16 order here
-    # Need Integral here
-
-    # Need to do elementwise multiplication of all of these together, then sum in integral
-    chi_pow = 1 - calc_gamma(beta)
-    if use_gauss:
-        top = gal_gauss(zs) * gaussian(zs) * Ez * np.power(X, chi_pow)
-    else:
-        top = gal_dist_func(zs) * z_dist_func(zs) * Ez * np.power(X, chi_pow)
-    diff = zs[1] - zs[0]
-    top_integrand = diff * sum(top)
-    top = top_integrand
-    # Need integral here
-    if use_gauss:
-        bottom_integral = diff * sum(gaussian(zs)) * (diff * sum(gal_gauss(zs)))
-    else:
-        bottom_integral = diff * sum(z_dist_func(zs)) * (diff * sum(gal_dist_func(zs)))
-    bottom = bottom_integral
-    # Front
-    front = H_gamma(calc_gamma(beta))
-    # Now put together with swap to other side
-    r0_gamma = a_rad * (bottom / top) * (1 / front)
-    r0 = r0_gamma ** (1 / calc_gamma(beta))
-    # Convert to cMpc/h
-    r0 = r0.to((u.Mpc / u.littleh), u.with_H0(cosmo.H0))
-    return r0
-
 
 sn8_table = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_60.ecsv")
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_0.6.ecsv")
 # sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
 # sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
 sn95_table = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_60.ecsv")
-print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table))
-print(calculate_r0(Angle((6.52 + 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False, plot=True))
-print(calculate_r0(Angle((6.52 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
-print(calculate_r0(Angle(6.52 * u.arcsecond), 0.8, sn95_table, use_gauss=True, plot=True))
-print(calculate_r0(Angle((6.52 + 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
-print(calculate_r0(Angle((6.52 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_0.6.ecsv")
+print(calculate_r0(Angle(1.1703 * u.arcsecond), 0.8, sn95_table))
+print(calculate_r0(Angle((1.1703+ 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False, plot=True))
+print(calculate_r0(Angle((1.1703 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
+print(calculate_r0(Angle(1.1703 * u.arcsecond), 0.8, sn95_table, use_gauss=True, plot=True))
+print(calculate_r0(Angle((1.1703 + 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
+print(calculate_r0(Angle((1.1703 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
 
 # redshift_distribution(sn85_table)
 # redshift_distribution(sn9_table)
 # redshift_distribution(sn95_table)
-# exit()
+exit()
 
 
 def make_skycoords(source, ra='ra', dec='dec', distance=None):
@@ -524,15 +532,18 @@ def trim_galaxy(points, filename):
     ys2 = []
 
     for point in points:
-        c = point
-        # print(c)
+        if 53.037 <= point.ra.degree <= 53.213:
+            if -27.8713 <= point.dec.degree <= -27.737:
+                c = point
+                # print(c)
 
-        x, y = c.to_pixel(wcs=wcs)
-        if not np.isnan(mask[int(y), int(x)]):
-            xs.append(x)
-            ys.append(y)
-            r_c_x.append(np.asarray([x, y]))
-            random_catalog_coords.append(c)
+                x, y = c.to_pixel(wcs=wcs)
+                if x < mask.shape[0] and y < mask.shape[1]:
+                    if not np.isnan(mask[int(y), int(x)]):
+                        xs.append(x)
+                        ys.append(y)
+                        r_c_x.append(np.asarray([x, y]))
+                        random_catalog_coords.append(c)
 
     random_catalog_coords = SkyCoord(random_catalog_coords)
 
@@ -631,163 +642,6 @@ def generate_random_catalog(number_of_points, filename):
 
 # exit()
 
-def random_tester(random_cat, random_cat2):
-    """
-    Takes list of tuples of x,y coordinates and computes distances between them
-    Should be a Numpy array of points
-    :param random_cat:
-    :param random_cat2:
-    :return:
-    """
-    # First create the data data one
-    data_data = None
-
-    # Get it for each one that is not the current ones
-    for i, element in enumerate(random_cat[:-1]):
-        sep2d = cdist(element.reshape((1, 2)), random_cat[i + 1:], 'euclidean')
-        # print(sep2d)
-        if data_data is None:
-            data_data = sep2d
-        else:
-            data_data = np.concatenate((data_data.reshape((-1, 1)), sep2d.reshape((-1, 1))))
-    min_dist = np.min(data_data)
-    print("Min Distance: {}".format(min_dist))
-    min_dist = min_dist
-    max_dist = np.max(data_data)
-
-    print("Done with Data Data")
-
-    random_random = None
-
-    # Get it for each one that is not the current ones
-    for i, element in enumerate(random_cat2[:-1]):
-        sep2d = cdist(element.reshape((1, 2)), random_cat[i + 1:], 'euclidean')
-        # print(sep2d)
-        if random_random is None:
-            random_random = sep2d
-        else:
-            random_random = np.concatenate((random_random.reshape((-1, 1)), sep2d.reshape((-1, 1))))
-
-    m_dist = np.max(random_random)
-    if m_dist > max_dist:
-        max_dist = m_dist
-    print("Done with Random Random")
-
-    data_random = None
-
-    # Get it for each one that is not the current ones
-    for i, element in enumerate(random_cat):
-        sep2d = cdist(element.reshape((1, 2)), random_cat2.reshape((-1, 2)), 'euclidean')
-        if data_random is None:
-            data_random = sep2d
-        else:
-            data_random = np.concatenate((data_random.reshape((-1, 1)), sep2d.reshape((-1, 1))))
-
-    print("Done with Data Random")
-    m_dist = np.max(data_random)
-    if m_dist > max_dist:
-        max_dist = m_dist
-
-    return data_data, data_random, random_random, min_dist, max_dist
-
-
-def angular_crosscorrelation_function(co_catalog, galaxy_catalog, random_catalog):
-    """
-    Calculates the arrays for the data, random, and data_random for w(theta)
-    :param co_catalog:
-    :param random_catalog:
-    :return:
-    """
-    # First create the data data one
-    data_data = None
-
-    # Get it for each one that is not the current ones
-    for i, element in enumerate(co_catalog):
-        # print(element)
-        sep2d = element.separation(galaxy_catalog).arcsecond
-        # print(sep2d)
-        if data_data is None:
-            data_data = sep2d
-        else:
-            data_data = np.concatenate((data_data, sep2d))
-    min_dist = np.min(data_data)
-    print("Min Distance: {}".format(min_dist))
-    min_dist = 13.5
-    # min_dist = 18.75 # For Negative Ones
-    max_dist = np.max(data_data)
-
-    random_random = None
-
-    # Get it for each one that is not the current ones
-    for i, element in enumerate(random_catalog):
-        sep2d = element.separation(random_catalog[i + 1:]).arcsecond
-        if random_random is None:
-            random_random = sep2d
-        else:
-            random_random = np.concatenate((random_random, sep2d))
-
-    # Plot distribution of those to make sure random
-
-    m_dist = np.max(random_random)
-    if m_dist > max_dist:
-        max_dist = m_dist
-
-    data_random = None
-
-    # Get it for each one that is not the current ones
-    for i, element in enumerate(co_catalog):
-        sep2d = element.separation(random_catalog).arcsecond
-        if data_random is None:
-            data_random = sep2d
-        else:
-            data_random = np.concatenate((data_random, sep2d))
-
-    galaxy_random = None
-
-    for i, element in enumerate(galaxy_catalog):
-        sep2d = element.separation(random_catalog).arcsecond
-        if galaxy_random is None:
-            galaxy_random = sep2d
-        else:
-            galaxy_random = np.concatenate((galaxy_random, sep2d))
-
-    m_dist = np.max(data_random)
-    if m_dist > max_dist:
-        max_dist = m_dist
-
-    return data_data, data_random, galaxy_random, random_random, min_dist, max_dist
-
-
-def xi_r_cross(data_array, data_random_array, gal_random_array, random_array, real_catalog, gal_catalog,
-               random_catalog):
-    """
-
-    1/RR(DcoDgal - DcoR - DgalR + RR)
-    :param data_array:
-    :param data_random_array:
-    :param random_array:
-    :return:
-    """
-    data_array_norm = real_catalog.shape[0] * gal_catalog.shape[0]
-    data_random_array_norm = (real_catalog.shape[0] * random_catalog.shape[0])
-    gal_random_array_norm = (gal_catalog.shape[0] * random_catalog.shape[0])
-    random_array_norm = (random_catalog.shape[0] * (random_catalog.shape[0] - 1)) / 2.
-
-    data_array = data_array / data_array_norm
-    gal_random_array = gal_random_array / gal_random_array_norm
-    data_random_array = data_random_array / data_random_array_norm
-    random_array = random_array / random_array_norm
-
-    # return 2 * (5000/real_catalog.shape[0])*(data_array/data_random_array) - 1
-
-    # return 4 * (data_array*random_array)/(data_random_array)**2 - 1
-    # print("Data-Data: {}".format(data_array))
-    # print("RR: {}".format(random_array))
-    # print("DR: {}".format(data_random_array))
-    # print("DD/RR: {}".format(data_array/random_array))
-    # print("DR/RR: {}".format(data_random_array/random_array))
-    return (1 / random_array) * (data_array - data_random_array - gal_random_array + random_array)
-
 
 def angular_correlation_function(data_catalog, random_catalog):
     """
@@ -810,7 +664,7 @@ def angular_correlation_function(data_catalog, random_catalog):
             data_data = np.concatenate((data_data, sep2d))
     min_dist = np.min(data_data)
     print("Min Distance: {}".format(min_dist))
-    min_dist = 13.5
+    min_dist = 8.39
     # min_dist = 18.75 # For Negative Ones
     max_dist = np.max(data_data)
 
@@ -960,7 +814,7 @@ def cross_correlation_method(co_lines, random_catalog, galaxies, num_gals, num_c
 from scipy.optimize import curve_fit
 
 negative = True
-num_points = 7500
+num_points = 20000
 if negative:
     real_catalog = load_table("line_search_N3_wa_crop.out")
 else:
@@ -968,7 +822,7 @@ else:
 real_catalog = real_catalog[real_catalog['rsnrrbin'] > 6.25]
 real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
 # Trim galaxy coordinates
-gal_catalog, _ = trim_galaxy(gal_catalog, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
+#gal_catalog, _ = trim_galaxy(gal_catalog, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
 np.random.seed(5227)
 random_catalog, r_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
 # np.random.seed(5227)
@@ -1061,13 +915,15 @@ Show correlation between different SN cuts
 Add taking into account the error on the A fitting
 
 """
-
+plt.close()
 dds = {}
 drs = {}
 rrs = {}
+grs = {}
 dist_bns = {}
 dist_binners = {}
 snners = [6.25, 6.1, 5.9, 5.5]
+snners = [60]
 
 for sn_cut in snners:
     if negative:
@@ -1084,116 +940,6 @@ for sn_cut in snners:
                      ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.89)) | (
                              (real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.83)) | \
                      ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.1))
-    real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
-    # real_catalog = real_catalog[fidelity_sixty]
-    # real_catalog = construct_fid_mask(real_catalog)
-    real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
-    print(real_catalog.shape)
-    dds[sn_cut] = []
-    drs[sn_cut] = []
-    rrs[sn_cut] = []
-
-    data_data, data_random, galaxy_random, random_random, min_dist, max_dist = angular_crosscorrelation_function(
-        real_catalog, gal_catalog,
-        random_catalog)
-
-    for bin_num in [5, 6, 7, 8, 9, 10]:
-        distance_bins = np.logspace(np.log10(min_dist - 0.001), np.log10(max_dist + 1), bin_num + 1)
-        dist_bns[bin_num] = distance_bins
-        dd, _ = histogram(data_data, bins=distance_bins)
-        dr, _ = histogram(data_random, bins=distance_bins)
-        gr, _ = histogram(galaxy_random, bins=distance_bins)
-        rr, _ = histogram(random_random, bins=distance_bins)
-        dds[sn_cut].append(dd)
-        drs[sn_cut].append(dr)
-        rrs[sn_cut].append(rr)
-        omega_w = xi_r_cross(dd, dr, gr,  rr, real_catalog, gal_catalog, random_catalog)
-        le_omega_w, ue_omega_w = xi_r_error(omega_w, dd)
-        distance_bins = 0.5 * (distance_bins[1:] + distance_bins[:-1])
-        # distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
-        dist_binners[bin_num] = distance_bins
-        # Best fit to the data
-        pinit = [1.]
-        out = leastsq(errfunc, pinit,
-                      args=(distance_bins, omega_w, (le_omega_w + ue_omega_w) / 2.), full_output=True)
-        a = out[0][0]
-        s_sq = (errfunc(out[0][0], distance_bins, omega_w, (le_omega_w + ue_omega_w) / 2.) ** 2).sum() / (
-                len(distance_bins) - len(pinit))
-        cov_matrix = out[1] * s_sq
-
-        a_error = np.absolute(cov_matrix[0][0]) ** 0.5
-        print("Value for A: {}".format(a))
-
-        # Now get one for only the positive points
-        pos_mask = (omega_w > 0.)
-        pos_ue = ue_omega_w[pos_mask]
-        pos_le = le_omega_w[pos_mask]
-        pos_bins = distance_bins[pos_mask]
-        pos_omega = omega_w[pos_mask]
-
-        pinit = [1.]
-        out = leastsq(errfunc, pinit,
-                      args=(pos_bins, pos_omega, (pos_le + pos_ue) / 2.), full_output=True)
-        pos_a = out[0][0]
-        s_sq = (errfunc(out[0][0], pos_bins, pos_omega, (pos_le + pos_ue) / 2.) ** 2).sum() / (
-                len(pos_bins) - len(pinit))
-        cov_matrix = out[1] * s_sq
-
-        pos_a_error = np.absolute(cov_matrix[0][0]) ** 0.5
-        print("Value for A: {}".format(a))
-
-        xmin = distance_bins[0] - 0.001
-        xmax = distance_bins[-1] + 0.1 * distance_bins[-1]
-        x_fit = np.linspace(xmin, xmax, 10000)
-        plt.cla()
-        plt.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
-        plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
-                 label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
-        plt.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
-                 label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
-        plt.xscale("log")
-        plt.title("Data vs Random")
-        plt.legend(loc='best')
-        plt.xlabel("Angular Distance (arcseconds)")
-        plt.ylabel("$\omega(\\theta)$")
-        plt.yscale("log")
-        # plt.tight_layout()
-        plt.savefig("final/Cross_Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, 60), dpi=300)
-        # plt.show()
-
-        plt.cla()
-        plt.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
-        plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
-                 label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
-        plt.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
-                 label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
-        plt.xscale("log")
-        plt.title("Data vs Random")
-        plt.legend(loc='best', fontsize='5')
-        plt.xlabel("Angular Distance (arcseconds)")
-        plt.ylabel("$\omega(\\theta)$")
-        # plt.yscale("log")
-        # plt.tight_layout()
-        plt.savefig("final/Cross_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, 60), dpi=300)
-        # plt.show()
-
-exit()
-
-for sn_cut in snners:
-    if negative:
-        real_catalog = load_table("line_search_N3_wa_crop.out")
-    else:
-        real_catalog = load_table("line_search_P3_wa_crop.out")
-
-    fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.54)) | (
-                (real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.83)) | \
-                     ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.18)) | (
-                                 (real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.49)) | \
-                     ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.61)) | (
-                                 (real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.54)) | \
-                     ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.89)) | (
-                                 (real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.83)) | \
-                     ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.1))
     # real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     # real_catalog = real_catalog[fidelity_sixty]
     real_catalog = construct_fid_mask(real_catalog)
@@ -1202,12 +948,10 @@ for sn_cut in snners:
     dds[sn_cut] = []
     drs[sn_cut] = []
     rrs[sn_cut] = []
-    data_data, data_random, random_random, min_dist, max_dist = angular_correlation_function(real_catalog,
-                                                                                             random_catalog)
+    grs[sn_cut] = []
 
-    data_data, data_random, galaxy_random, random_random, min_dist, max_dist = angular_crosscorrelation_function(
-        real_catalog, combined_catalog,
-        random_catalog)
+    data_data, data_random, random_random, min_dist, max_dist = angular_correlation_function(real_catalog,
+                                                                                         random_catalog)
 
     for bin_num in [5, 6, 7, 8, 9, 10]:
         distance_bins = np.logspace(np.log10(min_dist - 0.001), np.log10(max_dist + 1), bin_num + 1)
@@ -1218,7 +962,7 @@ for sn_cut in snners:
         dds[sn_cut].append(dd)
         drs[sn_cut].append(dr)
         rrs[sn_cut].append(rr)
-        omega_w = xi_r(dd, dr, rr, real_catalog, random_catalog)
+        omega_w = xi_r(dd, dr,  rr, real_catalog, random_catalog)
         le_omega_w, ue_omega_w = xi_r_error(omega_w, dd)
         distance_bins = 0.5 * (distance_bins[1:] + distance_bins[:-1])
         # distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
@@ -1256,6 +1000,7 @@ for sn_cut in snners:
         xmin = distance_bins[0] - 0.001
         xmax = distance_bins[-1] + 0.1 * distance_bins[-1]
         x_fit = np.linspace(xmin, xmax, 10000)
+        """
         plt.cla()
         plt.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
         plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
@@ -1268,11 +1013,13 @@ for sn_cut in snners:
         plt.xlabel("Angular Distance (arcseconds)")
         plt.ylabel("$\omega(\\theta)$")
         plt.yscale("log")
-        # plt.tight_layout()
-        plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, 60), dpi=300)
+        #plt.tight_layout()
+        plt.savefig("fidelity/Log_Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
         # plt.show()
+        """
+        r0 = calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)
+        guass_r0 = calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)
 
-        plt.cla()
         plt.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
         plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                  label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
@@ -1283,10 +1030,15 @@ for sn_cut in snners:
         plt.legend(loc='best', fontsize='5')
         plt.xlabel("Angular Distance (arcseconds)")
         plt.ylabel("$\omega(\\theta)$")
-        # plt.yscale("log")
-        # plt.tight_layout()
-        plt.savefig("final/Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, 60), dpi=300)
+        plt.yscale("log")
+        plt.title("r0: {} Gauss r0: {}".format(np.round(r0, 3), np.round(guass_r0, 3)))
+        #plt.tight_layout()
+        plt.savefig("fidelity/Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
         # plt.show()
+        plt.cla()
+
+
+exit()
 
 
 # Now have dictionary of lists of datas
@@ -1358,7 +1110,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         xmax = max_dist + 0.1 * max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
         sn8_table = Table.read(
-            "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_60.ecsv")  # .format(sn_cut[index]))
+            "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_0.6.ecsv")  # .format(sn_cut[index]))
         if index == 0:
             open_file.write("{} SN\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
@@ -1557,14 +1309,14 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
     f.align_ylabels()
     f.suptitle("Data vs Random")
     if use_log:
-        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}_N{}_sn60.png".format(len(distance_bins1), negative), dpi=300)
+        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}_N{}_sn{}.png".format(len(distance_bins1), negative, sn_cut), dpi=300)
     else:
-        plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}_sn60.png".format(len(distance_bins1), negative), dpi=300)
+        plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}_sn{}.png".format(len(distance_bins1), negative, sn_cut), dpi=300)
 
     open_file.close()
 
 
-num_ones = len(dds[snners[2]])
+num_ones = len(dds[snners[0]])
 
 for i in range(num_ones):
     dd_plot = []
