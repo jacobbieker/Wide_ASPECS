@@ -87,16 +87,6 @@ def make_skycoords(source, ra='ra', dec='dec', distance=None):
 
     return skycoords
 
-initial_catalog = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/independent/jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits",
-    format='fits')  # hdu_list[1].data
-roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')
-
-combined_catalog = combine_catalogs(initial_catalog, roberto_catalog)
-
-gal_catalog = make_skycoords(combined_catalog, ra='ra', dec='dc')
-
-
 cosmo = FlatLambdaCDM(H0=100, Om0=0.3, Tcmb0=2.725)
 
 
@@ -112,36 +102,30 @@ def fid(neg, pos):
 neg_catalog = load_table("line_search_N3_wa_crop.out")
 pos_catalog = load_table("line_search_P3_wa_crop.out")
 
+fid_catalog = load_table("fidelity_snr.out", start=0)
+print(fid_catalog)
+f = interp1d(fid_catalog["fbin"], fid_catalog["pure3"], kind='slinear')
+xdata = np.linspace(5.95, 7.85, 10000)
+plt.plot(xdata, f(xdata), label="Interpolated")
+plt.plot(fid_catalog["fbin"], fid_catalog["pure3"], label="Actual")
+plt.show()
+print(xdata[np.argmax(f(xdata) >= 0.6)])
+
+
+
 line_widths = [i for i in range(3, 21, 2)]
 
-sn_cuts = np.arange(5., 8.1, 0.05)
+sn_cuts = np.arange(5.85, 8.05, 0.1)
+print("SN_Cuts: {}".format(sn_cuts))
 six_fids = []
+fid_limit = 0.5
 for width in line_widths:
-    neg_widths = neg_catalog[neg_catalog['width'] == width]
-    pos_widths = pos_catalog[pos_catalog['width'] == width]
-    print("Neg Width Lines: {}".format(len(neg_widths)))
-    print("Pos Width Lines: {}".format(len(pos_widths)))
-    print("Width {} MaxSN: {}".format(width, np.max(neg_widths['rsnrrbin'])))
-    fid_width = []
-    sn_vals = []
-    six_fid = -1
-    for sn in sn_cuts:
-        neg_sn = neg_widths[neg_widths['rsnrrbin'] >= sn]
-        pos_sn = pos_widths[pos_widths['rsnrrbin'] >= sn]
-        # print("SN: {} Len: {}".format(sn, len(pos_sn)))
-        if len(pos_sn) > 0:
-            fid_width.append(fid(neg_sn, pos_sn))
-            sn_vals.append(sn)
-            if six_fid < 0 and fid_width[-1] >= 0.6:
-                six_fid = sn
-        elif len(neg_sn) == 0:
-            fid_width.append(1)
-            sn_vals.append(sn)
-            if six_fid < 0 and fid_width[-1] >= 0.6:
-                six_fid = sn
-        six_fids.append(six_fid)
+    f = interp1d(fid_catalog["fbin"], fid_catalog["pure{}".format(width)], kind='slinear')
+    xdata = np.linspace(5.85, 7.85, 10000)
+    print(xdata[np.argmax(f(xdata) >= fid_limit)])
+    six_fids.append(xdata[np.argmax(f(xdata) >= fid_limit)])
 
-
+print(six_fids)
 def construct_fid_mask(catalog):
     """
     Constructs the fidelity mask based off my results, not Robertos
@@ -149,7 +133,7 @@ def construct_fid_mask(catalog):
     :return:
     """
     masks = []
-    six_fids = [6.25, 6.2, 6.1, 6.1, 6.1, 6.15, 6.1, 6.15, 6.05]
+    # six_fids = [6.26, 6.2, 6.1, 6.1, 6.1, 6.15, 6.1, 6.15, 6.05]
     #six_fids = [6.35, 6.25, 6.15, 6.15, 6.15, 6.25, 6.15, 6.25, 6.05]
     #six_fids = [6.3, 6.2, 6.1, 6.15, 6.1, 6.20, 6.1, 6.20, 6.05]
     for index, width in enumerate(line_widths):
@@ -249,7 +233,7 @@ def Chi(z):
     :return:
     """
     HORIZON_MPC = 2.9979246e3 * (u.Mpc / u.littleh)
-    return 1 * cosmo.comoving_distance(z)
+    return 1. * cosmo.comoving_distance(z)
 
 
 def round_of_rating(number):
@@ -426,9 +410,9 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     print("Top: {}".format(top))
     top_unit = top.unit
     top_integrand = idl_tabulate(zs, top) * top.unit
-    print("Top: {}".format(top_integrand))
+    #print("Top: {}".format(top_integrand))
     #diff = zs[1] - zs[0]
-    #top_integrand = diff * sum(top)
+    #top_integrand = 0.5 * sum(top)
     top = top_integrand
     # Need integral here
     if use_gauss:
@@ -451,11 +435,11 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     return r0
 
 sn8_table = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_0.6.ecsv")
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_50.ecsv")
 # sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
 # sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
 sn95_table = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_0.6.ecsv")
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_50.ecsv")
 print(calculate_r0(Angle(1.1703 * u.arcsecond), 0.8, sn95_table))
 print(calculate_r0(Angle((1.1703+ 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False, plot=True))
 print(calculate_r0(Angle((1.1703 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
@@ -466,7 +450,6 @@ print(calculate_r0(Angle((1.1703 - 0.16) * u.arcsecond), 0.8, sn95_table, use_ga
 # redshift_distribution(sn85_table)
 # redshift_distribution(sn9_table)
 # redshift_distribution(sn95_table)
-exit()
 
 
 def make_skycoords(source, ra='ra', dec='dec', distance=None):
@@ -813,7 +796,7 @@ def cross_correlation_method(co_lines, random_catalog, galaxies, num_gals, num_c
 
 from scipy.optimize import curve_fit
 
-negative = True
+negative = False
 num_points = 20000
 if negative:
     real_catalog = load_table("line_search_N3_wa_crop.out")
@@ -923,7 +906,7 @@ grs = {}
 dist_bns = {}
 dist_binners = {}
 snners = [6.25, 6.1, 5.9, 5.5]
-snners = [60]
+snners = [50]
 
 for sn_cut in snners:
     if negative:

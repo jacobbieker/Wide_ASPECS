@@ -4,6 +4,8 @@ This is focused on matching sources in the catalog to those detected in the cube
 
 """
 import numpy as np
+from scipy.interpolate import interp2d, interp1d
+
 import astropy.units as u
 from astropy.table import Table, vstack
 from astropy.coordinates import SkyCoord, Angle, SkyOffsetFrame, ICRS, Distance
@@ -53,11 +55,21 @@ def construct_fid_mask(catalog):
     :param catalog:
     :return:
     """
+    line_widths = [i for i in range(3, 21, 2)]
+    fid_catalog = load_table("fidelity_snr.out", start=0)
+    fid_limit = 0.4
+
+    six_fids = []
+    for width in line_widths:
+        f = interp1d(fid_catalog["fbin"], fid_catalog["pure{}".format(width)], kind='slinear')
+        xdata = np.linspace(5.85, 7.85, 10000)
+        print(xdata[np.argmax(f(xdata) >= fid_limit)])
+        six_fids.append(xdata[np.argmax(f(xdata) >= fid_limit)])
     masks = []
     line_widths = [i for i in range(3, 21, 2)]
-    six_fids = [6.3, 6.2, 6.1, 6.15, 6.1, 6.20, 6.1, 6.20, 6.05]
+    #six_fids = [6.3, 6.2, 6.1, 6.15, 6.1, 6.20, 6.1, 6.20, 6.05]
     # six_fids = [6.35, 6.25, 6.15, 6.15, 6.15, 6.25, 6.15, 6.25, 6.05]
-    six_fids = [6.25, 6.2, 6.1, 6.1, 6.1, 6.15, 6.1, 6.15, 6.05]
+    # six_fids = [6.25, 6.2, 6.1, 6.1, 6.1, 6.15, 6.1, 6.15, 6.05]
     for index, width in enumerate(line_widths):
         print(six_fids[index])
         masks.append(catalog[((catalog['width'] == width) & (catalog['rsnrrbin'] >= six_fids[index]))])
@@ -765,9 +777,9 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                      ((lines['width'] == 11) & (lines['rsnrrbin'] >= 6.61)) | ((lines['width'] == 13) & (lines['rsnrrbin'] >= 6.54)) | \
                      ((lines['width'] == 15) & (lines['rsnrrbin'] >= 6.89)) | ((lines['width'] == 17) & (lines['rsnrrbin'] >= 6.83)) | \
                      ((lines['width'] == 19) & (lines['rsnrrbin'] >= 6.1))
-    #lines = construct_fid_mask(lines)
+    lines = construct_fid_mask(lines)
     #lines = lines[fidelity_sixty]
-    lines = lines[lines['rsnrrbin'] >= snr_limit]
+    #lines = lines[lines['rsnrrbin'] >= snr_limit]
 
     line_skycoords = make_skycoords(lines, ra='rra', dec='rdc')
     catalog_skycoords = make_skycoords(catalog, ra=catalog_ra, dec=catalog_dec)

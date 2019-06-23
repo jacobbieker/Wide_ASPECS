@@ -18,8 +18,7 @@ from scipy.optimize import leastsq, curve_fit
 def fid(neg, pos):
     return 1 - (len(neg)/len(pos))
 
-neg_catalog = load_table("line_search_N3_wa_crop.out")
-pos_catalog = load_table("line_search_P3_wa_crop.out")
+
 
 line_widths = [i for i in range(3, 21, 2)]
 
