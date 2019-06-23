@@ -118,14 +118,28 @@ line_widths = [i for i in range(3, 21, 2)]
 sn_cuts = np.arange(5.85, 8.05, 0.1)
 print("SN_Cuts: {}".format(sn_cuts))
 six_fids = []
-fid_limit = 0.5
+fs = []
+fid_limit = 0.4
 for width in line_widths:
-    f = interp1d(fid_catalog["fbin"], fid_catalog["pure{}".format(width)], kind='slinear')
+    f = interp1d(fid_catalog["fbin"], fid_catalog["pure{}".format(width)], kind='cubic')
+    fs.append(f)
     xdata = np.linspace(5.85, 7.85, 10000)
     print(xdata[np.argmax(f(xdata) >= fid_limit)])
     six_fids.append(xdata[np.argmax(f(xdata) >= fid_limit)])
 
+for index, f in enumerate(fs):
+    plt.plot(xdata, f(xdata), label="Width: {}".format(line_widths[index]))
+plt.title("Fidelity vs SN")
+plt.ylabel("Fidelity")
+plt.xlabel("S/N")
+plt.axhline(y=0.6, c='r', linestyle='--')
+plt.legend(loc='best')
+plt.savefig("Fidelity_map.png", dpi=300)
+plt.cla()
 print(six_fids)
+
+#exit()
+
 def construct_fid_mask(catalog):
     """
     Constructs the fidelity mask based off my results, not Robertos
@@ -152,7 +166,7 @@ def construct_fid_mask(catalog):
 print(" Num above Fid: 0.6: " + str(len(construct_fid_mask(pos_catalog))))
 print( " Num above 6.25: " + str(len(pos_catalog[pos_catalog['rsnrrbin'] > 6.25])))
 print( " Num above 6.1: " + str(len(pos_catalog[pos_catalog['rsnrrbin'] > 6.1])))
-
+#exit()
 
 def idl_tabulate(x, f, p=5) :
     def idl_newton_cotes(x, f) :
@@ -190,7 +204,6 @@ def H_z(z):
     """
     # return np.sqrt(cosmo.H0**2 * (0.3*(1+z)**3 + 0.7))
     # Returns the same as the equation above from the paper
-    print(" H(z): {}".format(cosmo.H(z)))
     return cosmo.H(z)
 
 
@@ -215,7 +228,6 @@ def E_z(z):
     :param z:
     :return:
     """
-    print(" Ez(z): {}".format(H_z(z) / const.c.to(u.km / u.s)))
     return H_z(z) / const.c.to(u.km / u.s)
 
 
@@ -407,13 +419,13 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     else:
         top = z_dist_func(zs) * z_dist_func(zs) * Ez * np.power(X, chi_pow)
     # Now integrate over the Z_distribution with the expression
-    print("Top: {}".format(top))
     top_unit = top.unit
     top_integrand = idl_tabulate(zs, top) * top.unit
     #print("Top: {}".format(top_integrand))
     #diff = zs[1] - zs[0]
     #top_integrand = 0.5 * sum(top)
     top = top_integrand
+    print("Top: {}".format(top))
     # Need integral here
     if use_gauss:
         bottom_integral = 0.5 * sum(gaussian(zs))
@@ -427,7 +439,7 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     front = H_gamma(calc_gamma(beta))
     # Now put together with swap to other side
     r0_gamma = a_rad * (bottom / (front * top))
-    #print("R0Gamm: {}".format(r0_gamma))
+    print("R0Gamm: {}".format(r0_gamma))
     r0 = r0_gamma ** (1 / calc_gamma(beta))
     # Convert to cMpc/h
     print("Before Convert: {}".format(r0))
@@ -645,9 +657,9 @@ def angular_correlation_function(data_catalog, random_catalog):
             data_data = sep2d
         else:
             data_data = np.concatenate((data_data, sep2d))
-    min_dist = np.min(data_data)
+    min_dist = np.min(data_data) - 0.001
     print("Min Distance: {}".format(min_dist))
-    min_dist = 8.39
+    #min_dist = 8.39
     # min_dist = 18.75 # For Negative Ones
     max_dist = np.max(data_data)
 
@@ -797,7 +809,7 @@ def cross_correlation_method(co_lines, random_catalog, galaxies, num_gals, num_c
 from scipy.optimize import curve_fit
 
 negative = False
-num_points = 20000
+num_points = 10000
 if negative:
     real_catalog = load_table("line_search_N3_wa_crop.out")
 else:
@@ -899,30 +911,28 @@ Add taking into account the error on the A fitting
 
 """
 plt.close()
+
 dds = {}
 drs = {}
 rrs = {}
 grs = {}
 dist_bns = {}
 dist_binners = {}
-snners = [6.25, 6.1, 5.9, 5.5]
-snners = [50]
+snners = [0.7,0.6,0.5,0.4]
+line_widths = [i for i in range(3, 21, 2)]
 
 for sn_cut in snners:
+    six_fids = []
+    for width in line_widths:
+        f = interp1d(fid_catalog["fbin"], fid_catalog["pure{}".format(width)], kind='slinear')
+        xdata = np.linspace(5.85, 7.85, 10000)
+        six_fids.append(xdata[np.argmax(f(xdata) >= sn_cut)])
+    sn8_table = Table.read(
+        "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_{}.ecsv".format(int(sn_cut*100)))
     if negative:
         real_catalog = load_table("line_search_N3_wa_crop.out")
     else:
         real_catalog = load_table("line_search_P3_wa_crop.out")
-
-    fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.54)) | (
-            (real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.83)) | \
-                     ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.18)) | (
-                             (real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.49)) | \
-                     ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.61)) | (
-                             (real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.54)) | \
-                     ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.89)) | (
-                             (real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.83)) | \
-                     ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.1))
     # real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     # real_catalog = real_catalog[fidelity_sixty]
     real_catalog = construct_fid_mask(real_catalog)
@@ -1016,13 +1026,9 @@ for sn_cut in snners:
         plt.yscale("log")
         plt.title("r0: {} Gauss r0: {}".format(np.round(r0, 3), np.round(guass_r0, 3)))
         #plt.tight_layout()
-        plt.savefig("fidelity/Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
+        plt.savefig("fidelity/MIN_Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
         # plt.show()
         plt.cla()
-
-
-exit()
-
 
 # Now have dictionary of lists of datas
 
@@ -1045,18 +1051,9 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         else:
             real_catalog = load_table("line_search_P3_wa_crop.out")
         if negative:
-            open_file = open("negative_r0_bin{}_sn60.txt".format(len(data_data)), "a")
+            open_file = open("negative_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
         else:
-            open_file = open("positive_r0_bin{}_sn60.txt".format(len(data_data)), "a")
-        fidelity_sixty = ((real_catalog['width'] == 3) & (real_catalog['rsnrrbin'] >= 6.54)) | (
-                    (real_catalog['width'] == 5) & (real_catalog['rsnrrbin'] >= 6.83)) | \
-                         ((real_catalog['width'] == 7) & (real_catalog['rsnrrbin'] >= 6.18)) | (
-                                     (real_catalog['width'] == 9) & (real_catalog['rsnrrbin'] >= 6.49)) | \
-                         ((real_catalog['width'] == 11) & (real_catalog['rsnrrbin'] >= 6.61)) | (
-                                     (real_catalog['width'] == 13) & (real_catalog['rsnrrbin'] >= 6.54)) | \
-                         ((real_catalog['width'] == 15) & (real_catalog['rsnrrbin'] >= 6.89)) | (
-                                     (real_catalog['width'] == 17) & (real_catalog['rsnrrbin'] >= 6.83)) | \
-                         ((real_catalog['width'] == 19) & (real_catalog['rsnrrbin'] >= 6.1))
+            open_file = open("positive_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
         # real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
         # real_catalog = real_catalog[fidelity_sixty]
         real_catalog = construct_fid_mask(real_catalog)
@@ -1093,9 +1090,9 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         xmax = max_dist + 0.1 * max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
         sn8_table = Table.read(
-            "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_0.6.ecsv")  # .format(sn_cut[index]))
+        "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_{}.ecsv".format(int(sn_cut[index]*100)))
         if index == 0:
-            open_file.write("{} SN\n".format(sn_cut[index]))
+            open_file.write("{} Fid\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("A+: {}, r0: {}\n".format(a + a_error,
                                                       calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8, sn8_table)))
@@ -1133,7 +1130,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             ax1.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
                      label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
             ax1.set_xscale("log")
-            ax1.set_title("S/N > {}".format(snners[index]))
+            ax1.set_title("Fidelity > {}".format(snners[index]))
             # plt.title("Data vs Random")
             ax1.legend(loc='best', fontsize='8')
             ax1.set_ylabel("$\omega(\\theta)$")
@@ -1142,7 +1139,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
                 ax1.set_yscale("log")
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 1:
-            open_file.write("{} SN\n".format(sn_cut[index]))
+            open_file.write("{} Fid\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("A+: {}, r0: {}\n".format(a + a_error,
                                                       calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8, sn8_table)))
@@ -1180,7 +1177,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             ax2.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
                      label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
             ax2.set_xscale("log")
-            ax2.set_title("S/N > {}".format(snners[index]))
+            ax2.set_title("Fidelity > {}".format(snners[index]))
             # plt.title("Data vs Random")
             ax2.legend(loc='best', fontsize='8')
             # plt.xlabel("Angular Distance (arcseconds)")
@@ -1189,7 +1186,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
                 ax2.set_yscale("log")
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 2:
-            open_file.write("{} SN\n".format(sn_cut[index]))
+            open_file.write("{} Fid\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("A+: {}, r0: {}\n".format(a + a_error,
                                                       calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8, sn8_table)))
@@ -1227,7 +1224,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             ax3.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
                      label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
             ax3.set_xscale("log")
-            ax3.set_title("S/N > {}".format(snners[index]))
+            ax3.set_title("Fidelity > {}".format(snners[index]))
             # plt.title("Data vs Random")
             ax3.legend(loc='best', fontsize='8')
             ax3.set_xlabel("Angular Distance (arcseconds)")
@@ -1236,7 +1233,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
                 ax3.set_yscale("log")
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 3:
-            open_file.write("{} SN\n".format(sn_cut[index]))
+            open_file.write("{} Fid\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
             open_file.write("A+: {}, r0: {}\n".format(a + a_error,
                                                       calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8, sn8_table)))
@@ -1274,7 +1271,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             ax4.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
                      label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
             ax4.set_xscale("log")
-            ax4.set_title("S/N > {}".format(snners[index]))
+            ax4.set_title("Fidelity > {}".format(snners[index]))
             # plt.title("Data vs Random")
             ax4.legend(loc='best', fontsize='8')
             # plt.xlabel("Angular Distance (arcseconds)")
@@ -1292,9 +1289,9 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
     f.align_ylabels()
     f.suptitle("Data vs Random")
     if use_log:
-        plt.savefig("final/Log_4Panel_Data_Vs_Random_bin{}_N{}_sn{}.png".format(len(distance_bins1), negative, sn_cut), dpi=300)
+        plt.savefig("fidelity/MIN_Log_4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins1), negative, num_points), dpi=300)
     else:
-        plt.savefig("final/4Panel_Data_Vs_Random_bin{}_N{}_sn{}.png".format(len(distance_bins1), negative, sn_cut), dpi=300)
+        plt.savefig("fidelity/MIN_4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins1), negative, num_points), dpi=300)
 
     open_file.close()
 
