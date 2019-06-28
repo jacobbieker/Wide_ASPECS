@@ -162,15 +162,21 @@ irac4_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/GOODS
 
 # ia_ones = [ia427_goodss, ia445_goodss, ia505_goodss, ia527_goodss, ia550_goodss, ia574_goodss,
 #           ia624_goodss, ia651_goodss, ia679_goodss, ia738_foodss, ia797_foodss, ]
-fits_files = [f125w_goodss, f140w_goodss, f160w_goodss, f435w_goodss, f606w_goodss, f775w_goodss, f850lp_goodss,
-              f814w_goodss, R_goodss, U38_goodss, V_goodss, B_goodss, J_goodss, H_goodss, I_goodss, tKs_goodss,
+fits_files = [f125w_goodss, f140w_goodss, f160w_goodss, f435w_goodss,
+              #f606w_goodss,
+              f775w_goodss, f850lp_goodss,
+              # f814w_goodss,
+              R_goodss, U38_goodss, V_goodss, B_goodss, J_goodss, H_goodss, I_goodss, tKs_goodss,
               tJ_goodss, irac1_goodss, irac2_goodss,
               irac3_goodss, irac4_goodss]
 ia_nmes = ["IA427", "IA445", "IA505", "IA527", "IA550", "IA574",
            "IA624", "IA651", "IA679", "IA738", "IA797", ]
 
-fits_names = ["F125W", "F140W", "F160W", "F435W", "F606W", "F775W", "F850LP",
-              "F814W", "R", "U38", "V", "B", "J", "H", "I", "tKs",
+fits_names = ["F125W", "F140W", "F160W", "F435W",
+              #"F606W",
+              "F775W", "F850LP",
+              #"F814W",
+              "R", "U38", "V", "B", "J", "H", "I", "tKs",
               "tJ",
               "IRAC1", "IRAC2", "IRAC3", "IRAC4"]
 catalog_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
@@ -338,7 +344,7 @@ def create_multi_overlap_cutout_cube(ax, wcs_header, image, aspecs, matches, ra_
     co = Cutout2D(image, center, size=size * u.arcsec, wcs=w)
     ax.imshow(co.data, origin='lower', cmap='gray')
     # Now show the contours from Wide ASPECS
-    ax.contour(subcube.value/rmscube, levels=[3,5,7,8], colors='white', alpha=0.5)
+    ax.contour(subcube.value/rmscube, levels=[2,4,6,8,10], colors='red', alpha=0.5)
 
     return ax
 
@@ -355,8 +361,7 @@ def create_multi_overlap_ax_cutout_cube(ax, name, fit_data, catalog_coordinate, 
     ax = create_multi_overlap_cutout_cube(ax, fit_data[0].header, fit_data[0].data, aspecs=catalog_coordinate,
                                      matches=matches, ra_dec=ra_dec, rob_z=rob_z, subcube=subcube, rmscube=rmscube)
     ax.set_title(name)
-    ax.tick_params(direction='in', colors='w', bottom=True, top=True, left=True, right=True, labelbottom=True,
-                   labeltop=False, labelleft=True, labelright=False)
+    ax.tick_params(direction='in', colors='w',)
     return ax
 
 
@@ -406,7 +411,7 @@ def convert_to_rest_frame_ghz(z, ghz):
 #aspecs_lines = Table.read("ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format="ascii", header_start=0, data_start=1)
 
 
-aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_all_closest_Sep_1.0_SN_6.0.ecsv", format='ascii.ecsv')
+aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_all_closest_Sep_1.0_SN_fid_60.ecsv", format='ascii.ecsv')
 
 #sn_cut = 9.5
 
@@ -496,7 +501,7 @@ for index, row in enumerate(aspecs_lines):
             create_multi_overlap_ax_cutout_cube(ax, fits_names[third_index], image,
                                            catalog_coordinate=coords[index],
                                            matches=[index], ra_dec=coords, subcube=sub_cube, rmscube=rms_noise)
-        f.savefig(str("Final_Output/matched/ASPECS_Cutout_NoCounter_Sep1.0_SN9.0_" + str(index) + ".png"), dpi=300)
+        f.savefig(str("Final_Output/matched/ASPECS_Cutout_" + str(index) + ".png"), dpi=300)
         f.clf()
         plt.close()
 

@@ -545,8 +545,8 @@ def match_to_co_line(single_line, max_redshift=0.3, line_coords=None):
                    estimated_z,
                    co_z,
                    spec_z,
-                   delta_z,
-                   delta_v,
+                   0,
+                   0, # If it matches to a CO line, then no delta Z
                    kms,
                    -999,
                    single_line['rsnrrbin'],
@@ -808,7 +808,7 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                         delta_z, matched_key = get_delta_z(matched_galaxy['z_1'], rest_frame_ghz)
                         if np.abs(delta_z) <= max_redshift:  # Checks that delta z within the range
                             # Now check with offset if the z is within the range
-                            if matched_galaxy['z_1'] + delta_z < (10.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
+                            if matched_galaxy['z_1'] + delta_z < (0.4) or (1.1) <= matched_galaxy['z_1'] + delta_z <= (
                                     1.8) or (2.2) < matched_galaxy['z_1'] + delta_z < (4.4):
                                 matched_to_galaxy = True
                                 # so with offset, the galaxy is now within the range, is above SNR, and have a transition

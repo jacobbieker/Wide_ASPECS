@@ -17,7 +17,8 @@ def perform_cuts(catalog):
             (catalog["Mstar_50_1"] - catalog["Mstar_16_1"]) < 0.5) & \
                    ((catalog["Mstar_84_1"] - catalog["Mstar_50_1"]) < 0.5) & \
                    ((catalog["SFR_50_1"] - catalog["SFR_16_1"]) < 0.5) & \
-                   ((catalog["SFR_84_1"] - catalog["SFR_16_1"]) < 0.5)
+                   ((catalog["SFR_84_1"] - catalog["SFR_16_1"]) < 0.5) & \
+                   (catalog["SFR_50_1"] > -1.99)
 
     return catalog[quality_cuts]
 
