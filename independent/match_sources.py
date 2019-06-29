@@ -57,7 +57,7 @@ def construct_fid_mask(catalog):
     """
     line_widths = [i for i in range(3, 21, 2)]
     fid_catalog = load_table("fidelity_snr.out", start=0)
-    fid_limit = 0.6
+    fid_limit = 0.7
 
     six_fids = []
     for width in line_widths:
@@ -832,11 +832,11 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                                             else:
                                                 add_row = True
                                                 # Now need to remove the current row and get the other row
-                                                aspecs_table.remove_rows(np.nonzero(prev_match_mask))
+                                                #aspecs_table.remove_rows(np.nonzero(prev_match_mask))
                                         else:
                                             add_row = True
                                             # Now need to remove the current row and get the other row
-                                            aspecs_table.remove_rows(np.nonzero(prev_match_mask))
+                                            #aspecs_table.remove_rows(np.nonzero(prev_match_mask))
 
                                 except:
                                     add_row = True
@@ -869,7 +869,7 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                                     aspecs_table.add_row(new_row)
             else:
                 print("Outside of Max Separation (Shouldn't Happen)")
-            if not matched_to_galaxy:
+            if True: #not matched_to_galaxy: # Always try to find a match
                 max_redshift = 0.3
                 table_input = match_to_co_line(matched_line, max_redshift=max_redshift, line_coords=line_skycoords[idxc[index]])
                 add_row = False
@@ -888,10 +888,10 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                                 else:
                                     add_row = True
                                     # Now need to remove the current row and get the other row
-                                    aspecs_table.remove_rows(np.nonzero(prev_match_mask))
+                                    #aspecs_table.remove_rows(np.nonzero(prev_match_mask))
                     except:
                         add_row = True
-                    if add_row:
+                    if True: #add_row:
                         aspecs_table.add_row(table_input)
 
         # Now have to do it for the non-matched ones
@@ -915,17 +915,17 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                             else:
                                 add_row = True
                                 # Now need to remove the current row and get the other row
-                                aspecs_table.remove_row(prev_match_mask)
+                                #aspecs_table.remove_row(prev_match_mask)
                 except:
                     add_row = True
-                if add_row:
+                if True: #add_row:
                     aspecs_table.add_row(table_input)
 
         # Now need to clean up table, removing any inadvertently added rows
         prev_row_ra_dec = None
         prev_row_matched = None
         indicies_to_remove = []
-
+        """
         for index, row in enumerate(aspecs_table):
             if prev_row_ra_dec is not None:
                 if np.isclose(np.round(row['RA (J2000)'],6),np.round(prev_row_ra_dec[0],6)) and np.isclose(np.round(row['DEC (J2000)'],6), np.round(prev_row_ra_dec[1],6)):
@@ -968,7 +968,7 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
 
             # Remove from the catalog
             aspecs_table.remove_rows(indicies_to_remove)
-
+        """
         # Now need to only get the catalog ids that are relevant, so not -99999
         spec_z_catalog_ids = [i['Catalog Index'] for i in aspecs_table if i['Catalog Index'] > 0 and i['Spec Z'] == True]
         no_spec_z_catalog_ids = [i['Catalog Index'] for i in aspecs_table if i['Catalog Index'] > 0 and i['Spec Z'] == False]

@@ -120,7 +120,7 @@ line_widths = [i for i in range(3, 21, 2)]
 
 sn_cuts = np.arange(5.85, 8.05, 0.1)
 print("SN_Cuts: {}".format(sn_cuts))
-six_fids = []
+fid_lists = []
 fs = []
 fid_limit = 0.6
 for width in line_widths:
@@ -128,7 +128,7 @@ for width in line_widths:
     fs.append(f)
     xdata = np.linspace(5.85, 7.85, 10000)
     print(xdata[np.argmax(f(xdata) >= fid_limit)])
-    six_fids.append(xdata[np.argmax(f(xdata) >= fid_limit)])
+    fid_lists.append(xdata[np.argmax(f(xdata) >= fid_limit)])
 
 for index, f in enumerate(fs):
     plt.plot(xdata, f(xdata), label="Width: {}".format(line_widths[index]))
@@ -142,23 +142,19 @@ plt.cla()
 
 
 
-print(six_fids)
+print(fid_lists)
 
 #exit()
 
-def construct_fid_mask(catalog):
+def construct_fid_mask(catalog, fid_list=fid_lists):
     """
     Constructs the fidelity mask based off my results, not Robertos
     :param catalog:
     :return:
     """
     masks = []
-    # six_fids = [6.26, 6.2, 6.1, 6.1, 6.1, 6.15, 6.1, 6.15, 6.05]
-    #six_fids = [6.35, 6.25, 6.15, 6.15, 6.15, 6.25, 6.15, 6.25, 6.05]
-    #six_fids = [6.3, 6.2, 6.1, 6.15, 6.1, 6.20, 6.1, 6.20, 6.05]
     for index, width in enumerate(line_widths):
-        print(six_fids[index])
-        masks.append(catalog[((catalog['width'] == width) & (catalog['rsnrrbin'] >= six_fids[index]))])
+        masks.append(catalog[((catalog['width'] == width) & (catalog['rsnrrbin'] >= fid_list[index]))])
 
     total = masks[0]
     t_sum = 0
@@ -179,7 +175,7 @@ for width in line_widths:
 
 t = Table()
 t['Chn.'] = Column(line_widths, description='Width')
-t['S/N'] = Column(np.round(six_fids, 2), description='S/N Cut')
+t['S/N'] = Column(np.round(fid_lists, 2), description='S/N Cut')
 t['# Source'] = Column(num_sources)
 
 print(ascii.write(t, format='latex'))
@@ -326,7 +322,7 @@ def redshift_distribution(table, use_matched=False, plot=False):
         only_matched = (table['Roberto ID'] > -1000000)
     values, bins = np.histogram(table[only_matched]['Z (CO)'], bins=bins)#, density=True)
     # Multiply by the bin width to get the values to sum to 1
-    #values = values * width_bin
+    values = values * width_bin
     # plt.hist(table[only_matched]['Z (CO)'], bins=bins)
     # plt.show()
     bin_centers = 0.5 * (bins[1:] + bins[:-1])  # convert to centers
@@ -342,14 +338,9 @@ def redshift_distribution(table, use_matched=False, plot=False):
     #print("Min Intern bins: {}".format(min(interp_bins)))
     #print("Max Intern bins: {}".format(max(interp_bins)))
 
-    def func(x, a, b, c):
-        return a * x ** 2 + b * x + c
-
-    popt, pcov = curve_fit(func, interp_bins, interp_values)
-
-    xdata = np.linspace(0.001, max_z, 10000)
-    f = interp1d(interp_bins, interp_values, kind='slinear')
-    f = extrap1d(f)
+    xdata = np.linspace(1.5, 3.5, 10000)
+    not_f = interp1d(interp_bins, interp_values, kind='slinear')
+    not_f = extrap1d(not_f)
 
     # Fit Gaussian
     fitter = modeling.fitting.LevMarLSQFitter()
@@ -362,13 +353,12 @@ def redshift_distribution(table, use_matched=False, plot=False):
         plt.title("SN > {}".format(np.round(np.min(table['S/N']), 2)))
         plt.ylabel("Count")
         plt.xlabel("Redshift (z)")
-        plt.plot(xdata, func(xdata, *popt))
-        plt.plot(xdata, f(xdata))
+        plt.plot(xdata, not_f(xdata))
         plt.savefig("SN_{}_Redshift_Distribution_60.png".format(np.round(np.min(table['S/N']), 2)), dpi=300)
         plt.cla()
         t = Table()
         t['Z'] = Column(xdata, description='Redshift')
-        t['Num_Gal'] = Column(f(xdata), description='Num Gal at Redshift')
+        t['Num_Gal'] = Column(not_f(xdata), description='Num Gal at Redshift')
         ascii.write(t, "redshift_distribution_interpolated_60.txt")
 
         t = Table()
@@ -381,7 +371,7 @@ def redshift_distribution(table, use_matched=False, plot=False):
         t['Num_Gal'] = Column(values, description='Num Gal at Redshift')
         ascii.write(t, "redshift_distribution_points_60.txt")
 
-    return f, xdata, fitted_model
+    return not_f, xdata, fitted_model
 
 
 def calculate_r0(a, beta, table, use_gauss=False, plot=False):
@@ -404,7 +394,7 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     # Convert A to radians to the 1, so need to raise to positive beta
     # A should be in units of arcseconds
     a_rad = a.arcsec * ((np.pi/180.0)/3600.) ** beta
-    print("A Rad: {}".format(a_rad))
+    #print("A Rad: {}".format(a_rad))
     #a_rad = a.radian ** (beta)
     #print("A Rad 2: {}".format(a_rad))
     # Need to calc redshift distribution
@@ -446,7 +436,7 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
     #diff = zs[1] - zs[0]
     #top_integrand = 0.5 * sum(top)
     top = top_integrand
-    print("Top: {}".format(top))
+    #print("Top: {}".format(top))
     # Need integral here
     if use_gauss:
         bottom_integral = 0.5 * sum(gaussian(zs))
@@ -454,32 +444,31 @@ def calculate_r0(a, beta, table, use_gauss=False, plot=False):
         bottom_integral = 0.5 * sum(z_dist_func(zs))
 
     bottom_integral = idl_tabulate(zs, gaussian(zs))
-    print("Bottom: {}".format(bottom_integral))
+    #print("Bottom: {}".format(bottom_integral))
     bottom = bottom_integral ** 2
     # Front
     front = H_gamma(calc_gamma(beta))
     # Now put together with swap to other side
     r0_gamma = a_rad * (bottom / (front * top))
-    print("R0Gamm: {}".format(r0_gamma))
+    #print("R0Gamm: {}".format(r0_gamma))
     r0 = r0_gamma ** (1 / calc_gamma(beta))
     # Convert to cMpc/h
-    print("Before Convert: {}".format(r0))
+    #print("Before Convert: {}".format(r0))
     r0 = r0.to((u.Mpc / u.littleh), u.with_H0(cosmo.H0))
     return r0
 
 sn8_table = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_50.ecsv")
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/No_Cut_ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_60.ecsv")
 # sn85_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_5.5.ecsv")
 # sn9_table = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_6.15.ecsv")
 sn95_table = Table.read(
-    "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_50.ecsv")
-print(calculate_r0(Angle(1.1703 * u.arcsecond), 0.8, sn95_table))
-print(calculate_r0(Angle((1.1703+ 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False, plot=True))
-print(calculate_r0(Angle((1.1703 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
-print(calculate_r0(Angle(1.1703 * u.arcsecond), 0.8, sn95_table, use_gauss=True, plot=True))
-print(calculate_r0(Angle((1.1703 + 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
-print(calculate_r0(Angle((1.1703 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
-
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/No_Cut_ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_60.ecsv")
+#print(calculate_r0(Angle(1.1703 * u.arcsecond), 0.8, sn95_table))
+#print(calculate_r0(Angle((1.1703+ 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False, plot=True))
+#print(calculate_r0(Angle((1.1703 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=False))
+#print(calculate_r0(Angle(1.1703 * u.arcsecond), 0.8, sn95_table, use_gauss=True, plot=True))
+#print(calculate_r0(Angle((1.1703 + 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
+#print(calculate_r0(Angle((1.1703 - 0.16) * u.arcsecond), 0.8, sn95_table, use_gauss=True))
 # redshift_distribution(sn85_table)
 # redshift_distribution(sn9_table)
 # redshift_distribution(sn95_table)
@@ -696,7 +685,20 @@ def generate_random_catalog(number_of_points, filename):
 # exit()
 
 
-def angular_correlation_function(data_catalog, random_catalog):
+def random_angular(random_catalog):
+    random_random = None
+
+    for i, element in enumerate(random_catalog):
+        sep2d = element.separation(random_catalog[i + 1:]).arcsecond
+        if random_random is None:
+            random_random = sep2d
+        else:
+            random_random = np.concatenate((random_random, sep2d))
+
+    return random_random
+
+
+def angular_correlation_function(data_catalog, random_catalog, rand_ang=None):
     """
     Calculates the arrays for the data, random, and data_random for w(theta)
     :param data_catalog:
@@ -717,20 +719,22 @@ def angular_correlation_function(data_catalog, random_catalog):
             data_data = np.concatenate((data_data, sep2d))
     min_dist = np.min(data_data) - 0.00001
     print("Min Distance: {}".format(min_dist))
-    #min_dist = 8.39
+    min_dist = 8.39
     # min_dist = 18.75 # For Negative Ones
     max_dist = np.max(data_data)
 
     random_random = None
 
     # Get it for each one that is not the current ones
-    for i, element in enumerate(random_catalog):
-        sep2d = element.separation(random_catalog[i + 1:]).arcsecond
-        if random_random is None:
-            random_random = sep2d
-        else:
-            random_random = np.concatenate((random_random, sep2d))
-
+    if rand_ang is None:
+        for i, element in enumerate(random_catalog):
+            sep2d = element.separation(random_catalog[i + 1:]).arcsecond
+            if random_random is None:
+                random_random = sep2d
+            else:
+                random_random = np.concatenate((random_random, sep2d))
+    else:
+        random_random = rand_ang
     # Plot distribution of those to make sure random
 
     m_dist = np.max(random_random)
@@ -867,7 +871,7 @@ def cross_correlation_method(co_lines, random_catalog, galaxies, num_gals, num_c
 from scipy.optimize import curve_fit
 
 negative = False
-num_points = 10000
+num_points = 25000
 if negative:
     real_catalog = load_table("line_search_N3_wa_crop.out")
 else:
@@ -985,21 +989,23 @@ dist_binners = {}
 snners = [0.7,0.6,0.5,0.4]
 line_widths = [i for i in range(3, 21, 2)]
 
+rand_ang = random_angular(random_catalog)
+
 for sn_cut in snners:
-    six_fids = []
+    fid_lists = []
     for width in line_widths:
         f = interp1d(fid_catalog["fbin"], fid_catalog["pure{}".format(width)], kind='cubic')
         xdata = np.linspace(5.85, 7.85, 10000)
-        six_fids.append(xdata[np.argmax(f(xdata) >= sn_cut)])
+        fid_lists.append(xdata[np.argmax(f(xdata) >= sn_cut)])
     sn8_table = Table.read(
-        "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_{}.ecsv".format(int(sn_cut*100)))
+        "/home/jacob/Development/Wide_ASPECS/Final_Output/No_Cut_ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_{}.ecsv".format(int(sn_cut*100)))
     if negative:
         real_catalog = load_table("line_search_N3_wa_crop.out")
     else:
         real_catalog = load_table("line_search_P3_wa_crop.out")
     # real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut]
     # real_catalog = real_catalog[fidelity_sixty]
-    real_catalog = construct_fid_mask(real_catalog)
+    real_catalog = construct_fid_mask(real_catalog, fid_list=fid_lists)
     real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
     print(real_catalog.shape)
     dds[sn_cut] = []
@@ -1008,11 +1014,10 @@ for sn_cut in snners:
     grs[sn_cut] = []
 
     data_data, data_random, random_random, min_dist, max_dist = angular_correlation_function(real_catalog,
-                                                                                         random_catalog)
+                                                                                         random_catalog, rand_ang=rand_ang)
 
-    for bin_num in [5, 6, 7, 8, 9, 10]:
+    for bin_num in [5,6,7,8,9,10]:
         distance_bins = np.logspace(np.log10(min_dist - 0.001), np.log10(max_dist + 1), bin_num + 1)
-        dist_bns[bin_num] = distance_bins
         dd, _ = histogram(data_data, bins=distance_bins)
         dr, _ = histogram(data_random, bins=distance_bins)
         rr, _ = histogram(random_random, bins=distance_bins)
@@ -1024,8 +1029,12 @@ for sn_cut in snners:
         distance_bins = 0.5 * (distance_bins[1:] + distance_bins[:-1])
         # distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
         dist_binners[bin_num] = distance_bins
+        dist_bns[bin_num] = distance_bins
         # Best fit to the data
         pinit = [1.]
+        print("DD: {}".format(dd))
+        print("Dist Bins: {}".format(distance_bins))
+        print("Omega W: {}".format(omega_w))
         out = leastsq(errfunc, pinit,
                       args=(distance_bins, omega_w, (le_omega_w + ue_omega_w) / 2.), full_output=True)
         a = out[0][0]
@@ -1034,7 +1043,7 @@ for sn_cut in snners:
         cov_matrix = out[1] * s_sq
 
         a_error = np.absolute(cov_matrix[0][0]) ** 0.5
-        print("Value for A: {}".format(a))
+        #print("Value for A: {}".format(a))
 
         # Now get one for only the positive points
         pos_mask = (omega_w > 0.)
@@ -1052,10 +1061,12 @@ for sn_cut in snners:
         cov_matrix = out[1] * s_sq
 
         pos_a_error = np.absolute(cov_matrix[0][0]) ** 0.5
-        print("Value for A: {}".format(a))
+        #print("Value for A: {}".format(a))
 
         xmin = distance_bins[0] - 0.001
         xmax = distance_bins[-1] + 0.1 * distance_bins[-1]
+        xmin = min_dist - 0.001
+        xmax = max_dist + 0.1 * max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
 
         plt.cla()
@@ -1071,7 +1082,7 @@ for sn_cut in snners:
         plt.ylabel("$\omega(\\theta)$")
         plt.yscale("log")
         #plt.tight_layout()
-        plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
+        plt.savefig("fidelity/NORM_MIN8_15_35/Log_Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
         plt.show()
         r0 = calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)
         guass_r0 = calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)
@@ -1100,14 +1111,14 @@ for sn_cut in snners:
         plt.yscale("log")
         #plt.title("r0: {} Gauss r0: {}".format(np.round(r0, 3), np.round(guass_r0, 3)))
         #plt.tight_layout()
-        plt.savefig("fidelity/0_to_MAX_Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
+        plt.savefig("fidelity/NORM_MIN8_15_35/Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
         # plt.show()
         plt.cla()
 
 # Now have dictionary of lists of datas
 
 
-def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
+def plot_four(dd, dr, rr, distance_bins, use_log=True):
     """
     Take set of 4 S/N cut lists for DD, DR, and RR and plot a 4 panel plot, has to be same binning for it
     Assumes dd, dr, and rr are all in same order, 9.5, 9.0, 8.5, 8.0 SN
@@ -1120,27 +1131,35 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
     f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all', figsize=(10, 10))
     sn_cut = snners
     for index, data_data in enumerate(dd):
+        fid_list = []
+        for width in line_widths:
+            func = interp1d(fid_catalog["fbin"], fid_catalog["pure{}".format(width)], kind='cubic')
+            xdata = np.linspace(5.85, 7.85, 10000)
+            fid_list.append(xdata[np.argmax(func(xdata) >= sn_cut[index])])
         if negative:
             real_catalog = load_table("line_search_N3_wa_crop.out")
         else:
             real_catalog = load_table("line_search_P3_wa_crop.out")
         if negative:
-            open_file = open("MIN0_to_MAX__negative_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
+            open_file = open("NORM_MIN8_15_35_negative_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
         else:
-            open_file = open("MIN0_to_MAX__positive_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
+            open_file = open("NORM_MIN8_15_35_positive_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
         # real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
         # real_catalog = real_catalog[fidelity_sixty]
-        real_catalog = construct_fid_mask(real_catalog)
+        real_catalog = construct_fid_mask(real_catalog, fid_list=fid_list)
         real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
         # real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
         omega_w = xi_r(dd[index], dr[index], rr[index], real_catalog, random_catalog)
         le_omega_w, ue_omega_w = xi_r_error(omega_w, dd[index])
         pinit = [1.]
+        print("DD: {}".format(dd[index]))
+        print("Dist Bins: {}".format(distance_bins))
+        print("Omega W: {}".format(omega_w))
         out = leastsq(errfunc, pinit,
-                      args=(distance_bins1, omega_w, (le_omega_w + ue_omega_w) / 2.), full_output=True)
+                      args=(distance_bins, omega_w, (le_omega_w + ue_omega_w) / 2.), full_output=True)
         a = out[0][0]
-        s_sq = (errfunc(out[0][0], distance_bins1, omega_w, (le_omega_w + ue_omega_w) / 2.) ** 2).sum() / (
-                len(distance_bins1) - len(pinit))
+        s_sq = (errfunc(out[0][0], distance_bins, omega_w, (le_omega_w + ue_omega_w) / 2.) ** 2).sum() / (
+                len(distance_bins) - len(pinit))
         cov_matrix = out[1] * s_sq
 
         a_error = np.absolute(cov_matrix[0][0]) ** 0.5
@@ -1148,7 +1167,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         pos_mask = (omega_w > 0.)
         pos_ue = ue_omega_w[pos_mask]
         pos_le = le_omega_w[pos_mask]
-        pos_bins = distance_bins1[pos_mask]
+        pos_bins = distance_bins[pos_mask]
         pos_omega = omega_w[pos_mask]
 
         pinit = [1.]
@@ -1164,7 +1183,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
         xmax = max_dist + 0.1 * max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
         sn8_table = Table.read(
-        "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_{}.ecsv".format(int(sn_cut[index]*100)))
+        "/home/jacob/Development/Wide_ASPECS/Final_Output/No_Cut_ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_{}.ecsv".format(int(sn_cut[index]*100)))
         if index == 0:
             open_file.write("{} Fid\n".format(sn_cut[index]))
             open_file.write("A: {}, r0: {}\n".format(a, calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)))
@@ -1198,7 +1217,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("Gauss pos A-: {}, r0: {}\n".format(pos_a - pos_a_error,
                                                                 calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond),
                                                                              0.8, sn8_table, use_gauss=True)))
-            ax1.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
+            ax1.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             r0 = np.round(calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
             ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
@@ -1257,7 +1276,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("Gauss pos A-: {}, r0: {}\n".format(pos_a - pos_a_error,
                                                                 calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond),
                                                                              0.8, sn8_table, use_gauss=True)))
-            ax2.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
+            ax2.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             r0 = np.round(calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
             ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
@@ -1316,7 +1335,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("Gauss pos A-: {}, r0: {}\n".format(pos_a - pos_a_error,
                                                                 calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond),
                                                                              0.8, sn8_table, use_gauss=True)))
-            ax3.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
+            ax3.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             r0 = np.round(calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
             ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
@@ -1375,7 +1394,7 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             open_file.write("Gauss pos A-: {}, r0: {}\n".format(pos_a - pos_a_error,
                                                                 calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond),
                                                                              0.8, sn8_table, use_gauss=True)))
-            ax4.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
+            ax4.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
             r0 = np.round(calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
             ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
@@ -1402,18 +1421,18 @@ def plot_four(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
             ax4.set_xlabel("Angular Distance (arcseconds)")
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
             # Now add the plot to the others
-            ax1.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
-            ax2.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
-            ax3.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
+            ax1.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='Fid>0.4. Fit')
+            ax2.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='Fid>0.4. Fit')
+            ax3.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='Fid>0.4. Fit')
 
     # Actually plot it all now
     f.align_xlabels()
     f.align_ylabels()
     f.suptitle("Data vs Random")
     if use_log:
-        plt.savefig("fidelity/MIN0_to_MAX__Log_4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins1), negative, num_points), dpi=300)
+        plt.savefig("fidelity/NORM_MIN8_15_35/Log_4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins), negative, num_points), dpi=300)
     else:
-        plt.savefig("fidelity/MIN0_to_MAX__4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins1), negative, num_points), dpi=300)
+        plt.savefig("fidelity/NORM_MIN8_15_35/4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins), negative, num_points), dpi=300)
 
     open_file.close()
 
@@ -1572,5 +1591,5 @@ for i in range(num_ones):
     bin_num = len(dd_plot[0])
     distance_bins = dist_bns[bin_num]
     distance_bins1 = dist_binners[bin_num]
-    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1)
-    plot_four(dd_plot, dr_plot, rr_plot, distance_bins, distance_bins1, use_log=False)
+    plot_four(dd_plot, dr_plot, rr_plot, distance_bins1)
+    plot_four(dd_plot, dr_plot, rr_plot, distance_bins1, use_log=False)
