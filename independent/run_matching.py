@@ -6,7 +6,43 @@ import astropy.io.ascii as ascii
 
 import numpy as np
 import matplotlib.pyplot as plt
-from astropy.table import Table, hstack, join
+from astropy.table import Table, hstack, join, Column
+
+t = Table.read(
+    "/home/jacob/Development/Wide_ASPECS/Final_Output/No_Cut_ASPECS_Line_Candidates_all_closest_Sep_1.0_SN_fid_60.ecsv")
+
+t.sort("S/N")
+t.reverse()
+ascii.write(t, "Ordered_Fid60.ecsv", format="ecsv")
+exit()
+
+t = t['RA (J2000)', 'DEC (J2000)', 'Observed CO (GHz)',
+                                    'Transition', 'Z (CO)',
+                                    'Delta Z', 'Spec Z', 'S/N', 'Cosmic Volume (Mpc^3)', 'Log(M*)', 'Roberto ID',
+      'Separation (Arcsecond)', 'Log(SFR)', 'Z (Matched)', 'Error Log(SFR)', 'Error Log(M*)' ]
+
+counterparts = (t["Roberto ID"] > 0.0)
+t = t[counterparts]
+
+t = t['RA (J2000)', 'DEC (J2000)', 'Observed CO (GHz)',
+      'Z (CO)', 'Z (Matched)',
+      'Delta Z', 'Spec Z', 'S/N', 'Separation (Arcsecond)', 'Log(SFR)', 'Log(M*)', 'Error Log(SFR)', 'Error Log(M*)' ]
+
+ids = ["ID.{}".format(i+1) for i in range(len(t))]
+t.sort("S/N")
+t.reverse()
+aa = Column(ids, name='ID')
+t.add_column(aa, index=0)
+#counterparts = (t["Roberto ID"] > 0.0)
+print(ascii.write(t, format='latex'))
+exit()
+plt.hist(t['Z (CO)'], bins=10)
+plt.title("Redshift Distribution of CO Line Candidates")
+plt.ylabel("Number of Sources")
+plt.xlabel("Redshift")
+plt.savefig("redshift_catalog.png", dpi=300)
+
+exit()
 
 initial_catalog = Table.read("/home/jacob/Development/Wide_ASPECS/independent/jacob_mapghys_in_nov2018_all_jcb4_magphys_jcb4.fits", format='fits')  # hdu_list[1].data
 roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')

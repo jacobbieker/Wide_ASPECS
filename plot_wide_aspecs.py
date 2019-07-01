@@ -411,7 +411,7 @@ def convert_to_rest_frame_ghz(z, ghz):
 #aspecs_lines = Table.read("ASPECS_Line_Candidates_Z44_Total_Z_Limit.txt", format="ascii", header_start=0, data_start=1)
 
 
-aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/Final_Output/No_Cut_ASPECS_Line_Candidates_all_closest_Sep_1.0_SN_fid_60.ecsv", format='ascii.ecsv')
+aspecs_lines = Table.read("/home/jacob/Development/Wide_ASPECS/independent/Ordered_Fid60.ecsv", format='ascii.ecsv')
 #sn_cut = 9.5
 
 #aspecs_lines = aspecs_lines[aspecs_lines['rsnrrbin'] > sn_cut]
