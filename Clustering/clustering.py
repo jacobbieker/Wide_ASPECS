@@ -102,7 +102,7 @@ def fid(neg, pos):
 neg_catalog = load_table("line_search_N3_wa_crop.out")
 pos_catalog = load_table("line_search_P3_wa_crop.out")
 
-print(len(pos_catalog[pos_catalog['rsnrrbin'] > 6.5]))
+print(len(pos_catalog))
 #exit()
 
 fid_catalog = load_table("fidelity_snr.out", start=0)
@@ -719,7 +719,7 @@ def angular_correlation_function(data_catalog, random_catalog, rand_ang=None):
             data_data = np.concatenate((data_data, sep2d))
     min_dist = np.min(data_data) - 0.00001
     print("Min Distance: {}".format(min_dist))
-    #min_dist = 8.39
+    min_dist = 10.0
     # min_dist = 18.75 # For Negative Ones
     max_dist = np.max(data_data)
 
@@ -761,7 +761,7 @@ def angular_correlation_function(data_catalog, random_catalog, rand_ang=None):
 def xi_r(data_array, data_random_array, random_array, real_catalog, random_catalog):
     """
 
-    (DD/AE_RR - 2 DR/AE_RR +1)
+    (DD/RR - 2 DR/RR +1)
     :param data_array:
     :param data_random_array:
     :param random_array:
@@ -779,10 +779,10 @@ def xi_r(data_array, data_random_array, random_array, real_catalog, random_catal
 
     # return 4 * (data_array*random_array)/(data_random_array)**2 - 1
     # print("Data-Data: {}".format(data_array))
-    # print("AE_RR: {}".format(random_array))
+    # print("AE_SMALLBIN_RR: {}".format(random_array))
     # print("DR: {}".format(data_random_array))
-    # print("DD/AE_RR: {}".format(data_array/random_array))
-    # print("DR/AE_RR: {}".format(data_random_array/random_array))
+    # print("DD/AE_SMALLBIN_RR: {}".format(data_array/random_array))
+    # print("DR/AE_SMALLBIN_RR: {}".format(data_random_array/random_array))
     return (data_array / random_array) - 2 * (data_random_array / random_array) + 1
 
 
@@ -871,7 +871,7 @@ def cross_correlation_method(co_lines, random_catalog, galaxies, num_gals, num_c
 from scipy.optimize import curve_fit
 
 negative = False
-num_points = 12500
+num_points = 20000
 if negative:
     real_catalog = load_table("line_search_N3_wa_crop.out")
 else:
@@ -883,11 +883,11 @@ real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
 #roberto_catalog = Table.read("roberto_catalog_muse_skelton_matched_manFix.fits", format='fits')
 #gal_catalog = combine_catalogs(initial_catalog, roberto_catalog)
 #gal_points = make_skycoords(gal_catalog, ra='ra', dec='dc')
-#gal_catalog, _ = trim_galaxy(gal_points, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits", gal_catalog)
+#gal_catalog, _ = trim_galaxy(gal_points, "/media/jacob/A6548D38548D0BED/gs_B1_2chn.fits", gal_catalog)
 np.random.seed(5227)
-random_catalog, r_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
+random_catalog, r_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_B1_2chn.fits")
 # np.random.seed(5227)
-random_catalog2, r2_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_A1_2chn.fits")
+random_catalog2, r2_pixels = generate_random_catalog(num_points, "/media/jacob/A6548D38548D0BED/gs_B1_2chn.fits")
 # exit()
 # Now Write out the coordinates for the random ones
 # convert to a table of ra and dec
@@ -931,44 +931,49 @@ for bin_num in [5, 6, 7, 8, 9, 10]:
 
     a_error = np.absolute(cov_matrix[0][0]) ** 0.5
     #    print("Value for A: {}".format(a))
-    xmin = min_dist
-    xmax = max_dist + 0.1 * max_dist
+    xmin = distance_bins1[0] - 0.001
+    xmax = distance_bins1[-1] + 0.01 * distance_bins1[-1]
     x_fit = np.linspace(xmin, xmax, 10000)
 
     plt.cla()
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='auto')
     plt.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
     # plt.plot(x_fit, correlation_function(x_fit, params[0][0]), '-', c='r', label='Fit Normal: A = {}'.format(np.round( params[0][0],4)))
-    plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
-             label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
+    #plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
+    #         label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
     # plt.scatter(x=distance_bins1, y=corr, c='r', label='Normal')
     # plt.scatter(x=distance_bins1, y=corr2, c='g', label='Other Random')
-    plt.legend(loc='best')
+    #plt.legend(loc='best')
     plt.xscale("log")
     plt.title("Random vs Random")
     plt.xlabel("Angular Distance (arcseconds)")
     plt.ylabel("$\omega(\\theta)$")
-    # plt.yscale("log")
+    plt.yscale("linear")
+    plt.axhline(c='r')
     # plt.tight_layout()
-    plt.savefig("fidelity/Random_vs_Random_{}_bin{}.png".format(num_points, bin_num), dpi=300)
+    plt.savefig("fidelity/AE_SMALLBIN_RR_MAX_INTERP_NOTNORMED_SMALL_15_35/10Random_vs_Random_{}_bin{}.png".format(num_points, bin_num), dpi=300)
     plt.show()
 
     plt.cla()
+    fig = plt.figure()
+    ax = fig.add_subplot(111, aspect='auto')
     plt.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
     # plt.plot(x_fit, correlation_function(x_fit, params[0][0]), '-', c='r', label='Fit Normal: A = {}'.format(np.round(a,4)))
     plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
              label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
     # plt.scatter(x=distance_bins1, y=corr, c='r', label='r')
     # plt.scatter(x=distance_bins1, y=corr2, c='g', label='Other Random')
-    plt.legend(loc='best')
+    #plt.legend(loc='best')
     plt.xscale("log")
     plt.title("Random vs Random")
     plt.xlabel("Angular Distance (arcseconds)")
     plt.ylabel("$\omega(\\theta)$")
-    plt.yscale("log")
+    plt.yscale("linear")
     # plt.tight_layout()
-    plt.savefig("final/Log_Random_vs_Random_{}NoParenFlip_bin{}.png".format(num_points, 60), dpi=300)
+    plt.savefig("fidelity/AE_SMALLBIN_RR_MAX_INTERP_NOTNORMED_SMALL_15_35/10Log_Random_vs_Random_{}NoParenFlip_bin{}.png".format(num_points, 60), dpi=300)
 """
-# exit()
+#exit()
 
 """
 4 panel plot
@@ -1035,7 +1040,12 @@ for sn_cut in snners:
         rrs[sn_cut].append(rr)
         omega_w = xi_r(dd, dr,  rr, real_catalog, random_catalog)
         le_omega_w, ue_omega_w = xi_r_error(omega_w, dd)
-        distance_bins = 0.5 * (distance_bins[1:] + distance_bins[:-1])
+        print(distance_bins[0:])
+        print(distance_bins[:-1])
+        #distance_bins = distance_bins[:-1]
+        distance_bins = distance_bins[:-1] + np.diff(distance_bins) / 2
+        #distance_bins = (distance_bins[:-1] + distance_bins[1:]) / 2
+        #distance_bins = 0.5 * (distance_bins[0:] + distance_bins[:-1])
         # distance_bins = np.logspace(np.log10(min_dist),np.log10(max_dist), len(omega_w))
         dist_binners[bin_num] = distance_bins
         dist_bns[bin_num] = distance_bins
@@ -1076,55 +1086,72 @@ for sn_cut in snners:
         val_pa[sn_cut].append(pos_a)
         val_pe[sn_cut].append(pos_a_error)
         xmin = distance_bins[0] - 0.001
-        xmax = distance_bins[-1] + 0.1 * distance_bins[-1]
-        xmin = min_dist - 0.001
-        xmax = max_dist + 0.1 * max_dist
+        xmax = distance_bins[-1] + 0.01 * distance_bins[-1]
+        #xmin = min_dist - 0.001
+        #xmax = max_dist + 0.1 * max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
-
+        r0 = calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)
+        guass_r0 = calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)
         plt.cla()
+        fig = plt.figure()
+        ax = fig.add_subplot(111, aspect='auto')
         plt.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
         plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
-                 label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
+                 label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
+                                                                  np.round(np.nan_to_num(guass_r0.value), 2),
+                                                                  np.round(np.nan_to_num((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
+                                                                                                       sn8_table, use_gauss=True) - guass_r0).value), 2),
+                                                                  np.round(np.nan_to_num((guass_r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
+                                                                                                                  sn8_table, use_gauss=True)).value), 2)))
+        pos_r0 = np.round(calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
         plt.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
-                 label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
+                 label='Pos Fit: A = {}+-{}\n r0: {}+{}-{}'.format(np.round(pos_a, 2), np.round(pos_a_error, 3),
+                                                                   np.round(pos_r0.value, 2),
+                                                                   np.round(np.nan_to_num((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
+                                                                                                        sn8_table, use_gauss=True) - pos_r0).value), 2),
+                                                                   np.round(np.nan_to_num((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
+                                                                                                                 sn8_table, use_gauss=True)).value), 2)))
         plt.xscale("log")
         plt.title("Data vs Random")
         plt.legend(loc='best')
         plt.xlabel("Angular Distance (arcseconds)")
         plt.ylabel("$\omega(\\theta)$")
-        plt.yscale("log")
+        plt.yscale("linear")#)#shy=0.000001)
         #plt.tight_layout()
-        plt.savefig("fidelity/AE_RR_MAX_NOTNORMED_SMALL_15_35/Log_Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
-        plt.show()
+        plt.savefig("fidelity/AE_SMALLBIN_RR_MAX_INTERP_NOTNORMED_SMALL_15_35/Log_Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
+        plt.close(fig)
         r0 = calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table)
         guass_r0 = calculate_r0(Angle(a * u.arcsecond), 0.8, sn8_table, use_gauss=True)
         plt.cla()
+        fig = plt.figure()
+        ax = fig.add_subplot(111, aspect='auto')
         plt.errorbar(x=distance_bins, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
         plt.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                  label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
-                                                                  np.round(guass_r0.value, 2),
-                                                                  np.round((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
-                                                                                        sn8_table, use_gauss=True) - guass_r0).value, 2),
-                                                                  np.round((guass_r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
-                                                                                        sn8_table, use_gauss=True)).value, 2)))
+                                                                  np.round(np.nan_to_num(guass_r0.value), 2),
+                                                                  np.round(np.nan_to_num((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
+                                                                                        sn8_table, use_gauss=True) - guass_r0).value), 2),
+                                                                  np.round(np.nan_to_num((guass_r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
+                                                                                        sn8_table, use_gauss=True)).value), 2)))
         pos_r0 = np.round(calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
         plt.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
                  label='Pos Fit: A = {}+-{}\n r0: {}+{}-{}'.format(np.round(pos_a, 2), np.round(pos_a_error, 3),
                                                                     np.round(pos_r0.value, 2),
-                                                                    np.round((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
-                                                                                          sn8_table, use_gauss=True) - pos_r0).value, 2),
-                                                                    np.round((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
-                                                                                                   sn8_table, use_gauss=True)).value, 2)))
+                                                                    np.round(np.nan_to_num((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
+                                                                                          sn8_table, use_gauss=True) - pos_r0).value), 2),
+                                                                    np.round(np.nan_to_num((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
+                                                                                                   sn8_table, use_gauss=True)).value), 2)))
         plt.xscale("log")
         plt.title("Data vs Random")
         plt.legend(loc='best')
         plt.xlabel("Angular Distance (arcseconds)")
         plt.ylabel("$\omega(\\theta)$")
-        plt.yscale("log")
+        plt.yscale("log")#shy=0.000001)
         #plt.title("r0: {} Gauss r0: {}".format(np.round(r0, 3), np.round(guass_r0, 3)))
         #plt.tight_layout()
-        plt.savefig("fidelity/AE_RR_MAX_NOTNORMED_SMALL_15_35/Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
+        plt.savefig("fidelity/AE_SMALLBIN_RR_MAX_INTERP_NOTNORMED_SMALL_15_35/Data_vs_Random_{}_bin{}_sn{}_N{}.png".format(num_points, bin_num, sn_cut, negative), dpi=300)
         # plt.show()
+        plt.close(fig)
         plt.cla()
 
 # Now have dictionary of lists of datas
@@ -1141,6 +1168,11 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
     """
     plt.cla()
     f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all', figsize=(10, 10))
+    ax1.set_aspect("auto")
+    ax2.set_aspect("auto")
+    ax3.set_aspect("auto")
+    ax4.set_aspect("auto")
+
     sn_cut = snners
     for index, data_data in enumerate(dd):
         fid_list = []
@@ -1153,9 +1185,9 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
         else:
             real_catalog = load_table("line_search_P3_wa_crop.out")
         if negative:
-            open_file = open("AE_RR_MAX_NOTNORMED_SMALL_15_35_negative_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
+            open_file = open("AE_SMALLBIN_RR_MAX_INTERP_NOTNORMED_SMALL_15_35_negative_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
         else:
-            open_file = open("AE_RR_MAX_NOTNORMED_SMALL_15_35_positive_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
+            open_file = open("AE_SMALLBIN_RR_MAX_INTERP_NOTNORMED_SMALL_15_35_positive_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
         # real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
         # real_catalog = real_catalog[fidelity_sixty]
         real_catalog = construct_fid_mask(real_catalog, fid_list=fid_list)
@@ -1191,8 +1223,8 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
         xmin = min_dist - 0.001
         xmax = max_dist + 0.1 * max_dist
         x_fit = np.linspace(xmin, xmax, 10000)
-        xmin = min_dist - 0.001
-        xmax = max_dist + 0.1 * max_dist
+        xmin = distance_bins[0] - 0.001
+        xmax = distance_bins[-1] + 0.01 * distance_bins[-1]
         x_fit = np.linspace(xmin, xmax, 10000)
         print("SN Cut Used: {} For Index: {}".format(int(sn_cut[index]*100), index))
         sn8_table = Table.read(
@@ -1235,18 +1267,18 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
             ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
                                                                       np.round(r0.value, 2),
-                                                                      np.round((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
-                                                                                            sn8_table, use_gauss=True) - r0).value, 2),
-                                                                      np.round((r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
-                                                                                                 sn8_table, use_gauss=True)).value, 2)))
+                                                                      np.round(np.nan_to_num((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
+                                                                                                           sn8_table, use_gauss=True) - r0).value), 2),
+                                                                      np.round(np.nan_to_num((r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
+                                                                                                                sn8_table, use_gauss=True)).value), 2)))
             pos_r0 = np.round(calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
             ax1.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
-                 label='Pos Fit: A = {}+-{}\n r0: {}+{}-{}'.format(np.round(pos_a, 2), np.round(pos_a_error, 3),
-                                                                    np.round(pos_r0.value, 2),
-                                                                    np.round((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
-                                                                                           sn8_table, use_gauss=True) - pos_r0).value, 2),
-                                                                    np.round((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
-                                                                                                    sn8_table, use_gauss=True)).value, 2)))
+                     label='Pos Fit: A = {}+-{}\n r0: {}+{}-{}'.format(np.round(pos_a, 2), np.round(pos_a_error, 3),
+                                                                       np.round(pos_r0.value, 2),
+                                                                       np.round(np.nan_to_num((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
+                                                                                                            sn8_table, use_gauss=True) - pos_r0).value), 2),
+                                                                       np.round(np.nan_to_num((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
+                                                                                                                     sn8_table, use_gauss=True)).value), 2)))
             ax1.set_xscale("log")
             ax1.set_title("Fidelity > {}".format(snners[index]))
             # plt.title("Data vs Random")
@@ -1254,7 +1286,7 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
             ax1.set_ylabel("$\omega(\\theta)$")
             # ax1.set_ylabel("$\omega(\\theta)$")
             if use_log:
-                ax1.set_yscale("log")
+                ax1.set_yscale("log")#shy=0.000001)
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 1:
             open_file.write("{} Fid\n".format(sn_cut[index]))
@@ -1294,18 +1326,18 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
             ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
                                                                       np.round(r0.value, 2),
-                                                                      np.round((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
-                                                                                             sn8_table, use_gauss=True) - r0).value, 2),
-                                                                      np.round((r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
-                                                                                                  sn8_table, use_gauss=True)).value, 2)))
+                                                                      np.round(np.nan_to_num((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
+                                                                                                           sn8_table, use_gauss=True) - r0).value), 2),
+                                                                      np.round(np.nan_to_num((r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
+                                                                                                                sn8_table, use_gauss=True)).value), 2)))
             pos_r0 = np.round(calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
             ax2.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
                      label='Pos Fit: A = {}+-{}\n r0: {}+{}-{}'.format(np.round(pos_a, 2), np.round(pos_a_error, 3),
-                                                                        np.round(pos_r0.value, 2),
-                                                                        np.round((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
-                                                                                               sn8_table, use_gauss=True) - pos_r0).value, 2),
-                                                                        np.round((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
-                                                                                                        sn8_table, use_gauss=True)).value, 2)))
+                                                                       np.round(pos_r0.value, 2),
+                                                                       np.round(np.nan_to_num((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
+                                                                                                            sn8_table, use_gauss=True) - pos_r0).value), 2),
+                                                                       np.round(np.nan_to_num((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
+                                                                                                                     sn8_table, use_gauss=True)).value), 2)))
             ax2.set_xscale("log")
             ax2.set_title("Fidelity > {}".format(snners[index]))
             # plt.title("Data vs Random")
@@ -1313,7 +1345,7 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
             # plt.xlabel("Angular Distance (arcseconds)")
             # plt.ylabel("$\omega(\\theta)$")
             if use_log:
-                ax2.set_yscale("log")
+                ax2.set_yscale("log")#shy=0.000001)
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 2:
             open_file.write("{} Fid\n".format(sn_cut[index]))
@@ -1353,18 +1385,18 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
             ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
                                                                       np.round(r0.value, 2),
-                                                                      np.round((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
-                                                                                             sn8_table, use_gauss=True) - r0).value, 2),
-                                                                      np.round((r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
-                                                                                                  sn8_table, use_gauss=True)).value, 2)))
+                                                                      np.round(np.nan_to_num((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
+                                                                                                           sn8_table, use_gauss=True) - r0).value), 2),
+                                                                      np.round(np.nan_to_num((r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
+                                                                                                                sn8_table, use_gauss=True)).value), 2)))
             pos_r0 = np.round(calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
             ax3.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
                      label='Pos Fit: A = {}+-{}\n r0: {}+{}-{}'.format(np.round(pos_a, 2), np.round(pos_a_error, 3),
-                                                                        np.round(pos_r0.value, 2),
-                                                                        np.round((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
-                                                                                               sn8_table, use_gauss=True) - pos_r0).value, 2),
-                                                                        np.round((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
-                                                                                                        sn8_table, use_gauss=True)).value, 2)))
+                                                                       np.round(pos_r0.value, 2),
+                                                                       np.round(np.nan_to_num((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
+                                                                                                            sn8_table, use_gauss=True) - pos_r0).value), 2),
+                                                                       np.round(np.nan_to_num((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
+                                                                                                                     sn8_table, use_gauss=True)).value), 2)))
             ax3.set_xscale("log")
             ax3.set_title("Fidelity > {}".format(snners[index]))
             # plt.title("Data vs Random")
@@ -1372,7 +1404,7 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
             ax3.set_xlabel("Angular Distance (arcseconds)")
             ax3.set_ylabel("$\omega(\\theta)$")
             if use_log:
-                ax3.set_yscale("log")
+                ax3.set_yscale("log")#shy=0.000001)
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
         if index == 3:
             open_file.write("{} Fid\n".format(sn_cut[index]))
@@ -1412,25 +1444,25 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
             ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
                      label='Fit: A = {}+-{} \n r0: ${}+{}-{}$'.format(np.round(a, 2), np.round(a_error, 3),
                                                                       np.round(r0.value, 2),
-                                                                      np.round((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
-                                                                                             sn8_table, use_gauss=True) - r0).value, 2),
-                                                                      np.round((r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
-                                                                                                  sn8_table, use_gauss=True)).value, 2)))
+                                                                      np.round(np.nan_to_num((calculate_r0(Angle((a + a_error) * u.arcsecond), 0.8,
+                                                                                             sn8_table, use_gauss=True) - r0).value), 2),
+                                                                      np.round(np.nan_to_num((r0 - calculate_r0(Angle((a - a_error) * u.arcsecond), 0.8,
+                                                                                                  sn8_table, use_gauss=True)).value), 2)))
             pos_r0 = np.round(calculate_r0(Angle(pos_a * u.arcsecond), 0.8, sn8_table, use_gauss=True), 2)
             ax4.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
                      label='Pos Fit: A = {}+-{}\n r0: {}+{}-{}'.format(np.round(pos_a, 2), np.round(pos_a_error, 3),
                                                                         np.round(pos_r0.value, 2),
-                                                                        np.round((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
-                                                                                               sn8_table, use_gauss=True) - pos_r0).value, 2),
-                                                                        np.round((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
-                                                                                                        sn8_table, use_gauss=True)).value, 2)))
+                                                                        np.round(np.nan_to_num((calculate_r0(Angle((pos_a + pos_a_error) * u.arcsecond), 0.8,
+                                                                                               sn8_table, use_gauss=True) - pos_r0).value), 2),
+                                                                        np.round(np.nan_to_num((pos_r0 - calculate_r0(Angle((pos_a - pos_a_error) * u.arcsecond), 0.8,
+                                                                                                        sn8_table, use_gauss=True)).value), 2)))
             ax4.set_xscale("log")
             ax4.set_title("Fidelity > {}".format(snners[index]))
             # plt.title("Data vs Random")
             ax4.legend(loc='best', fontsize='8')
             # plt.xlabel("Angular Distance (arcseconds)")
             if use_log:
-                ax4.set_yscale("log")
+                ax4.set_yscale("log")#shy=0.000001)
             ax4.set_xlabel("Angular Distance (arcseconds)")
             # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
             # Now add the plot to the others
@@ -1443,148 +1475,9 @@ def plot_four(dd, dr, rr, distance_bins, use_log=True):
     f.align_ylabels()
     f.suptitle("Data vs Random")
     if use_log:
-        plt.savefig("fidelity/AE_RR_MAX_NOTNORMED_SMALL_15_35/Log_4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins), negative, num_points), dpi=300)
+        plt.savefig("fidelity/AE_SMALLBIN_RR_MAX_INTERP_NOTNORMED_SMALL_15_35/Log_4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins), negative, num_points), dpi=300)
     else:
-        plt.savefig("fidelity/AE_RR_MAX_NOTNORMED_SMALL_15_35/4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins), negative, num_points), dpi=300)
-
-    open_file.close()
-
-
-def plot_four_binnings(dd, dr, rr, distance_bins, distance_bins1, use_log=True):
-    """
-    Take set of 4 S/N cut lists for DD, DR, and AE_RR and plot a 4 panel plot, has to be same binning for it
-    Assumes dd, dr, and rr are all in same order, 9.5, 9.0, 8.5, 8.0 SN
-
-    Do the Different Binnings
-
-    6, 8, 10
-    :param dd:
-    :param dr:
-    :param rr:
-    :return:
-    """
-    plt.cla()
-    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, sharex='all', sharey='all', figsize=(10, 10))
-    sn_cut = snners
-    for index, data_data in enumerate(dd):
-        if negative:
-            real_catalog = load_table("line_search_N3_wa_crop.out")
-        else:
-            real_catalog = load_table("line_search_P3_wa_crop.out")
-        if negative:
-            open_file = open("negative_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
-        else:
-            open_file = open("positive_r0_bin{}_N{}.txt".format(len(data_data), num_points), "a")
-        # real_catalog = real_catalog[real_catalog['rsnrrbin'] > sn_cut[index]]
-        # real_catalog = real_catalog[fidelity_sixty]
-        real_catalog = construct_fid_mask(real_catalog)
-        real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
-        # real_catalog = make_skycoords(real_catalog, ra='rra', dec='rdc')
-        omega_w = xi_r(dd[index], dr[index], rr[index], real_catalog, random_catalog)
-        le_omega_w, ue_omega_w = xi_r_error(omega_w, dd[index])
-        pinit = [1.]
-        out = leastsq(errfunc, pinit,
-                      args=(distance_bins1, omega_w, (le_omega_w + ue_omega_w) / 2.), full_output=True)
-        a = a_plt[index] #out[0][0]
-        s_sq = (errfunc(out[0][0], distance_bins1, omega_w, (le_omega_w + ue_omega_w) / 2.) ** 2).sum() / (
-                len(distance_bins1) - len(pinit))
-        cov_matrix = out[1] * s_sq
-
-        a_error = ae_plt[index] #np.absolute(cov_matrix[0][0]) ** 0.5
-        # Now get one for only the positive points
-        pos_mask = (omega_w > 0.)
-        pos_ue = ue_omega_w[pos_mask]
-        pos_le = le_omega_w[pos_mask]
-        pos_bins = distance_bins1[pos_mask]
-        pos_omega = omega_w[pos_mask]
-
-        pinit = [1.]
-        out = leastsq(errfunc, pinit,
-                      args=(pos_bins, pos_omega, (pos_le + pos_ue) / 2.), full_output=True)
-        pos_a = pa_plt[index] #out[0][0]
-        s_sq = (errfunc(out[0][0], pos_bins, pos_omega, (pos_le + pos_ue) / 2.) ** 2).sum() / (
-                len(pos_bins) - len(pinit))
-        cov_matrix = out[1] * s_sq
-
-        pos_a_error = pae_plot[index] #np.absolute(cov_matrix[0][0]) ** 0.5
-        xmin = min_dist - 0.001
-        xmax = max_dist + 0.1 * max_dist
-        x_fit = np.linspace(xmin, xmax, 10000)
-        sn8_table = Table.read(
-            "/home/jacob/Development/Wide_ASPECS/Final_Output/ASPECS_Line_Candidates_cleaned_all_closest_Sep_1.0_SN_fid_{}.ecsv".format(int(sn_cut[index]*100)))
-        if index == 0:
-            ax1.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
-            ax1.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
-                     label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
-            ax1.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
-                     label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
-            ax1.set_xscale("log")
-            ax1.set_title("Fidelity > {}".format(snners[index]))
-            # plt.title("Data vs Random")
-            ax1.legend(loc='best', fontsize='8')
-            ax1.set_ylabel("$\omega(\\theta)$")
-            # ax1.set_ylabel("$\omega(\\theta)$")
-            if use_log:
-                ax1.set_yscale("log")
-            # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
-        if index == 1:
-            ax2.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
-            ax2.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
-                     label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
-            ax2.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
-                     label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
-            ax2.set_xscale("log")
-            ax2.set_title("Fidelity > {}".format(snners[index]))
-            # plt.title("Data vs Random")
-            ax2.legend(loc='best', fontsize='8')
-            # plt.xlabel("Angular Distance (arcseconds)")
-            # plt.ylabel("$\omega(\\theta)$")
-            if use_log:
-                ax2.set_yscale("log")
-            # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
-        if index == 2:
-            ax3.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
-            ax3.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
-                     label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
-            ax3.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
-                     label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
-            ax3.set_xscale("log")
-            ax3.set_title("Fidelity > {}".format(snners[index]))
-            # plt.title("Data vs Random")
-            ax3.legend(loc='best', fontsize='8')
-            ax3.set_xlabel("Angular Distance (arcseconds)")
-            ax3.set_ylabel("$\omega(\\theta)$")
-            if use_log:
-                ax3.set_yscale("log")
-            # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
-        if index == 3:
-            ax4.errorbar(x=distance_bins1, y=omega_w, yerr=(le_omega_w, ue_omega_w), fmt='o')
-            ax4.plot(x_fit, correlation_function(x_fit, a), '-', c='r',
-                     label='Fit: A = {}+-{}'.format(np.round(a, 4), np.round(a_error, 5)))
-            ax4.plot(x_fit, correlation_function(x_fit, pos_a), '--', c='g',
-                     label='Pos Fit: A = {}+-{}'.format(np.round(pos_a, 4), np.round(pos_a_error, 5)))
-            ax4.set_xscale("log")
-            ax4.set_title("Fidelity > {}".format(snners[index]))
-            # plt.title("Data vs Random")
-            ax4.legend(loc='best', fontsize='8')
-            # plt.xlabel("Angular Distance (arcseconds)")
-            if use_log:
-                ax4.set_yscale("log")
-            ax4.set_xlabel("Angular Distance (arcseconds)")
-            # plt.savefig("final/Log_Data_vs_Random_{}_bin{}_sn{}.png".format(num_points, bin_num, sn_cut), dpi=300)
-            # Now add the plot to the others
-            ax1.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
-            ax2.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
-            ax3.plot(x_fit, correlation_function(x_fit, a), '--', c='orange', label='S/N>8. Fit')
-
-    # Actually plot it all now
-    f.align_xlabels()
-    f.align_ylabels()
-    f.suptitle("Data vs Random")
-    if use_log:
-        plt.savefig("fidelity/MIN_Log_4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins1), negative, num_points), dpi=300)
-    else:
-        plt.savefig("fidelity/MIN_4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins1), negative, num_points), dpi=300)
+        plt.savefig("fidelity/AE_SMALLBIN_RR_MAX_INTERP_NOTNORMED_SMALL_15_35/4Panel_Data_Vs_Random_bin{}_N{}_Num{}.png".format(len(distance_bins), negative, num_points), dpi=300)
 
     open_file.close()
 

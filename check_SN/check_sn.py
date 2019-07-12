@@ -60,11 +60,13 @@ close
 
 """
 
-cubes = ["A1","A2", "B1", "B2", "C1", "C2"]
+cubes = ["A1","B1", "C1", "A2", "B2", "C2"]
 
 for cube_name in cubes:
-    cube = SpectralCube.read("/home/jacob/Research/Wide_ASPECS/Data/gs_{}_2chn.fits".format(cube_name))
-
+    cube = SpectralCube.read("/media/jacob/A6548D38548D0BED/gs_{}_2chn.fits".format(cube_name))
+    # Go and show Frequency ones
+    print("Cube {}: Freq: {} - {}".format(cube_name, np.round(cube.spectral_axis[0].to(u.GHz), 3), np.round(cube.spectral_axis[-1].to(u.GHz), 3)))
+    continue
     #region_list = regions.read_ds9('line_search_P3_wa_crop.reg')
     #sub_cube = cube.subcube_from_regions(region_list)
     real_catalog = load_table("line_search_P3_wa_crop.out")

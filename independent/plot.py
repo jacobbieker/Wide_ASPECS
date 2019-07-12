@@ -176,7 +176,7 @@ def plot_mstar_vs_sfr(aspecs_catalog, matched_catalog, snr_limit, max_z=0.3, lab
     f.show()
 
 
-def plot_mstar_vs_sfr_specz(spec_z_catalog, matched_catalog, no_spec_z_catalog, snr_limit, max_z=0.3, labels=('All', 'Spec Z', 'ASPECS'), z_lows=(0.0, 1.1, 2.2, 3), z_highs=(0.4, 1.8, 3, 4.4), colors=('lightgrey', 'red', 'blue', 'orange', 'green'), filename="", type='square'):
+def plot_mstar_vs_sfr_specz(spec_z_catalog, matched_catalog, no_spec_z_catalog, snr_limit, max_z=0.3, labels=('All', 'ASPECS Spec Z', 'ASPECS Photo Z'), z_lows=(0.0, 1.1, 2.2, 3), z_highs=(0.4, 1.8, 3, 4.4), colors=('lightgrey', 'red', 'blue', 'orange', 'green'), filename="", type='square'):
     """
     Given a set of catalogs, plot them with labels in a M* by SFR overlaid with best fits
 

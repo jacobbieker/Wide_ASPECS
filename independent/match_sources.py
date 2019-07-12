@@ -57,7 +57,7 @@ def construct_fid_mask(catalog):
     """
     line_widths = [i for i in range(3, 21, 2)]
     fid_catalog = load_table("fidelity_snr.out", start=0)
-    fid_limit = 0.7
+    fid_limit = 0.4
 
     six_fids = []
     for width in line_widths:
@@ -862,9 +862,9 @@ def match_lines_to_catalog(lines, catalog, snr_limit=6., max_sep=1.0, method='cl
                                                matched_line['width'],
                                                np.round(volume, 3),
                                                matched_galaxy['Mstar_50_2'],
-                                               matched_galaxy['Mstar_84_2'] - matched_galaxy['Mstar_50_2'],
+                                               matched_galaxy['Mstar_50_2'] - matched_galaxy['Mstar_16_2'],
                                                matched_galaxy['SFR_50_2'],
-                                               matched_galaxy['SFR_84_2'] - matched_galaxy['SFR_50_2'],
+                                               matched_galaxy['SFR_50_2'] - matched_galaxy['SFR_16_2'],
                                                idxcatalog[index])
                                     aspecs_table.add_row(new_row)
             else:

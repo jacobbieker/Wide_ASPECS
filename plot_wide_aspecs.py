@@ -166,9 +166,10 @@ fits_files = [f125w_goodss, f140w_goodss, f160w_goodss, f435w_goodss,
               #f606w_goodss,
               f775w_goodss, f850lp_goodss,
               # f814w_goodss,
-              R_goodss, U38_goodss, V_goodss, B_goodss, J_goodss, H_goodss, I_goodss, tKs_goodss,
-              tJ_goodss, irac1_goodss, irac2_goodss,
-              irac3_goodss, irac4_goodss]
+              # R_goodss, U38_goodss, V_goodss, B_goodss, J_goodss, H_goodss, I_goodss, tKs_goodss,
+              #tJ_goodss, irac1_goodss, irac2_goodss,
+              #irac3_goodss, irac4_goodss
+              ]
 ia_nmes = ["IA427", "IA445", "IA505", "IA527", "IA550", "IA574",
            "IA624", "IA651", "IA679", "IA738", "IA797", ]
 
@@ -176,9 +177,10 @@ fits_names = ["F125W", "F140W", "F160W", "F435W",
               #"F606W",
               "F775W", "F850LP",
               #"F814W",
-              "R", "U38", "V", "B", "J", "H", "I", "tKs",
-              "tJ",
-              "IRAC1", "IRAC2", "IRAC3", "IRAC4"]
+              #"R", "U38", "V", "B", "J", "H", "I", "tKs",
+              #"tJ",
+              #"IRAC1", "IRAC2", "IRAC3", "IRAC4"
+              ]
 catalog_goodss = fits.open("/home/jacob/Research/Wide_ASPECS/Historical_Data/goodss_3dhst.v4.1.cats/Catalog/goodss_3dhst.v4.1.cat.FITS")
 skelton_goodss = catalog_goodss[1].data
 
@@ -360,8 +362,8 @@ def create_multi_overlap_ax_cutout(ax, name, fit_data, catalog_coordinate, match
 def create_multi_overlap_ax_cutout_cube(ax, name, fit_data, catalog_coordinate, matches, ra_dec=roberto_ra_dec, rob_z=0, subcube=None, rmscube=None):
     ax = create_multi_overlap_cutout_cube(ax, fit_data[0].header, fit_data[0].data, aspecs=catalog_coordinate,
                                      matches=matches, ra_dec=ra_dec, rob_z=rob_z, subcube=subcube, rmscube=rmscube)
-    ax.set_title(name)
-    ax.tick_params(direction='in', colors='w',)
+    ax.set_title(name, position=(0.5, 0.955), fontsize="small")#, c='red', position=(0.5,0.85))
+    ax.tick_params(direction='in', colors='w', labelsize='small')
     return ax
 
 
@@ -447,7 +449,7 @@ for cube_name in cubes:
 for index, row in enumerate(aspecs_lines):
     # Make the cutouts
     shape_file = int(np.ceil(np.sqrt(len(fits_files))))
-    f = plt.figure(figsize=(20, 20))
+    f = plt.figure()#figsize=(20, 5))
     # no counterpart
     distances = [0]
     # Get the cube that contains the CO line observed
@@ -486,21 +488,23 @@ for index, row in enumerate(aspecs_lines):
 
         freq_valus = [np.round(row['Observed CO (GHz)'], 3)]
         rest_frame_ghz = [np.round(row['Restframe CO (GHz)'], 3)]
-        f.suptitle(
-            " Z: " + str(row['Z (CO)']) + " Delta_Z: " + str(
-                row['Delta Z']) + " Roberto ID: " + str(row['Roberto ID']) + " Separation: " + str(row['Separation (Arcsecond)']) + " S/N: " + str(row['S/N']) +
-            " Observed Freq: " + str(freq_valus) + "\n Spec Z: " + str(
-                row['Spec Z']) + " Transition: " + str(row['Transition']) +
-            " RA: " + str(row['RA (J2000)']) + " DEC: " + str(row['DEC (J2000)']) +
-            "\n Rest Frame GHz: " + str(rest_frame_ghz) + " MStar: " + str(row['Log(M*)']) + " SFR: " + str(row['Log(SFR)']))
+        f.suptitle("ID.{}".format(index+1), y=0.95)# fontsize="xx-large", y=0.9)
+        #f.suptitle(
+        #    " Z: " + str(row['Z (CO)']) + " Delta_Z: " + str(
+        #        row['Delta Z']) + " Roberto ID: " + str(row['Roberto ID']) + " Separation: " + str(row['Separation (Arcsecond)']) + " S/N: " + str(row['S/N']) +
+        #    " Observed Freq: " + str(freq_valus) + "\n Spec Z: " + str(
+        #        row['Spec Z']) + " Transition: " + str(row['Transition']) +
+        #    " RA: " + str(row['RA (J2000)']) + " DEC: " + str(row['DEC (J2000)']) +
+        #    "\n Rest Frame GHz: " + str(rest_frame_ghz) + " MStar: " + str(row['Log(M*)']) + " SFR: " + str(row['Log(SFR)']))
         for third_index, image in enumerate(fits_files):
             wcs_header = image[0].header
             w = wcs.WCS(wcs_header)
-            ax = f.add_subplot(shape_file, shape_file, third_index + 1, projection=w)
+            ax = f.add_subplot(2, 3, third_index + 1, projection=w)
             create_multi_overlap_ax_cutout_cube(ax, fits_names[third_index], image,
                                            catalog_coordinate=coords[index],
                                            matches=[index], ra_dec=coords, subcube=sub_cube, rmscube=rms_noise)
-        f.savefig(str("Final_Output/matched/ASPECS_Cutout_" + str(index) + ".png"), dpi=300)
+        f.subplots_adjust(hspace=0, wspace=0)
+        f.savefig(str("Final_Output/matched/ASPECS_Cutout_" + str(index) + ".png"), dpi=100)
         f.clf()
         plt.close()
 
@@ -670,7 +674,7 @@ for key, values in enumerate(aspecs_matches):
     if len(values) > 0:
         # Make the cutouts
         shape_file = int(np.ceil(np.sqrt(len(fits_files))))
-        f = plt.figure(figsize=(20, 20))
+        f = plt.figure(figsize=(2, 1.75))
         test_mask = (roberto_muse['id'] == key)
         roberto_ra_dec_index = 1e30
         for index, i in enumerate(roberto_muse):
