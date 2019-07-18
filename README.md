@@ -1,4 +1,4 @@
-#Wide ASPECS
+Wide ASPECS
 
 This repo contains the code used for the first Master's Research project at Leiden University. The scripts specifically used in the final figures and calculations are ```run_matching.py``` in ```independent```, ```plot_wide_aspecs.py``` to create the cutouts, and ```clustering.py``` in ```Clustering```. Other scripts were used for data exploration and other lines of inquiry. 
 
